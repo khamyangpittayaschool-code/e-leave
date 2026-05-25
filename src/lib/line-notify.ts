@@ -93,7 +93,7 @@ export function formatLeaveMessage(
   if (action === "CREATE") {
     let header = `🔔 มีคำขอลาใหม่!`;
     if (options?.subjectGroup) {
-      header += ` (รอหัวหน้าหมวด/กลุ่มสาระ ${options.subjectGroup} อนุมัติ)`;
+      header += ` (รอหัวหน้างานบุคคลอนุมัติ)`;
     } else {
       header += ` (รอผู้อำนวยการอนุมัติ)`;
     }

@@ -281,7 +281,7 @@ export default function DashboardPage() {
                   statusLabel = t("rejectedStatus") || "ปฏิเสธแล้ว";
                   statusColor = "text-rose-500 dark:text-rose-400";
                 } else if (req.status === "PENDING_HEAD") {
-                  statusLabel = lang === "en" ? "Pending Head" : "รอหัวหน้าหมวด";
+                  statusLabel = lang === "en" ? "Pending HR" : "รอหัวหน้างานบุคคล";
                 } else if (req.status === "PENDING_EXEC") {
                   statusLabel = lang === "en" ? "Pending Executive" : "รอผู้บริหาร";
                 }

@@ -208,7 +208,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {["ครู", "หัวหน้าหมวด", "TEACHER", "HEAD"].includes(user?.position || "") && (
+                {["ครู", "หัวหน้างานบุคคล", "TEACHER", "HEAD"].includes(user?.position || "") && (
                   <div>
                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
                       {lang === "en" ? "Subject Group" : "กลุ่มสาระการเรียนรู้"}

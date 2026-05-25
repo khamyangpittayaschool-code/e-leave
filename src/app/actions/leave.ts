@@ -45,7 +45,7 @@ export async function submitLeaveRequest(data: {
   // Teachers -> PENDING_HEAD (wait for Dept Head)
   // Dept Head -> PENDING_EXEC (skip to Executive)
   let initialStatus = "PENDING_HEAD";
-  if (user.position === "หัวหน้าหมวด") {
+  if (user.position === "หัวหน้างานบุคคล") {
     initialStatus = "PENDING_EXEC";
   }
 
@@ -141,7 +141,7 @@ export async function getStaffList() {
 export async function getDashboardStats(cycleFilter: "current" | "cycle1" | "cycle2" | "year" | "all" = "current", lang: "th" | "en" = "th") {
   const session = await getSession();
   const user = session.user as any;
-  const isApprover = user.role === "ADMIN" || ["ผู้บริหาร", "หัวหน้าหมวด", "แอดมิน"].includes(user.position);
+  const isApprover = user.role === "ADMIN" || ["ผู้บริหาร", "หัวหน้างานบุคคล", "แอดมิน"].includes(user.position);
 
   // Fetch Leave Configs dynamically
   const { getLeaveConfigs } = await import("./settings");
@@ -150,7 +150,7 @@ export async function getDashboardStats(cycleFilter: "current" | "cycle1" | "cyc
   const filter = getLeaveCycleFilter(new Date(), cycleFilter, lang);
   const cycle = filter || getCurrentLeaveCycle(new Date(), lang); // fallback if all
 
-  const isHead = user.position === "หัวหน้าหมวด";
+  const isHead = user.position === "หัวหน้างานบุคคล";
 
   let requests;
   if (isApprover) {
@@ -192,8 +192,8 @@ export async function getDashboardStats(cycleFilter: "current" | "cycle1" | "cyc
   let pendingWhere: any = { status: { in: ["PENDING_HEAD", "PENDING_EXEC"] } };
   if (!isApprover) {
     pendingWhere = { userId: session.user.id, status: { in: ["PENDING_HEAD", "PENDING_EXEC"] } };
-  } else if (user.position === "หัวหน้าหมวด") {
-    pendingWhere = { status: "PENDING_HEAD", user: { subjectGroup: user.subjectGroup } };
+  } else if (user.position === "หัวหน้างานบุคคล") {
+    pendingWhere = { status: "PENDING_HEAD" };
   } else if (user.position === "ผู้บริหาร") {
     pendingWhere = { status: "PENDING_EXEC" };
   }
@@ -204,7 +204,7 @@ export async function getDashboardStats(cycleFilter: "current" | "cycle1" | "cyc
   const totalStaff = await prisma.user.count({
     where: {
       role: { not: "ADMIN" },
-      ...(isHead ? { subjectGroup: user.subjectGroup } : {})
+      ...(isHead ? {} : {}) // For HR head, they see all staff. If needed, this can be removed.
     }
   });
 
@@ -314,11 +314,10 @@ export async function getPendingApprovals() {
 
   let whereClause: any = {};
 
-  if (user.position === "หัวหน้าหมวด") {
-    // Dept Head sees PENDING_HEAD requests from teachers in the same subject group
+  if (user.position === "หัวหน้างานบุคคล") {
+    // HR Head sees all PENDING_HEAD requests
     whereClause = {
       status: "PENDING_HEAD",
-      user: { subjectGroup: user.subjectGroup },
     };
   } else if (user.position === "ผู้บริหาร") {
     // Executive sees PENDING_EXEC requests (already approved by dept head)
@@ -366,7 +365,7 @@ export async function approveLeaveRequest(id: string) {
   let newStatus = "";
   let updateData: any = {};
 
-  if (user.position === "หัวหน้าหมวด" && request.status === "PENDING_HEAD") {
+  if (user.position === "หัวหน้างานบุคคล" && request.status === "PENDING_HEAD") {
     // Head approves -> move to Executive
     newStatus = "PENDING_EXEC";
     updateData = { status: newStatus, headApproverId: session.user.id };
@@ -391,7 +390,7 @@ export async function approveLeaveRequest(id: string) {
 
   let statusText = "";
   if (newStatus === "PENDING_EXEC") {
-    statusText = "✅ หัวหน้าหมวดอนุมัติแล้ว (รอผู้อำนวยการอนุมัติ)";
+    statusText = "✅ หัวหน้างานบุคคลอนุมัติแล้ว (รอผู้อำนวยการอนุมัติ)";
   } else {
     statusText = "✅ ผู้อำนวยการอนุมัติเรียบร้อยแล้ว";
   }

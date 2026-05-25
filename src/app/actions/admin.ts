@@ -23,7 +23,7 @@ export async function getNotifications() {
 
   const user = session.user as any;
   const isAdmin = user.role === "ADMIN" || user.position === "แอดมิน";
-  const isHead = user.position === "หัวหน้าหมวด";
+  const isHead = user.position === "หัวหน้างานบุคคล";
   const isExec = user.position === "ผู้บริหาร";
 
   const items: { id: string; type: "user" | "leave"; title: string; desc: string; time: string; href: string }[] = [];

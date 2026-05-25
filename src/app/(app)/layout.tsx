@@ -304,7 +304,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const user = session.user as any;
   const isAdmin = user.role === "ADMIN" || user.position === "แอดมิน";
-  const isApprover = isAdmin || user.position === "ผู้บริหาร" || user.position === "หัวหน้าหมวด";
+  const isApprover = isAdmin || user.position === "ผู้บริหาร" || user.position === "หัวหน้างานบุคคล";
 
   if (!isAdmin && !user.isApproved) {
     return (

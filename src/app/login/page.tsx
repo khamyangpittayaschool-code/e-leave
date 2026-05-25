@@ -23,14 +23,14 @@ export default function LoginPage() {
   const [schoolName, setSchoolName] = useState("ระบบจัดการการลา");
   const [subheader, setSubheader] = useState("ระบบจัดการการลา");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [footerText, setFooterText] = useState("ผู้จัดทำ : Prompt by | ครูเปิงมางfc");
+  const [footerText, setFooterText] = useState("© 2006 Panchapon Getrat KP-school");
 
   useEffect(() => {
     getSystemSettings().then((s) => {
       setSchoolName(s.schoolName || "ระบบจัดการการลา");
       setSubheader(s.subheader || "ระบบจัดการการลา");
       setLogoUrl(s.logoUrl || null);
-      setFooterText(s.footerText || "ผู้จัดทำ : Prompt by | ครูเปิงมางfc");
+      setFooterText(s.footerText || "© 2006 Panchapon Getrat KP-school");
     }).catch(() => { });
   }, []);
 
@@ -44,7 +44,7 @@ export default function LoginPage() {
     }
 
     if (isRegister) {
-      if (["ครู", "หัวหน้าหมวด"].includes(position) && !subjectGroup) {
+      if (["ครู", "หัวหน้างานบุคคล"].includes(position) && !subjectGroup) {
         alert("กรุณาเลือกกลุ่มสาระการเรียนรู้");
         setLoading(false);
         return;
@@ -57,7 +57,7 @@ export default function LoginPage() {
         // @ts-ignore
         role: position === "แอดมิน" ? "ADMIN" : "TEACHER",
         position,
-        subjectGroup: ["ครู", "หัวหน้าหมวด"].includes(position) ? subjectGroup : "",
+        subjectGroup: ["ครู", "หัวหน้างานบุคคล"].includes(position) ? subjectGroup : "",
         fetchOptions: {
           onSuccess: () => {
             alert("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
@@ -226,13 +226,13 @@ export default function LoginPage() {
                   >
                     <option value="" disabled>เลือกตำแหน่ง</option>
                     <option value="ครู">ครู (Teacher)</option>
-                    <option value="หัวหน้าหมวด">หัวหน้าหมวด (Department Head)</option>
+                    <option value="หัวหน้างานบุคคล">หัวหน้างานบุคคล (HR Head)</option>
                     <option value="ผู้บริหาร">ผู้บริหาร (Executive)</option>
                     <option value="แอดมิน">แอดมิน (Admin)</option>
                   </select>
                 </div>
 
-                {["ครู", "หัวหน้าหมวด"].includes(position) && (
+                {["ครู", "หัวหน้างานบุคคล"].includes(position) && (
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <BookOpen className="h-[20px] w-[20px] text-slate-400" />

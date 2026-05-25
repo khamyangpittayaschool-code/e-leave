@@ -27,7 +27,7 @@ export async function getSystemSettings() {
         id: "default",
         schoolName: "ชื่อโรงเรียน",
         subheader: "ระบบจัดการการลา",
-        footerText: "© 2026 ระบบการลา",
+        footerText: "© 2006 Panchapon Getrat KP-school",
         developerSecret: "admin1234"
       }
     });
@@ -58,8 +58,8 @@ export async function updateSystemSettings(data: { schoolName: string; subheader
       logoUrl: data.logoUrl === "" ? null : data.logoUrl,
       lineChannelAccessToken: data.lineChannelAccessToken,
       lineTargetGroupId: data.lineTargetGroupId,
-      leaveRules: data.leaveRules || "การลากิจต้องยื่นคำขอล่วงหน้าอย่างน้อย 3 วันทำการ\nการลาป่วยติดต่อกันเกิน 3 วัน ต้องแนบใบรับรองแพทย์\nระบบจะส่งแจ้งเตือนให้หัวหน้าหมวดของท่านพิจารณาเป็นลำดับแรก",
-      footerText: "© 2026 ระบบการลา",
+      leaveRules: data.leaveRules || "การลากิจต้องยื่นคำขอล่วงหน้าอย่างน้อย 3 วันทำการ\nการลาป่วยติดต่อกันเกิน 3 วัน ต้องแนบใบรับรองแพทย์\nระบบจะส่งแจ้งเตือนให้หัวหน้างานบุคคลของท่านพิจารณาเป็นลำดับแรก",
+      footerText: "© 2006 Panchapon Getrat KP-school",
       developerSecret: "admin1234"
     }
   });

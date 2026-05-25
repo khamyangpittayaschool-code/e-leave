@@ -120,7 +120,7 @@ export default function UsersPage() {
     u.position?.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const positionOptions = ["ครู", "หัวหน้าหมวด", "ผู้บริหาร", "แอดมิน"];
+  const positionOptions = ["ครู", "หัวหน้างานบุคคล", "ผู้บริหาร", "แอดมิน"];
   const subjectGroupOptions = [
     "วิทยาศาสตร์และเทคโนโลยี",
     "คณิตศาสตร์",
@@ -137,7 +137,7 @@ export default function UsersPage() {
   const getPositionBadge = (position: string, role: string) => {
     if (role === "ADMIN" || position === "แอดมิน") return { text: "แอดมิน", cls: "bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-800" };
     if (position === "ผู้บริหาร") return { text: "ผู้บริหาร", cls: "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-800" };
-    if (position === "หัวหน้าหมวด") return { text: "หัวหน้าหมวด", cls: "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-800" };
+    if (position === "หัวหน้างานบุคคล") return { text: "หัวหน้างานบุคคล", cls: "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-800" };
     return { text: position || "ครู", cls: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700" };
   };
 
