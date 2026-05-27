@@ -401,7 +401,7 @@ export default function SettingsPage() {
             </form>
           </div>
 
-          {/* Leave Configuration */}
+           {/* Leave Configuration */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">
             <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-4 flex items-center gap-2">
               <Settings2 className="w-5 h-5 text-indigo-500" />
@@ -409,6 +409,12 @@ export default function SettingsPage() {
             </h3>
             
             <form onSubmit={handleSaveAllQuotas} className="space-y-4">
+              {/* Quota Guideline Banner */}
+              <div className="p-3.5 bg-purple-50 dark:bg-purple-950/20 border border-purple-200/40 dark:border-purple-900/40 rounded-xl text-xs text-purple-700 dark:text-purple-300 font-semibold flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-purple-500 shrink-0" />
+                <span>💡 {lang === "en" ? "Tip: Setting max quota to 0 makes that leave type unlimited (e.g. sick leave)." : "คำแนะนำ: หากกำหนดค่าโควตาสูงสุดเป็น 0 จะหมายถึง 'ไม่จำกัดจำนวนวันทำการ' (เช่น ลาป่วย)"}</span>
+              </div>
+
               <div className="space-y-4">
                 {leaveConfigs.map((config) => (
                   <div 
@@ -427,9 +433,6 @@ export default function SettingsPage() {
                         onChange={(e) => handleQuotaChange(config.id, "maxDaysPerYear", Number(e.target.value))}
                         className="w-full sm:w-28 h-10 px-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500/20" 
                       />
-                      <span className="block text-[10px] text-purple-500 font-semibold mt-1">
-                        * {lang === "en" ? "0 = Unlimited" : "0 = ไม่จำกัดจำนวนวัน"}
-                      </span>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">{t("warnWhenLeft")}</label>
