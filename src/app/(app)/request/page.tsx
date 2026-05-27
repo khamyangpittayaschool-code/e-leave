@@ -217,45 +217,69 @@ export default function RequestLeavePage() {
             </div>
 
             {/* Live Day Count Preview */}
-            {startDate && endDate && (
-              <div className="p-5 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border-2 border-purple-200/50 dark:border-purple-900/50 rounded-3xl flex items-center justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Calendar className="w-4.5 h-4.5 text-purple-600 dark:text-purple-400" />
-                    จำนวนวันลาที่คำนวณในคำขอนี้
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    {selectedType === "MATERNITY" 
-                      ? "✓ คำนวณเป็นวันปฏิทิน (รวมวันหยุดเสาร์-อาทิตย์)" 
-                      : "✓ ไม่รวมวันหยุดเสาร์-อาทิตย์ (นับเฉพาะวันทำการปกติ)"
-                    }
-                  </p>
-                </div>
-                <div className="flex items-baseline gap-1 bg-white dark:bg-slate-900/80 px-4 py-2 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm">
-                  <span className="text-3xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                    {(() => {
-                      const start = new Date(startDate);
-                      const end = new Date(endDate);
-                      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return 0;
-                      
-                      if (selectedType === "MATERNITY") {
-                        return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                      }
-                      
-                      let count = 0;
-                      const current = new Date(start);
-                      while (current <= end) {
-                        const day = current.getDay();
-                        if (day !== 0 && day !== 6) count++;
-                        current.setDate(current.getDate() + 1);
-                      }
-                      return count;
-                    })()}
-                  </span>
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">วัน</span>
-                </div>
-              </div>
-            )}
+             {startDate && endDate && (() => {
+               const start = new Date(startDate);
+               const end = new Date(endDate);
+               let isWeekendOnly = false;
+               let calculatedCount = 0;
+
+               if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+                 if (selectedType === "MATERNITY") {
+                   calculatedCount = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                 } else {
+                   let count = 0;
+                   const current = new Date(start);
+                   while (current <= end) {
+                     const day = current.getDay();
+                     if (day !== 0 && day !== 6) count++;
+                     current.setDate(current.getDate() + 1);
+                   }
+                   calculatedCount = count;
+                   isWeekendOnly = (count === 0);
+                 }
+               }
+
+               return (
+                 <div className="flex flex-col gap-3">
+                   <div className="p-5 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border-2 border-purple-200/50 dark:border-purple-900/50 rounded-3xl flex items-center justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                     <div className="space-y-1">
+                       <p className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                         <Calendar className="w-4.5 h-4.5 text-purple-600 dark:text-purple-400" />
+                         จำนวนวันลาที่คำนวณในคำขอนี้
+                       </p>
+                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                         {selectedType === "MATERNITY" 
+                           ? "✓ คำนวณเป็นวันปฏิทิน (รวมวันหยุดเสาร์-อาทิตย์)" 
+                           : "✓ ไม่รวมวันหยุดเสาร์-อาทิตย์ (นับเฉพาะวันทำการปกติ)"
+                         }
+                       </p>
+                     </div>
+                     <div className="flex items-baseline gap-1 bg-white dark:bg-slate-900/80 px-4 py-2 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                       <span className="text-3xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                         {calculatedCount}
+                       </span>
+                       <span className="text-xs font-bold text-slate-600 dark:text-slate-400">วัน</span>
+                     </div>
+                   </div>
+
+                   {isWeekendOnly && (
+                     <motion.div 
+                       initial={{ opacity: 0, y: -10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-900/50 rounded-2xl flex items-start gap-2.5 text-amber-800 dark:text-amber-300"
+                     >
+                       <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                       <div className="text-xs space-y-1">
+                         <p className="font-bold">⚠️ แจ้งเตือน: วันที่เลือกตรงกับวันหยุดเสาร์-อาทิตย์</p>
+                         <p className="opacity-90 font-medium leading-relaxed">
+                           เนื่องจากระบบไม่นับวันหยุดราชการปกติเข้ารวมกับจำนวนวันลาสะสมสำหรับประเภทการลานี้ ({tLeaveType(selectedType, selectedType)}) จึงทำให้ยอดวันลาที่คำนวณได้มีค่าเป็น <span className="font-bold">0 วัน</span>
+                         </p>
+                       </div>
+                     </motion.div>
+                   )}
+                 </div>
+               );
+             })()}
 
             {/* Reason */}
             <div>

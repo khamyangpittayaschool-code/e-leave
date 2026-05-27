@@ -111,9 +111,15 @@ export default function ApprovalsPage() {
                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{format(new Date(item.startDate), "dd MMM")} - {format(new Date(item.endDate), "dd MMM")}</span>
-                    <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[10px]">
-                      ({calculateDays(item.startDate, item.endDate, item.type)} วัน)
-                    </span>
+                    {calculateDays(item.startDate, item.endDate, item.type) === 0 && item.type !== "MATERNITY" ? (
+                      <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[10px]" title="วันที่เลือกตรงกับวันเสาร์-อาทิตย์ทั้งหมด">
+                        (0 วัน - ตรงกับวันหยุดราชการ)
+                      </span>
+                    ) : (
+                      <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[10px]">
+                        ({calculateDays(item.startDate, item.endDate, item.type)} วัน)
+                      </span>
+                    )}
                   </p>
                   
                   {/* Attached Document Section */}

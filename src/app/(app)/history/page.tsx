@@ -329,9 +329,15 @@ export default function HistoryPage() {
                         {format(new Date(item.startDate), "dd MMM yyyy")} - {format(new Date(item.endDate), "dd MMM yyyy")}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-semibold">
-                        <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs">
-                          {calculateDays(item.startDate, item.endDate, item.type)} วัน
-                        </span>
+                        {calculateDays(item.startDate, item.endDate, item.type) === 0 && item.type !== "MATERNITY" ? (
+                          <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs" title="วันที่เลือกตรงกับวันเสาร์-อาทิตย์ทั้งหมด">
+                            0 วัน (ตรงกับวันหยุด)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs">
+                            {calculateDays(item.startDate, item.endDate, item.type)} วัน
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300 max-w-[200px] truncate">
                         {item.reason}
