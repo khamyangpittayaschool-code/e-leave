@@ -238,7 +238,7 @@ function BatchPrintPageContent() {
                 
                 .print-container {
                   font-family: 'Sarabun', sans-serif !important;
-                  line-height: 1.35 !important;
+                  line-height: 1.5 !important;
                   font-size: 11.5pt !important;
                   color: #000 !important;
                 }
@@ -266,14 +266,14 @@ function BatchPrintPageContent() {
                 .print-container .text-lg {
                   font-size: 15pt !important;
                   font-weight: bold !important;
-                  line-height: 1.35 !important;
+                  line-height: 1.5 !important;
                 }
 
                 .print-container .text-sm,
                 .print-container .indent-12,
                 .print-container .leading-relaxed {
                   font-size: 11.5pt !important;
-                  line-height: 1.35 !important;
+                  line-height: 1.5 !important;
                 }
 
                 .print-container .text-sm.text-slate-600 {

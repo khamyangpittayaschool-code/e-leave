@@ -260,7 +260,7 @@ export default function PrintLeavePage() {
               
               .print-container {
                 font-family: 'Sarabun', sans-serif !important;
-                line-height: 1.35 !important;
+                line-height: 1.5 !important;
                 font-size: 11.5pt !important; /* adjusted body font size down to 11.5pt */
                 color: #000 !important;
               }
@@ -298,7 +298,7 @@ export default function PrintLeavePage() {
               .print-container .indent-12,
               .print-container .leading-relaxed {
                 font-size: 11.5pt !important;
-                line-height: 1.35 !important;
+                line-height: 1.5 !important;
               }
 
               /* Opinion italic subtext can be slightly smaller to fit perfectly */
