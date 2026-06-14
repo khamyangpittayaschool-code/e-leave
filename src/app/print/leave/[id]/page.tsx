@@ -474,25 +474,21 @@ export default function PrintLeavePage() {
                     <span className="form-line-dotted-inline px-2">{request.user.level || "-"}</span>
                     <span> สังกัด </span>
                     <span className="form-line-dotted-inline px-2">{settings?.affiliation || request.user.subjectGroup || "ฝ่ายการสอน"}</span>
-                  </div>
 
-                  {/* Vacation Leave Balance Row */}
-                  {leaveType === "VACATION" && (
-                    <div className="w-full text-justify leading-relaxed mt-1.5">
-                      <span>มีวันลาพักผ่อนสะสม </span>
-                      <span className="form-line-dotted w-12 text-center font-semibold">{vacationAccumulated}</span>
-                      <span> วันทำการ มีสิทธิลาพักผ่อนประจำปีนี้อีก </span>
-                      <span className="form-line-dotted w-12 text-center font-semibold">{vacationThisYear}</span>
-                      <span> วันทำการ รวมเป็น </span>
-                      <span className="form-line-dotted w-16 text-center font-bold">{vacationAccumulated + vacationThisYear}</span>
-                      <span> วันทำการ</span>
-                    </div>
-                  )}
+                    {leaveType === "VACATION" && (
+                      <>
+                        <span> มีวันลาพักผ่อนสะสม </span>
+                        <span className="form-line-dotted-inline px-2 font-semibold">{vacationAccumulated}</span>
+                        <span> วันทำการ มีสิทธิลาพักผ่อนประจำปีนี้อีก </span>
+                        <span className="form-line-dotted-inline px-2 font-semibold">{vacationThisYear}</span>
+                        <span> วันทำการ รวมเป็น </span>
+                        <span className="form-line-dotted-inline px-2 font-bold">{vacationAccumulated + vacationThisYear}</span>
+                        <span> วันทำการ</span>
+                      </>
+                    )}
 
-                  {/* Request Type */}
-                  <div className="w-full my-1.5 text-justify leading-relaxed">
-                    <span>ขอลา </span>
-                    <span className="form-line-dotted text-center font-bold min-w-[120px]">{getLeaveTypeName(leaveType)}</span>
+                    <span> ขอลา </span>
+                    <span className="form-line-dotted-inline px-2 font-bold">{getLeaveTypeName(leaveType)}</span>
                     <span> เนื่องจาก </span>
                     <span className={request.reason ? "form-line-dotted-inline px-2" : "form-line-dotted px-2 min-w-[200px]"}>
                       {request.reason || "-"}
