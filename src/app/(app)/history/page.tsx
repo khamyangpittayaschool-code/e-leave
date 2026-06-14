@@ -5,12 +5,102 @@ import { getMyLeaveHistory, cancelLeaveRequest, getStaffList, adminDeleteLeaveRe
 import { getLeaveConfigs } from "@/app/actions/settings";
 import { useSession } from "@/lib/auth-client";
 import { format } from "date-fns";
-import { CalendarDays, Clock, FileX, CheckCircle2, XCircle, Download, Printer, FileSpreadsheet } from "lucide-react";
+import { CalendarDays, Clock, FileX, CheckCircle2, XCircle, Download, Printer, FileSpreadsheet, Paperclip } from "lucide-react";
 import * as XLSX from "xlsx";
 import { CycleSelect } from "@/components/cycle-select";
 import { useSearchParams } from "next/navigation";
 import { getLeaveCycleFilter } from "@/lib/cycle";
 import { useI18n } from "@/lib/i18n";
+
+const handleViewAttachment = (preview: string, fileName?: string) => {
+  if (preview.startsWith("data:")) {
+    try {
+      const parts = preview.split(',');
+      const byteString = atob(parts[1]);
+      const mimeString = parts[0].split(':')[1].split(';')[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([ab], { type: mimeString });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch (e) {
+      console.error("Failed to open data URL", e);
+      const newTab = window.open();
+      if (newTab) {
+        newTab.document.write(
+          `<iframe src="${preview}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+        );
+      }
+    }
+  } else {
+    window.open(preview, '_blank');
+  }
+};
+
+const renderDocumentLinks = (documentUrl: string) => {
+  if (!documentUrl) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded border border-slate-200/10 dark:border-slate-800/10">
+        ไม่มีเอกสารแนบ
+      </span>
+    );
+  }
+
+  let files: { name?: string; preview: string }[] = [];
+
+  if (documentUrl.trim().startsWith("[")) {
+    try {
+      const parsed = JSON.parse(documentUrl);
+      if (Array.isArray(parsed)) {
+        files = parsed.map((file: any) => {
+          if (typeof file === "string") {
+            return { preview: file };
+          }
+          return { name: file.name, preview: file.preview };
+        });
+      }
+    } catch (e) {
+      console.error("Failed to parse documentUrl JSON", e);
+    }
+  }
+
+  if (files.length > 0) {
+    return (
+      <div className="flex flex-col gap-1 sm:flex-row sm:gap-2">
+        {files.map((file, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleViewAttachment(file.preview, file.name)}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 px-2 py-0.5 rounded border border-purple-200/40 dark:border-purple-800/40 transition-colors cursor-pointer"
+          >
+            <Paperclip className="w-3 h-3" />
+            เอกสาร {idx + 1}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  // Fallback for single/comma-separated strings
+  const urls = documentUrl.split(",");
+  return (
+    <div className="flex flex-col gap-1 sm:flex-row sm:gap-2">
+      {urls.map((url, idx) => (
+        <button
+          key={idx}
+          onClick={() => handleViewAttachment(url.trim())}
+          className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 px-2 py-0.5 rounded border border-purple-200/40 dark:border-purple-800/40 transition-colors cursor-pointer"
+        >
+          <Paperclip className="w-3 h-3" />
+          {urls.length > 1 ? `เอกสาร ${idx + 1}` : "เปิดดูเอกสาร"}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 export default function HistoryPage() {
   const { data: session } = useSession();
@@ -333,6 +423,7 @@ export default function HistoryPage() {
                     <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("date")}</th>
                     <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">จำนวนวัน</th>
                     <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("reason")}</th>
+                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">เอกสารแนบ</th>
                     <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("status")}</th>
                     <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 text-right print:hidden">{t("manage")}</th>
                   </tr>
@@ -340,7 +431,7 @@ export default function HistoryPage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {history.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                      <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
                         <div className="flex flex-col items-center gap-2">
                           <CalendarDays className="w-8 h-8 text-slate-300 dark:text-slate-600" />
                           <p>{t("noLeaveHistory")}</p>
@@ -386,6 +477,9 @@ export default function HistoryPage() {
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300 max-w-[200px] truncate">
                         {item.reason}
+                      </td>
+                      <td className="px-6 py-4">
+                        {renderDocumentLinks(item.documentUrl)}
                       </td>
                       <td className="px-6 py-4">
                         {getStatusBadge(item.status)}

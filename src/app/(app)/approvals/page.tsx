@@ -25,6 +25,34 @@ function calculateDays(startDateStr: string, endDateStr: string, type: string): 
   return count;
 }
 
+const handleViewAttachment = (preview: string, fileName?: string) => {
+  if (preview.startsWith("data:")) {
+    try {
+      const parts = preview.split(',');
+      const byteString = atob(parts[1]);
+      const mimeString = parts[0].split(':')[1].split(';')[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([ab], { type: mimeString });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch (e) {
+      console.error("Failed to open data URL", e);
+      const newTab = window.open();
+      if (newTab) {
+        newTab.document.write(
+          `<iframe src="${preview}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+        );
+      }
+    }
+  } else {
+    window.open(preview, '_blank');
+  }
+};
+
 const renderDocumentLinks = (documentUrl: string) => {
   if (!documentUrl) {
     return (
@@ -54,40 +82,36 @@ const renderDocumentLinks = (documentUrl: string) => {
 
   if (files.length > 0) {
     return (
-      <>
+      <div className="flex flex-col gap-1 sm:flex-row sm:gap-2">
         {files.map((file, idx) => (
-          <a
+          <button
             key={idx}
-            href={file.preview}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 px-2 py-0.5 rounded border border-purple-200/40 dark:border-purple-800/40 transition-colors"
+            onClick={() => handleViewAttachment(file.preview, file.name)}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 px-2 py-0.5 rounded border border-purple-200/40 dark:border-purple-800/40 transition-colors cursor-pointer"
           >
             <Paperclip className="w-3 h-3" />
-            เอกสารแนบ {idx + 1}
-          </a>
+            เอกสาร {idx + 1}
+          </button>
         ))}
-      </>
+      </div>
     );
   }
 
   // Fallback for single/comma-separated strings
   const urls = documentUrl.split(",");
   return (
-    <>
+    <div className="flex flex-col gap-1 sm:flex-row sm:gap-2">
       {urls.map((url, idx) => (
-        <a
+        <button
           key={idx}
-          href={url.trim()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 px-2 py-0.5 rounded border border-purple-200/40 dark:border-purple-800/40 transition-colors"
+          onClick={() => handleViewAttachment(url.trim())}
+          className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 px-2 py-0.5 rounded border border-purple-200/40 dark:border-purple-800/40 transition-colors cursor-pointer"
         >
           <Paperclip className="w-3 h-3" />
-          {urls.length > 1 ? `เอกสารแนบ ${idx + 1}` : "เปิดดูเอกสารแนบ"}
-        </a>
+          {urls.length > 1 ? `เอกสาร ${idx + 1}` : "เปิดดูเอกสาร"}
+        </button>
       ))}
-    </>
+    </div>
   );
 };
 
