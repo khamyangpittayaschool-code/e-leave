@@ -311,8 +311,11 @@ export async function GET(
     };
   }
 
-  const writtenAt = settings?.schoolName || "โรงเรียน";
-  const salutation = settings?.schoolName ? `ผู้อำนวยการโรงเรียน${settings.schoolName}` : "ผู้อำนวยการโรงเรียน";
+  const rawSchoolName = settings?.schoolName || "";
+  const schoolName = rawSchoolName.startsWith("โรงเรียน") ? rawSchoolName : (rawSchoolName ? `โรงเรียน${rawSchoolName}` : "");
+  
+  const writtenAt = schoolName || "โรงเรียน";
+  const salutation = schoolName ? `ผู้อำนวยการ${schoolName}` : "ผู้อำนวยการโรงเรียน";
   
   // Format position title for print
   const getExecPositionText = () => {
@@ -321,7 +324,7 @@ export async function GET(
     if (isDeputy) {
       return execApprover.position;
     }
-    return settings?.schoolName ? `ผู้อำนวยการโรงเรียน${settings.schoolName}` : "ผู้อำนวยการโรงเรียน";
+    return schoolName ? `ผู้อำนวยการ${schoolName}` : "ผู้อำนวยการโรงเรียน";
   };
 
   const isDeputy = execApprover?.position && (execApprover.position.includes("รองผู้อำนวยการ") || execApprover.position.startsWith("รอง"));
@@ -333,27 +336,29 @@ export async function GET(
 <head>
   <meta charset="utf-8">
   <title>ใบลา - ${request.user.name}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap" rel="stylesheet">
   <style>
     @page {
       size: A4;
-      margin: 1.5cm 1.5cm 1cm 1.5cm;
+      margin: 1.2cm 1.5cm 1cm 1.5cm;
     }
     body {
-      font-family: "Cordia New", "TH Sarabun New", "TH Sarabun PSK", Arial, sans-serif;
-      font-size: 15.5pt;
-      line-height: 1.25;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
       color: #000;
       margin: 0;
       padding: 0;
     }
     .dotted-line {
       border-bottom: 1px dotted #000;
-      display: inline-block;
+      display: inline;
       padding: 0 4px;
-      text-align: center;
     }
     .title {
-      font-size: 18pt;
+      font-size: 18px;
       font-weight: bold;
       text-align: center;
       margin-bottom: 10px;
@@ -361,44 +366,38 @@ export async function GET(
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14pt;
+      font-size: 14px;
     }
     .border-table th, .border-table td {
       border: 1px solid #000;
-      padding: 4px;
+      padding: 6px;
       text-align: center;
+      font-size: 12px;
     }
     .box-container {
       border: 1px solid #000;
-      padding: 8px;
-      font-size: 13.5pt;
-      min-height: 220px;
+      padding: 10px;
+      font-size: 12.5px;
+      min-height: 180px;
+      line-height: 1.5;
     }
     .box-title {
       font-weight: bold;
       text-decoration: underline;
       margin-bottom: 6px;
     }
-    .signature-area {
-      position: relative;
-      height: 45px;
-      margin-top: 5px;
-      text-align: center;
-    }
-    .signature-img {
-      max-height: 40px;
-      max-width: 130px;
-      position: absolute;
-      bottom: 2px;
-      left: 50%;
-      transform: translateX(-50%);
+    .sig-img {
+      max-height: 35px;
+      max-width: 120px;
+      display: inline-block;
+      vertical-align: middle;
     }
   </style>
 </head>
 <body>
 
   <!-- Top Request Number -->
-  <div style="text-align: right; font-size: 11pt; font-weight: normal; margin-bottom: 5px;">
+  <div style="text-align: right; font-size: 11px; font-weight: normal; margin-bottom: 5px;">
     ${request.status === "APPROVED" 
       ? `เลขที่อนุมัติ: ${request.approvedSeq || "-"}/${request.fiscalYear || "-"}`
       : `เลขที่คำขอ: ${request.pendingSeq || "-"}/${request.fiscalYear || "-"}`
@@ -408,151 +407,163 @@ export async function GET(
   <div class="title">แบบใบลาออนไลน์</div>
 
   <!-- Meta write at & date -->
-  <div style="text-align: right; margin-bottom: 10px;">
-    เขียนที่ <span class="dotted-line" style="width: 180px;">${writtenAt}</span><br>
-    วันที่ <span class="dotted-line" style="width: 30px;">${getThaiDay(request.createdAt)}</span>
-    เดือน <span class="dotted-line" style="width: 90px;">${getThaiMonth(request.createdAt)}</span>
-    พ.ศ. <span class="dotted-line" style="width: 50px;">${getThaiYear(request.createdAt)}</span>
-  </div>
+  <table style="width: 100%; border: none; margin-bottom: 10px;">
+    <tr>
+      <td style="border: none; text-align: right; line-height: 1.6;">
+        เขียนที่ <span class="dotted-line">${writtenAt}</span><br>
+        วันที่ <span class="dotted-line">${getThaiDay(request.createdAt) || "&nbsp;&nbsp;&nbsp;&nbsp;"}</span>
+        เดือน <span class="dotted-line">${getThaiMonth(request.createdAt) || "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"}</span>
+        พ.ศ. <span class="dotted-line">${getThaiYear(request.createdAt) || "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"}</span>
+      </td>
+    </tr>
+  </table>
 
   <!-- Subject & Salutation -->
-  <div style="margin-bottom: 10px;">
-    เรื่อง <span class="dotted-line" style="width: 530px; text-align: left; font-weight: bold;">ขอลา${getLeaveLabel(request.type)}</span><br>
-    เรียน <span class="dotted-line" style="width: 530px; text-align: left;">${salutation}</span>
-  </div>
+  <table style="width: 100%; border: none; margin-bottom: 10px;">
+    <tr>
+      <td style="border: none; text-align: left; line-height: 1.6; padding-bottom: 4px;">
+        เรื่อง <span class="dotted-line" style="font-weight: bold;">ขอลา${getLeaveLabel(request.type)}</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="border: none; text-align: left; line-height: 1.6;">
+        เรียน <span class="dotted-line">${salutation}</span>
+      </td>
+    </tr>
+  </table>
 
   <!-- Body -->
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    ข้าพเจ้า <span class="dotted-line" style="width: 200px; font-weight: bold;">${request.user.name}</span>
-    ตำแหน่ง <span class="dotted-line" style="width: 170px;">${request.user.position || "ครู"}</span>
-    ระดับ <span class="dotted-line" style="width: 80px;">${request.user.level || "-"}</span>
-    สังกัด <span class="dotted-line" style="width: 180px;">${settings?.affiliation || request.user.subjectGroup || "ฝ่ายการสอน"}</span>
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    ข้าพเจ้า <span class="dotted-line" style="font-weight: bold;">${request.user.name}</span>
+    ตำแหน่ง <span class="dotted-line">${request.user.position || "ครู"}</span>
+    ระดับ <span class="dotted-line">${request.user.level || "-"}</span>
+    สังกัด <span class="dotted-line">${settings?.affiliation || request.user.subjectGroup || "ฝ่ายการสอน"}</span>
   </div>
 
   ${request.type === "VACATION" ? `
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    มีวันลาพักผ่อนสะสม <span class="dotted-line" style="width: 50px; font-weight: bold;">${extra.vacationAccumulated || 0}</span> วันทำการ
-    มีสิทธิลาพักผ่อนประจำปีนี้อีก <span class="dotted-line" style="width: 50px; font-weight: bold;">${extra.vacationThisYear || 0}</span> วันทำการ
-    รวมเป็น <span class="dotted-line" style="width: 50px; font-weight: bold;">${(Number(extra.vacationAccumulated || 0) + Number(extra.vacationThisYear || 0))}</span> วันทำการ
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    มีวันลาพักผ่อนสะสม <span class="dotted-line" style="font-weight: bold;">${extra.vacationAccumulated || 0}</span> วันทำการ
+    มีสิทธิลาพักผ่อนประจำปีนี้อีก <span class="dotted-line" style="font-weight: bold;">${extra.vacationThisYear || 0}</span> วันทำการ
+    รวมเป็น <span class="dotted-line" style="font-weight: bold;">${(Number(extra.vacationAccumulated || 0) + Number(extra.vacationThisYear || 0))}</span> วันทำการ
   </div>
   ` : ""}
 
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    ขอลา <span class="dotted-line" style="width: 150px; font-weight: bold;">${getLeaveTypeName(request.type, extra.isHajj)}</span>
-    เนื่องจาก <span class="dotted-line" style="width: 440px; text-align: left;">${request.reason || "-"}</span>
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    ขอลา <span class="dotted-line" style="font-weight: bold;">${getLeaveTypeName(request.type, extra.isHajj)}</span>
+    เนื่องจาก <span class="dotted-line">${request.reason || "-"}</span>
   </div>
 
   <!-- Special extra fields blocks -->
   ${request.type === "PATERNITY" ? `
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    ไปช่วยเหลือภริยาโดยชอบด้วยกฎหมายชื่อ <span class="dotted-line" style="width: 250px; font-weight: bold;">${extra.wifeName || "-"}</span>
-    ซึ่งคลอดบุตรเมื่อวันที่ <span class="dotted-line" style="width: 150px;">${extra.wifeBirthDate ? toThaiDateString(extra.wifeBirthDate) : "-"}</span>
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    ไปช่วยเหลือภริยาโดยชอบด้วยกฎหมายชื่อ <span class="dotted-line" style="font-weight: bold;">${extra.wifeName || "-"}</span>
+    ซึ่งคลอดบุตรเมื่อวันที่ <span class="dotted-line">${extra.wifeBirthDate ? toThaiDateString(extra.wifeBirthDate) : "-"}</span>
   </div>
   ` : ""}
 
   ${request.type === "ORDINATION" ? `
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
     ${extra.isHajj 
-      ? `เดินทางไปประกอบพิธีฮัจญ์ ณ เมือง <span class="dotted-line" style="width: 200px;">${extra.templeLocation || "-"}</span>`
-      : `จะอุปสมบท ณ วัด <span class="dotted-line" style="width: 180px; font-weight: bold;">${extra.templeName || "-"}</span> ตั้งอยู่ ณ <span class="dotted-line" style="width: 200px;">${extra.templeLocation || "-"}</span>`
+      ? `เดินทางไปประกอบพิธีฮัจญ์ ณ เมือง <span class="dotted-line">${extra.templeLocation || "-"}</span>`
+      : `จะอุปสมบท ณ วัด <span class="dotted-line" style="font-weight: bold;">${extra.templeName || "-"}</span> ตั้งอยู่ ณ <span class="dotted-line">${extra.templeLocation || "-"}</span>`
     }
   </div>
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
     ${extra.isHajj
-      ? `ตั้งแต่วันที่ <span class="dotted-line" style="width: 150px;">${extra.ordinationDate ? toThaiDateString(extra.ordinationDate) : "-"}</span>`
-      : `จำพรรษา ณ วัด <span class="dotted-line" style="width: 180px;">${extra.resideTempleName || "-"}</span> ตั้งอยู่ ณ <span class="dotted-line" style="width: 200px;">${extra.resideTempleLocation || "-"}</span>
-         กำหนดอุปสมบทวันที่ <span class="dotted-line" style="width: 150px;">${extra.ordinationDate ? toThaiDateString(extra.ordinationDate) : "-"}</span>`
+      ? `ตั้งแต่วันที่ <span class="dotted-line">${extra.ordinationDate ? toThaiDateString(extra.ordinationDate) : "-"}</span>`
+      : `จำพรรษา ณ วัด <span class="dotted-line">${extra.resideTempleName || "-"}</span> ตั้งอยู่ ณ <span class="dotted-line">${extra.resideTempleLocation || "-"}</span>
+         กำหนดอุปสมบทวันที่ <span class="dotted-line">${extra.ordinationDate ? toThaiDateString(extra.ordinationDate) : "-"}</span>`
     }
   </div>
   ` : ""}
 
   ${request.type === "MILITARY" ? `
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    ได้รับหมายเรียกของ <span class="dotted-line" style="width: 180px;">${extra.militaryOrderSource || "-"}</span>
-    ที่ <span class="dotted-line" style="width: 120px;">${extra.militaryOrderNo || "-"}</span>
-    ลงวันที่ <span class="dotted-line" style="width: 130px;">${extra.militaryOrderDate ? toThaiDateStringShort(extra.militaryOrderDate) : "-"}</span>
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    ได้รับหมายเรียกของ <span class="dotted-line">${extra.militaryOrderSource || "-"}</span>
+    ที่ <span class="dotted-line">${extra.militaryOrderNo || "-"}</span>
+    ลงวันที่ <span class="dotted-line">${extra.militaryOrderDate ? toThaiDateStringShort(extra.militaryOrderDate) : "-"}</span>
   </div>
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    ให้เข้ารับการ <span class="dotted-line" style="width: 150px;">${extra.militaryDutyType || "-"}</span>
-    ณ <span class="dotted-line" style="width: 200px;">${extra.militaryLocation || "-"}</span>
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    ให้เข้ารับการ <span class="dotted-line">${extra.militaryDutyType || "-"}</span>
+    ณ <span class="dotted-line">${extra.militaryLocation || "-"}</span>
   </div>
   ` : ""}
 
   ${request.type === "STUDY" ? `
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    ได้รับเงินเดือนเดือนละ <span class="dotted-line" style="width: 100px;">${extra.userSalary || "0"}</span> บาท 
-    ไปศึกษาต่อ/ฝึกอบรม ณ ประเทศ <span class="dotted-line" style="width: 150px;">${extra.studyCountry || "-"}</span>
-    ด้วยทุน <span class="dotted-line" style="width: 150px;">${extra.scholarshipName || "-"}</span>
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    ได้รับเงินเดือนเดือนละ <span class="dotted-line">${extra.userSalary || "0"}</span> บาท 
+    ไปศึกษาต่อ/ฝึกอบรม ณ ประเทศ <span class="dotted-line">${extra.studyCountry || "-"}</span>
+    ด้วยทุน <span class="dotted-line">${extra.scholarshipName || "-"}</span>
   </div>
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    มีกำหนดเวลา <span class="dotted-line" style="width: 50px;">${extra.studyDurationYears || "0"}</span> ปี 
-    <span class="dotted-line" style="width: 50px;">${extra.studyDurationMonths || "0"}</span> เดือน 
-    <span class="dotted-line" style="width: 50px;">${extra.studyDurationDays || "0"}</span> วัน
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    มีกำหนดเวลา <span class="dotted-line">${extra.studyDurationYears || "0"}</span> ปี 
+    <span class="dotted-line">${extra.studyDurationMonths || "0"}</span> เดือน 
+    <span class="dotted-line">${extra.studyDurationDays || "0"}</span> วัน
   </div>
   ` : ""}
 
   <!-- Date period of leave -->
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    ตั้งแต่วันที่ <span class="dotted-line" style="width: 30px; font-weight: bold;">${getThaiDay(request.startDate)}</span>
-    เดือน <span class="dotted-line" style="width: 90px; font-weight: bold;">${getThaiMonth(request.startDate)}</span>
-    พ.ศ. <span class="dotted-line" style="width: 50px; font-weight: bold;">${getThaiYear(request.startDate)}</span>
-    ถึงวันที่ <span class="dotted-line" style="width: 30px; font-weight: bold;">${getThaiDay(request.endDate)}</span>
-    เดือน <span class="dotted-line" style="width: 90px; font-weight: bold;">${getThaiMonth(request.endDate)}</span>
-    พ.ศ. <span class="dotted-line" style="width: 50px; font-weight: bold;">${getThaiYear(request.endDate)}</span>
-    มีกำหนด <span class="dotted-line" style="width: 50px; font-weight: bold;">${currentDays}</span> วันทำการ
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    ตั้งแต่วันที่ <span class="dotted-line" style="font-weight: bold;">${getThaiDay(request.startDate)}</span>
+    เดือน <span class="dotted-line" style="font-weight: bold;">${getThaiMonth(request.startDate)}</span>
+    พ.ศ. <span class="dotted-line" style="font-weight: bold;">${getThaiYear(request.startDate)}</span>
+    ถึงวันที่ <span class="dotted-line" style="font-weight: bold;">${getThaiDay(request.endDate)}</span>
+    เดือน <span class="dotted-line" style="font-weight: bold;">${getThaiMonth(request.endDate)}</span>
+    พ.ศ. <span class="dotted-line" style="font-weight: bold;">${getThaiYear(request.endDate)}</span>
+    มีกำหนด <span class="dotted-line" style="font-weight: bold;">${currentDays}</span> วันทำการ
   </div>
 
   <!-- Last leave stats -->
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px;">
-    ข้าพเจ้าได้ลา <span class="dotted-line" style="width: 150px;">${lastLeaveInfo ? getLeaveTypeName(lastLeaveInfo.type, extra.isHajj) : "-"}</span> ครั้งสุดท้าย
-    ตั้งแต่วันที่ <span class="dotted-line" style="width: 30px;">${lastLeaveInfo ? getThaiDay(lastLeaveInfo.startDate) : "-"}</span>
-    เดือน <span class="dotted-line" style="width: 90px;">${lastLeaveInfo ? getThaiMonth(lastLeaveInfo.startDate) : "-"}</span>
-    พ.ศ. <span class="dotted-line" style="width: 50px;">${lastLeaveInfo ? getThaiYear(lastLeaveInfo.startDate) : "-"}</span>
-    ถึงวันที่ <span class="dotted-line" style="width: 30px;">${lastLeaveInfo ? getThaiDay(lastLeaveInfo.endDate) : "-"}</span>
-    เดือน <span class="dotted-line" style="width: 90px;">${lastLeaveInfo ? getThaiMonth(lastLeaveInfo.endDate) : "-"}</span>
-    พ.ศ. <span class="dotted-line" style="width: 50px;">${lastLeaveInfo ? getThaiYear(lastLeaveInfo.endDate) : "-"}</span>
-    มีกำหนด <span class="dotted-line" style="width: 50px;">${lastLeaveInfo ? lastLeaveInfo.days : "-"}</span> วันทำการ
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 8px; line-height: 1.8;">
+    ข้าพเจ้าได้ลา <span class="dotted-line">${lastLeaveInfo ? getLeaveTypeName(lastLeaveInfo.type, extra.isHajj) : "-"}</span> ครั้งสุดท้าย
+    ตั้งแต่วันที่ <span class="dotted-line">${lastLeaveInfo ? getThaiDay(lastLeaveInfo.startDate) : "-"}</span>
+    เดือน <span class="dotted-line">${lastLeaveInfo ? getThaiMonth(lastLeaveInfo.startDate) : "-"}</span>
+    พ.ศ. <span class="dotted-line">${lastLeaveInfo ? getThaiYear(lastLeaveInfo.startDate) : "-"}</span>
+    ถึงวันที่ <span class="dotted-line">${lastLeaveInfo ? getThaiDay(lastLeaveInfo.endDate) : "-"}</span>
+    เดือน <span class="dotted-line">${lastLeaveInfo ? getThaiMonth(lastLeaveInfo.endDate) : "-"}</span>
+    พ.ศ. <span class="dotted-line">${lastLeaveInfo ? getThaiYear(lastLeaveInfo.endDate) : "-"}</span>
+    มีกำหนด <span class="dotted-line">${lastLeaveInfo ? lastLeaveInfo.days : "-"}</span> วันทำการ
   </div>
 
   <!-- Address & Contact -->
-  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 10px;">
-    ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ <span class="dotted-line" style="width: 300px; font-weight: bold;">${extra.contactAddress || request.user.address || "-"}</span>
-    เบอร์โทรศัพท์ <span class="dotted-line" style="width: 150px; font-weight: bold;">${extra.phoneNumber || request.user.phoneNumber || "-"}</span>
+  <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 10px; line-height: 1.8;">
+    ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ <span class="dotted-line" style="font-weight: bold;">${extra.contactAddress || request.user.address || "-"}</span>
+    เบอร์โทรศัพท์ <span class="dotted-line" style="font-weight: bold;">${extra.phoneNumber || request.user.phoneNumber || "-"}</span>
   </div>
 
   <!-- Applicant signature -->
-  <table style="width: 100%; margin-top: 15px; margin-bottom: 15px; border: none;">
+  <table style="width: 100%; margin-top: 10px; margin-bottom: 10px; border: none;">
     <tr>
       <td style="width: 55%; border: none;"></td>
-      <td style="width: 45%; border: none; text-align: center;">
+      <td style="width: 45%; border: none; text-align: center; line-height: 1.4; font-size: 14px;">
         ขอแสดงความนับถือ<br>
-        <div class="signature-area">
-          (ลงชื่อ) ........................................ ผู้ลา
+        <div style="height: 35px; margin-top: 5px;">
           ${request.user.signatureUrl ? `
-            <img class="signature-img" src="${getAbsoluteUrl(request.user.signatureUrl)}" alt="Signature">
-          ` : ""}
+            <img class="sig-img" src="${getAbsoluteUrl(request.user.signatureUrl)}" alt="Signature">
+          ` : "&nbsp;"}
         </div>
-        ( <span style="font-weight: bold;">${request.user.name}</span> )
+        <div style="margin-top: 2px;">(ลงชื่อ) ........................................ ผู้ลา</div>
+        <div style="margin-top: 4px; font-weight: bold;">( ${request.user.name} )</div>
       </td>
     </tr>
   </table>
 
-  <hr style="border: 0.5px solid #ccc; margin: 10px 0;">
+  <hr style="border: 0.5px solid #ccc; margin: 8px 0;">
 
   <!-- Bottom approvals & stats layout -->
-  <table style="width: 100%; border: none; margin-top: 5px;">
+  <table style="width: 100%; border: none; margin-top: 5px; border-collapse: collapse;">
     <tr>
       <!-- Left Column: Stats Table & Inspector -->
       <td style="width: 50%; vertical-align: top; padding-right: 15px; border: none;">
         
-        <div style="font-weight: bold; font-size: 11pt; margin-bottom: 4px; text-align: center;">สถิติการลาในภาคเรียน/ปีงบประมาณนี้</div>
-        <table class="border-table" style="margin-bottom: 10px;">
+        <div style="font-weight: bold; font-size: 12px; margin-bottom: 6px; text-align: center;">สถิติการลาในภาคเรียน/ปีงบประมาณนี้</div>
+        <table class="border-table" style="margin-bottom: 10px; width: 100%; border-collapse: collapse; border: 1px solid #000;">
           <thead>
             <tr style="background-color: #f2f2f2;">
-              <th style="width: 40%;">ประเภทการลา</th>
-              <th style="width: 20%;">ลามาแล้ว</th>
-              <th style="width: 20%;">ลาครั้งนี้</th>
-              <th style="width: 20%;">รวม</th>
+              <th style="width: 40%; border: 1px solid #000; padding: 6px; text-align: center; font-size: 12px;">ประเภทการลา</th>
+              <th style="width: 20%; border: 1px solid #000; padding: 6px; text-align: center; font-size: 12px;">ลามาแล้ว</th>
+              <th style="width: 20%; border: 1px solid #000; padding: 6px; text-align: center; font-size: 12px;">ลาครั้งนี้</th>
+              <th style="width: 20%; border: 1px solid #000; padding: 6px; text-align: center; font-size: 12px;">รวม</th>
             </tr>
           </thead>
           <tbody>
@@ -560,10 +571,10 @@ export async function GET(
               const val = stats[key];
               return `
                 <tr>
-                  <td style="text-align: left; font-weight: bold;">${val.name}</td>
-                  <td>${val.prev > 0 ? `${val.prev} วัน` : "-"}</td>
-                  <td>${val.current > 0 ? `${val.current} วัน` : "-"}</td>
-                  <td style="font-weight: bold;">${val.total > 0 ? `${val.total} วัน` : "-"}</td>
+                  <td style="text-align: left; font-weight: bold; border: 1px solid #000; padding: 6px; font-size: 12px;">${val.name}</td>
+                  <td style="border: 1px solid #000; padding: 6px; text-align: center; font-size: 12px;">${val.prev > 0 ? `${val.prev} วัน` : "-"}</td>
+                  <td style="border: 1px solid #000; padding: 6px; text-align: center; font-size: 12px;">${val.current > 0 ? `${val.current} วัน` : "-"}</td>
+                  <td style="font-weight: bold; border: 1px solid #000; padding: 6px; text-align: center; font-size: 12px;">${val.total > 0 ? `${val.total} วัน` : "-"}</td>
                 </tr>
               `;
             }).join("")}
@@ -571,16 +582,16 @@ export async function GET(
         </table>
 
         <!-- Inspector Signature block -->
-        <div style="text-align: center; margin-top: 10px; font-size: 13pt;">
-          <div class="signature-area">
-            (ลงชื่อ) ........................................ ผู้ตรวจสอบ
+        <div style="text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.4;">
+          <div style="height: 35px;">
             ${inspector?.signatureUrl ? `
-              <img class="signature-img" src="${getAbsoluteUrl(inspector.signatureUrl)}" alt="Signature">
-            ` : ""}
+              <img class="sig-img" src="${getAbsoluteUrl(inspector.signatureUrl)}" alt="Signature">
+            ` : "&nbsp;"}
           </div>
-          <div>( ${inspector ? inspector.name : "..................................................."} )</div>
-          <div style="font-size: 11pt; color: #555;">ตำแหน่ง ${inspector?.position === "ผู้ตรวจสอบ" ? "ครู" : (inspector?.position || "หัวหน้างานบุคคล")}</div>
-          <div style="font-size: 11pt; color: #555;">วันที่ ${request.createdAt ? toThaiDateString(request.createdAt) : "........./........../.........."}</div>
+          <div>(ลงชื่อ) ........................................ ผู้ตรวจสอบ</div>
+          <div style="margin-top: 4px; font-weight: bold;">( ${inspector ? inspector.name : "..................................................."} )</div>
+          <div style="font-size: 11px; color: #555; margin-top: 2px;">ตำแหน่ง ${inspector?.position === "ผู้ตรวจสอบ" ? "ครู" : (inspector?.position || "หัวหน้างานบุคคล")}</div>
+          <div style="font-size: 11px; color: #555; margin-top: 2px;">วันที่ ${request.createdAt ? toThaiDateString(request.createdAt) : "........./........../.........."}</div>
         </div>
 
       </td>
@@ -589,9 +600,9 @@ export async function GET(
       <td style="width: 50%; vertical-align: top; padding-left: 15px; border-left: 1px solid #ccc;">
         
         <!-- Opinion Box -->
-        <div class="box-container" style="margin-bottom: 12px;">
+        <div class="box-container" style="margin-bottom: 12px; border: 1px solid #000; padding: 10px; min-height: 180px;">
           <div class="box-title">ความเห็นของผู้บังคับบัญชา</div>
-          <div style="min-height: 40px; margin-top: 5px;">
+          <div style="min-height: 35px; margin-top: 5px; font-size: 12px;">
             ${request.status === "REJECTED" && !request.execApproverId ? `
               <span style="color: #ef4444; font-weight: bold;">❌ ไม่อนุมัติ เนื่องจาก ${request.rejectReason}</span>
             ` : `
@@ -602,23 +613,23 @@ export async function GET(
           </div>
 
           <!-- HR Head Signature -->
-          <div style="text-align: center; margin-top: 15px;">
-            <div class="signature-area">
-              (ลงชื่อ) ........................................
+          <div style="text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.4;">
+            <div style="height: 35px;">
               ${headApprover?.signatureUrl && request.status !== "PENDING_HEAD" ? `
-                <img class="signature-img" src="${getAbsoluteUrl(headApprover.signatureUrl)}" alt="Signature">
-              ` : ""}
+                <img class="sig-img" src="${getAbsoluteUrl(headApprover.signatureUrl)}" alt="Signature">
+              ` : "&nbsp;"}
             </div>
-            <div>( ${headApprover ? headApprover.name : "..................................................."} )</div>
-            <div style="font-size: 11pt; color: #555;">ตำแหน่ง ${headApprover?.position || "หัวหน้างานบุคคล"}</div>
-            <div style="font-size: 11pt; color: #555;">วันที่ ${request.headApproverId ? toThaiDateString(request.updatedAt) : "........./........../.........."}</div>
+            <div>(ลงชื่อ) ........................................</div>
+            <div style="margin-top: 4px; font-weight: bold;">( ${headApprover ? headApprover.name : "..................................................."} )</div>
+            <div style="font-size: 11px; color: #555; margin-top: 2px;">ตำแหน่ง ${headApprover?.position || "หัวหน้างานบุคคล"}</div>
+            <div style="font-size: 11px; color: #555; margin-top: 2px;">วันที่ ${request.headApproverId ? toThaiDateString(request.updatedAt) : "........./........../.........."}</div>
           </div>
         </div>
 
         <!-- Decision Box -->
-        <div class="box-container">
+        <div class="box-container" style="border: 1px solid #000; padding: 10px; min-height: 180px;">
           <div class="box-title">คำสั่ง / การพิจารณาอนุมัติ</div>
-          <div style="min-height: 40px; margin-top: 5px;">
+          <div style="min-height: 35px; margin-top: 5px; font-size: 12px;">
             ${request.status === "APPROVED" ? `
               <span style="color: #10b981; font-weight: bold;">✓ อนุญาต</span>
             ` : `
@@ -631,21 +642,21 @@ export async function GET(
           </div>
 
           <!-- Exec / Director Signature -->
-          <div style="text-align: center; margin-top: 15px;">
-            <div class="signature-area">
-              (ลงชื่อ) ........................................
+          <div style="text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.4;">
+            <div style="height: 35px;">
               ${execApprover?.signatureUrl && request.status === "APPROVED" ? `
-                <img class="signature-img" src="${getAbsoluteUrl(execApprover.signatureUrl)}" alt="Signature">
-              ` : ""}
+                <img class="sig-img" src="${getAbsoluteUrl(execApprover.signatureUrl)}" alt="Signature">
+              ` : "&nbsp;"}
             </div>
-            <div>( ${execApprover ? execApprover.name : "..................................................."} )</div>
-            <div style="font-size: 11pt; color: #555;">
+            <div>(ลงชื่อ) ........................................</div>
+            <div style="margin-top: 4px; font-weight: bold;">( ${execApprover ? execApprover.name : "..................................................."} )</div>
+            <div style="font-size: 11px; color: #555; margin-top: 2px;">
               ตำแหน่ง ${getExecPositionText()}
             </div>
             ${execApprover && isDeputy && settings?.showActingDirectorTitle !== false ? `
-              <div style="font-size: 11pt; color: #555;">${settings?.actingDirectorTitle || "รักษาการในตำแหน่งผู้อำนวยการโรงเรียน"}</div>
+              <div style="font-size: 11px; color: #555; margin-top: 2px;">${settings?.actingDirectorTitle || "รักษาการในตำแหน่งผู้อำนวยการโรงเรียน"}</div>
             ` : ""}
-            <div style="font-size: 11pt; color: #555;">วันที่ ${request.execApproverId && request.status === "APPROVED" ? toThaiDateString(request.updatedAt) : "........./........../.........."}</div>
+            <div style="font-size: 11px; color: #555; margin-top: 2px;">วันที่ ${request.execApproverId && request.status === "APPROVED" ? toThaiDateString(request.updatedAt) : "........./........../.........."}</div>
           </div>
         </div>
 
