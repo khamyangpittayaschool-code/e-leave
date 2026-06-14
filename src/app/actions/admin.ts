@@ -378,7 +378,7 @@ export async function importUsersByAdmin(
   const errors: string[] = [];
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const positionWhitelist = ["ครู", "นักศึกษาฝึกประสบการณ์", "ผู้ตรวจสอบ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้อำนวยการ"];
+  const positionWhitelist = ["ครู", "นักศึกษาฝึกประสบการณ์", "ผู้ตรวจสอบ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "รองผู้อำนวยการ", "ผู้อำนวยการ", "แอดมิน"];
   const seenEmails = new Set<string>();
   const seenUsernames = new Set<string>();
 

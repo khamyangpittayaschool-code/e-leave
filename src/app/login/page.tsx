@@ -232,12 +232,15 @@ export default function LoginPage() {
                     <option value="ครู">ครู (Teacher)</option>
                     <option value="นักศึกษาฝึกประสบการณ์">นักศึกษาฝึกประสบการณ์ (Trainee)</option>
                     <option value="หัวหน้างานบุคคล">หัวหน้างานบุคคล (HR Head)</option>
+                    <option value="เจ้าหน้าที่บุคคล">เจ้าหน้าที่บุคคล (HR Staff)</option>
+                    <option value="ผู้ตรวจสอบ">ผู้ตรวจสอบ (Inspector)</option>
+                    <option value="รองผู้อำนวยการ">รองผู้อำนวยการ (Deputy Director)</option>
                     <option value="ผู้อำนวยการ">ผู้อำนวยการ (Director)</option>
                     <option value="แอดมิน">แอดมิน (Admin)</option>
                   </select>
                 </div>
 
-                {["ครู", "นักศึกษาฝึกประสบการณ์", "หัวหน้างานบุคคล"].includes(position) && (
+                {["ครู", "นักศึกษาฝึกประสบการณ์", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้ตรวจสอบ", "รองผู้อำนวยการ"].includes(position) && (
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <BookOpen className="h-[20px] w-[20px] text-slate-400" />
