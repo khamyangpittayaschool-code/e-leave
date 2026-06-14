@@ -634,6 +634,63 @@ export async function approveLeaveRequest(id: string) {
 
   await prisma.leaveRequest.update({ where: { id }, data: updateData });
 
+  if (newStatus === "APPROVED") {
+    // Auto upload to Google Drive if configured
+    const uploadUrl = process.env.GOOGLE_DRIVE_UPLOAD_URL;
+    const secret = process.env.GOOGLE_DRIVE_SECRET;
+    if (uploadUrl && secret) {
+      const fy = updateData.fiscalYear;
+      const seq = updateData.approvedSeq;
+      const formattedSeq = String(seq).padStart(3, "0");
+      const cleanName = (request.user?.name || "user").replace(/\s+/g, "_");
+      
+      const leaveLabels: Record<string, string> = {
+        SICK: "ลาป่วย",
+        MATERNITY: "ลาคลอดบุตร",
+        PATERNITY: "ลาช่วยเหลือภริยาคลอดบุตร",
+        PERSONAL: "ลากิจส่วนตัว",
+        VACATION: "ลาพักผ่อน",
+        MILITARY: "ลาเข้ารับการตรวจเลือกหรือเตรียมพล",
+        STUDY: "ลาศึกษาต่อ_ฝึกอบรม_หรือดูงาน",
+        INTERNATIONAL: "ลาไปปฏิบัติงานในองค์การระหว่างประเทศ",
+        SPOUSE: "ลาติดตามคู่สมรส",
+        REHABILITATION: "ลาฟื้นฟูสมรรถภาพด้านอาชีพ",
+        ORDINATION: "ลาอุปสมบท_ประกอบพิธีฮัจญ์"
+      };
+      const leaveLabel = leaveLabels[request.type] || request.type;
+      const filename = `${fy}-${formattedSeq}-${cleanName}-${leaveLabel}`;
+      
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+      const cleanAppUrl = appUrl.endsWith("/") ? appUrl.slice(0, -1) : appUrl;
+      const printUrl = `${cleanAppUrl}/api/print-legacy/${id}?token=${secret}`;
+
+      fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upload",
+          secret: secret,
+          filename: filename,
+          printUrl: printUrl
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log(`Successfully uploaded leave request ${id} to Google Drive: ${data.url}`);
+          writeLog("SYSTEM", `อัปโหลดใบลา ${filename} ลง Google Drive สำเร็จ (${data.url})`, "system").catch(() => {});
+        } else {
+          console.error("Google Drive upload failed:", data.error);
+          writeLog("SYSTEM", `อัปโหลดใบลาลง Google Drive ล้มเหลว: ${data.error}`, "system").catch(() => {});
+        }
+      })
+      .catch(err => {
+        console.error("Google Drive upload fetch error:", err);
+        writeLog("SYSTEM", `อัปโหลดใบลาลง Google Drive เกิดข้อผิดพลาด: ${err.message}`, "system").catch(() => {});
+      });
+    }
+  }
+
   await writeLog(
     "APPROVE_LEAVE",
     `${user.name} อนุมัติคำขอลาของ ${request.user?.name} (สถานะ: ${newStatus})`,
