@@ -553,7 +553,7 @@ export default function RequestLeavePage() {
                             </p>
                             <p className="font-bold text-orange-700 dark:text-orange-200 mt-1.5 flex items-center gap-1.5">
                               <CheckCircle2 className="w-4 h-4" />
-                              ระบบจะแจ้งผู้บริหารโดยอัตโนมัติเมื่อส่งคำขอ
+                              ระบบจะแจ้งผู้อำนวยการโดยอัตโนมัติเมื่อส่งคำขอ
                             </p>
                           </div>
                         </motion.div>

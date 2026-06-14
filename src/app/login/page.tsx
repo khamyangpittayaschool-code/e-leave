@@ -232,7 +232,7 @@ export default function LoginPage() {
                     <option value="ครู">ครู (Teacher)</option>
                     <option value="นักศึกษาฝึกประสบการณ์">นักศึกษาฝึกประสบการณ์ (Trainee)</option>
                     <option value="หัวหน้างานบุคคล">หัวหน้างานบุคคล (HR Head)</option>
-                    <option value="ผู้บริหาร">ผู้บริหาร (Executive)</option>
+                    <option value="ผู้อำนวยการ">ผู้อำนวยการ (Director)</option>
                     <option value="แอดมิน">แอดมิน (Admin)</option>
                   </select>
                 </div>

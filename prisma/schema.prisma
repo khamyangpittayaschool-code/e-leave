@@ -16,7 +16,7 @@ model User {
   signatureUrl  String?
   isApproved    Boolean        @default(false)
   role          String         @default("TEACHER") // ADMIN, TEACHER
-  position      String? // ครู, หัวหน้าหมวด, ผู้บริหาร, แอดมิน
+  position      String? // ครู, หัวหน้าหมวด, ผู้อำนวยการ, แอดมิน
   subjectGroup  String?
   level         String?
   lineUserId    String?

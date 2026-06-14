@@ -268,7 +268,7 @@ export async function getMyLeaveHistory(cycleFilter: "current" | "cycle1" | "cyc
   const session = await getSession();
   const user = session.user as any;
 
-  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้บริหาร", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
+  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
 
   const whereClause: any = {};
   
@@ -315,7 +315,7 @@ export async function getMyLeaveHistory(cycleFilter: "current" | "cycle1" | "cyc
 export async function getStaffList() {
   const session = await getSession();
   const user = session.user as any;
-  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้บริหาร", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
+  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
   if (!isPrivileged) {
     return [];
   }
@@ -331,8 +331,8 @@ export async function getStaffList() {
 
 // ========= Helper: Check if user can give final approval =========
 async function canGiveFinalApproval(userId: string, userPosition: string | null, userRole: string): Promise<boolean> {
-  // Director (ผู้บริหาร) can always give final approval
-  if (userPosition === "ผู้บริหาร") return true;
+  // Director (ผู้อำนวยการ) can always give final approval
+  if (userPosition === "ผู้อำนวยการ") return true;
   // Admin can always give final approval
   if (userRole === "ADMIN" || userPosition === "แอดมิน") return true;
   // Check if user is in the configurable final approver list
@@ -354,7 +354,7 @@ export async function getDashboardStats(cycleFilter: "current" | "cycle1" | "cyc
   
   // Check if user is a configured final approver
   const isFinalApprover = await canGiveFinalApproval(session.user.id, user.position, user.role);
-  const isApprover = user.role === "ADMIN" || ["ผู้บริหาร", "หัวหน้างานบุคคล", "แอดมิน"].includes(user.position) || isFinalApprover;
+  const isApprover = user.role === "ADMIN" || ["ผู้อำนวยการ", "หัวหน้างานบุคคล", "แอดมิน"].includes(user.position) || isFinalApprover;
 
   // Fetch Leave Configs dynamically
   const { getLeaveConfigs } = await import("./settings");
@@ -402,7 +402,7 @@ export async function getDashboardStats(cycleFilter: "current" | "cycle1" | "cyc
   }
 
   // Get pending count
-  const isDirector = user.position === "ผู้บริหาร";
+  const isDirector = user.position === "ผู้อำนวยการ";
 
   let pendingWhere: any = { status: { in: ["PENDING_HEAD", "PENDING_EXEC"] } };
   if (!isApprover) {
@@ -548,7 +548,7 @@ export async function getPendingApprovals() {
 
   let whereClause: any = {};
 
-  const isDirector = user.position === "ผู้บริหาร";
+  const isDirector = user.position === "ผู้อำนวยการ";
   const isFinalApprover = await canGiveFinalApproval(session.user.id, user.position, user.role);
 
   if (user.position === "หัวหน้างานบุคคล") {
@@ -1041,7 +1041,7 @@ export async function getLeaveRequestForPrint(id: string) {
 
   // Check permissions: Owner or Admin/HR/Exec
   const isOwner = request.userId === session.user.id;
-  const isPrivileged = currentUser.role === "ADMIN" || ["แอดมิน", "ผู้บริหาร", "หัวหน้างานบุคคล"].includes(currentUser.position);
+  const isPrivileged = currentUser.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "หัวหน้างานบุคคล"].includes(currentUser.position);
   if (!isOwner && !isPrivileged) {
     throw new Error("Unauthorized");
   }
@@ -1237,7 +1237,7 @@ export async function getBatchLeaveRequestsForPrint(year: number, start: number,
   const currentUser = session.user as any;
 
   // Check permissions: Admin/HR/Exec
-  const isPrivileged = currentUser.role === "ADMIN" || ["แอดมิน", "ผู้บริหาร", "หัวหน้างานบุคคล"].includes(currentUser.position);
+  const isPrivileged = currentUser.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "หัวหน้างานบุคคล"].includes(currentUser.position);
   if (!isPrivileged) {
     throw new Error("Unauthorized");
   }

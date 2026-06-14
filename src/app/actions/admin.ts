@@ -33,7 +33,7 @@ export async function getNotifications() {
   const user = session.user as any;
   const isAdmin = user.role === "ADMIN" || user.position === "แอดมิน";
   const isHead = user.position === "หัวหน้างานบุคคล";
-  const isExec = user.position === "ผู้บริหาร";
+  const isExec = user.position === "ผู้อำนวยการ";
 
   const items: { id: string; type: "user" | "leave"; title: string; desc: string; time: string; href: string }[] = [];
   let pendingUsers = 0;
@@ -378,7 +378,7 @@ export async function importUsersByAdmin(
   const errors: string[] = [];
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const positionWhitelist = ["ครู", "นักศึกษาฝึกประสบการณ์", "ผู้ตรวจสอบ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้บริหาร"];
+  const positionWhitelist = ["ครู", "นักศึกษาฝึกประสบการณ์", "ผู้ตรวจสอบ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้อำนวยการ"];
   const seenEmails = new Set<string>();
   const seenUsernames = new Set<string>();
 

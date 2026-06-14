@@ -628,8 +628,8 @@ export default function SettingsPage() {
                   <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/40 dark:border-emerald-900/40 rounded-xl text-xs text-emerald-700 dark:text-emerald-300 font-semibold flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>{lang === "en"
-                      ? "The Director (position: ผู้บริหาร) and Admin can always give final approval. Use the list below to allow additional users."
-                      : "ผู้อำนวยการโรงเรียน (ตำแหน่ง: ผู้บริหาร) และแอดมิน สามารถอนุมัติขั้นสุดท้ายได้เสมอ ใช้รายการด้านล่างเพื่อเพิ่มผู้มีสิทธิ์อนุมัติ"
+                      ? "The Director (position: ผู้อำนวยการ) and Admin can always give final approval. Use the list below to allow additional users."
+                      : "ผู้อำนวยการโรงเรียน (ตำแหน่ง: ผู้อำนวยการ) และแอดมิน สามารถอนุมัติขั้นสุดท้ายได้เสมอ ใช้รายการด้านล่างเพื่อเพิ่มผู้มีสิทธิ์อนุมัติ"
                     }</span>
                   </div>
 
@@ -639,7 +639,7 @@ export default function SettingsPage() {
                     </label>
                     <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2 space-y-1">
                       {eligibleInspectors
-                        .filter((u) => u.position !== "ผู้บริหาร") // Director is always included, don't show in list
+                        .filter((u) => u.position !== "ผู้อำนวยการ") // Director is always included, don't show in list
                         .map((u) => (
                         <label key={u.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors">
                           <input
@@ -660,7 +660,7 @@ export default function SettingsPage() {
                           )}
                         </label>
                       ))}
-                      {eligibleInspectors.filter((u) => u.position !== "ผู้บริหาร").length === 0 && (
+                      {eligibleInspectors.filter((u) => u.position !== "ผู้อำนวยการ").length === 0 && (
                         <p className="text-xs text-gray-400 text-center py-3">{lang === "en" ? "No eligible users found" : "ไม่พบผู้ใช้ที่มีสิทธิ์"}</p>
                       )}
                     </div>
@@ -942,11 +942,11 @@ export default function SettingsPage() {
 
                   <button
                     type="button"
-                    onClick={() => handleImpersonate("ผู้บริหาร", "TEACHER")}
+                    onClick={() => handleImpersonate("ผู้อำนวยการ", "TEACHER")}
                     disabled={isImpersonating}
                     className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-semibold text-sm transition-all border border-indigo-100/55 dark:border-indigo-900/30"
                   >
-                    <span>ผู้บริหาร/ผู้อำนวยการ (EXEC)</span>
+                    <span>ผู้อำนวยการ (EXEC)</span>
                     <span className="text-xs font-normal text-indigo-400">อนุมัติขั้นสุดท้าย</span>
                   </button>
 

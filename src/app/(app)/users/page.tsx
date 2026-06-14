@@ -247,7 +247,7 @@ export default function UsersPage() {
     u.position?.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const positionOptions = ["ครู", "นักศึกษาฝึกประสบการณ์", "ผู้ตรวจสอบ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้บริหาร", "แอดมิน"];
+  const positionOptions = ["ครู", "นักศึกษาฝึกประสบการณ์", "ผู้ตรวจสอบ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้อำนวยการ", "แอดมิน"];
   const subjectGroupOptions = [
     "วิทยาศาสตร์และเทคโนโลยี",
     "คณิตศาสตร์",
@@ -258,12 +258,12 @@ export default function UsersPage() {
     "ศิลปะ",
     "การงานอาชีพ",
     "กิจกรรมพัฒนาผู้เรียน",
-    "แอดมิน / ผู้บริหาร"
+    "แอดมิน / ผู้อำนวยการ"
   ];
 
   const getPositionBadge = (position: string, role: string) => {
     if (role === "ADMIN" || position === "แอดมิน") return { text: "แอดมิน", cls: "bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-800" };
-    if (position === "ผู้บริหาร") return { text: "ผู้บริหาร", cls: "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-800" };
+    if (position === "ผู้อำนวยการ") return { text: "ผู้อำนวยการ", cls: "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-800" };
     if (position === "หัวหน้างานบุคคล") return { text: "หัวหน้างานบุคคล", cls: "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-800" };
     if (position === "เจ้าหน้าที่บุคคล") return { text: "เจ้าหน้าที่บุคคล", cls: "bg-teal-50 text-teal-600 border-teal-200 dark:bg-teal-500/10 dark:text-teal-400 dark:border-teal-800" };
     if (position === "ผู้ตรวจสอบ") return { text: "ผู้ตรวจสอบ", cls: "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-800" };
