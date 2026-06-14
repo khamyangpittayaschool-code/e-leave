@@ -498,7 +498,7 @@ export async function GET(
     ถึงวันที่ <span class="dotted-line" style="width: 30px; font-weight: bold;">${getThaiDay(request.endDate)}</span>
     เดือน <span class="dotted-line" style="width: 90px; font-weight: bold;">${getThaiMonth(request.endDate)}</span>
     พ.ศ. <span class="dotted-line" style="width: 50px; font-weight: bold;">${getThaiYear(request.endDate)}</span>
-    มีกำหนด <span class="dotted-line" style="width: 50px; font-weight: bold;">${request.days}</span> วันทำการ
+    มีกำหนด <span class="dotted-line" style="width: 50px; font-weight: bold;">${currentDays}</span> วันทำการ
   </div>
 
   <!-- Last leave stats -->
