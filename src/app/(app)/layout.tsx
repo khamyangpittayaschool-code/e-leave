@@ -272,6 +272,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [brandName, setBrandName] = useState("ระบบการลา");
   const [brandLogo, setBrandLogo] = useState<string | null>(null);
+  const [isFinalApprover, setIsFinalApprover] = useState(false);
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -284,9 +285,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
       getSystemSettings().then((s) => {
         setBrandName(s.schoolName || t("loginTitle"));
         setBrandLogo(s.logoUrl || null);
+        if (s.finalApproverUserIds && session?.user?.id) {
+          const allowedIds = s.finalApproverUserIds.split(",").map((id: string) => id.trim()).filter(Boolean);
+          setIsFinalApprover(allowedIds.includes(session.user.id));
+        }
       }).catch(() => {});
     });
-  }, []);
+  }, [session?.user?.id, t]);
 
   if (isPending) {
     return (
@@ -304,7 +309,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const user = session.user as any;
   const isAdmin = user.role === "ADMIN" || user.position === "แอดมิน";
-  const isApprover = isAdmin || user.position === "ผู้อำนวยการ" || user.position === "หัวหน้างานบุคคล";
+  const isApprover = isAdmin || user.position === "ผู้อำนวยการ" || user.position === "หัวหน้างานบุคคล" || isFinalApprover;
 
   if (!isAdmin && !user.isApproved) {
     return (

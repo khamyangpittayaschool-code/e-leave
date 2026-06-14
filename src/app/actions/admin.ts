@@ -33,7 +33,20 @@ export async function getNotifications() {
   const user = session.user as any;
   const isAdmin = user.role === "ADMIN" || user.position === "แอดมิน";
   const isHead = user.position === "หัวหน้างานบุคคล";
-  const isExec = user.position === "ผู้อำนวยการ";
+  
+  let isFinalApprover = false;
+  const settings = await prisma.systemSettings.findUnique({
+    where: { id: "default" },
+    select: { finalApproverUserIds: true }
+  });
+  if (settings?.finalApproverUserIds) {
+    const allowedIds = settings.finalApproverUserIds.split(",").map(s => s.trim()).filter(Boolean);
+    if (allowedIds.includes(session.user.id)) {
+      isFinalApprover = true;
+    }
+  }
+
+  const isExec = user.position === "ผู้อำนวยการ" || isFinalApprover;
 
   const items: { id: string; type: "user" | "leave"; title: string; desc: string; time: string; href: string }[] = [];
   let pendingUsers = 0;
