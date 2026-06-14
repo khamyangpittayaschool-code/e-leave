@@ -404,47 +404,203 @@ export default function SettingsPage() {
               <p className="font-bold">{lang === "en" ? "Restricted Access Mode" : "โหมดสิทธิ์การเข้าถึงแบบจำกัด"}</p>
               <p className="text-xs text-blue-600/90 dark:text-blue-400 mt-1">
                 {lang === "en" 
-                  ? "As HR role, you only have access to view/edit leave quotas and leave rules. General system settings, developer configurations, backups, and system clear actions are restricted."
-                  : "เนื่องจากบทบาทของคุณเป็นเจ้าหน้าที่งานบุคคล คุณจะมีสิทธิ์เข้าถึงเฉพาะการปรับแต่งโควตาการลาและแก้ไขกฎเกณฑ์การลาเท่านั้น ส่วนการตั้งค่าระบบทั่วไป ข้อมูลนักพัฒนา การสำรองข้อมูล และการล้างข้อมูลจะถูกจำกัดสิทธิ์การเข้าถึง"}
+                  ? "As HR role, you have access to view/edit leave quotas, leave rules, final approver settings, and general restrictions. Basic school details, LINE notify settings, developer configurations, backups, and system clear actions are restricted."
+                  : "เนื่องจากบทบาทของคุณเป็นเจ้าหน้าที่งานบุคคล คุณจะมีสิทธิ์เข้าถึงเฉพาะการปรับแต่งโควตาการลา แก้ไขกฎเกณฑ์การลา การตั้งค่าผู้อนุมัติขั้นสุดท้าย และข้อจำกัดทั่วไป ส่วนข้อมูลพื้นฐานโรงเรียน การตั้งค่าแจ้งเตือน LINE ข้อมูลนักพัฒนา การสำรองข้อมูล และการล้างข้อมูลจะถูกจำกัดสิทธิ์"}
               </p>
             </div>
           </div>
 
-          {/* Default Inspector Card for HR Head */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">
-            <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-4 flex items-center gap-2">
+          {/* Default Inspector, Final Approver, and General Restrictions for HR Head */}
+          <form onSubmit={handleGeneralSubmit} className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800 space-y-6">
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-4 flex items-center gap-2">
               <Settings2 className="w-5 h-5 text-indigo-500" />
-              {lang === "en" ? "Default Inspector Setting" : "ตั้งค่าผู้ตรวจสอบระบบ"}
+              {lang === "en" ? "System & Approver Settings" : "ตั้งค่าผู้ตรวจสอบและผู้อนุมัติระบบ"}
             </h3>
-            <div className="space-y-4">
+
+            {/* Default Inspector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {lang === "en" ? "Default Inspector" : "ผู้ตรวจสอบใบลาสะสม (ค่าเริ่มต้น)"}
+              </label>
+              <select
+                value={defaultInspectorId}
+                onChange={(e) => setDefaultInspectorId(e.target.value)}
+                className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm animate-none"
+              >
+                <option value="">-- {lang === "en" ? "Select Default Inspector" : "เลือกผู้ตรวจสอบ (หรือระบบเลือก หัวหน้างานบุคคล อัตโนมัติ)"} --</option>
+                {eligibleInspectors.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} {u.position ? `(${u.position})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Final Approver Configuration Section */}
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-6 space-y-4">
+              <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-emerald-500" />
+                {lang === "en" ? "Final Approval Configuration" : "การตั้งค่าผู้อนุมัติขั้นสุดท้าย"}
+              </h4>
+              <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/40 dark:border-emerald-900/40 rounded-xl text-xs text-emerald-700 dark:text-emerald-300 font-semibold flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                <span>{lang === "en"
+                  ? "The Director (position: ผู้อำนวยการ) and Admin can always give final approval. Use the list below to allow additional users."
+                  : "ผู้อำนวยการโรงเรียน (ตำแหน่ง: ผู้อำนวยการ) และแอดมิน สามารถอนุมัติขั้นสุดท้ายได้เสมอ ใช้รายการด้านล่างเพื่อเพิ่มผู้มีสิทธิ์อนุมัติ"
+                }</span>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {lang === "en" ? "Default Inspector" : "ผู้ตรวจสอบใบลาสะสม (ค่าเริ่มต้น)"}
+                  {lang === "en" ? "Additional Final Approvers" : "ผู้มีสิทธิ์อนุมัติขั้นสุดท้ายเพิ่มเติม"}
                 </label>
-                <select
-                  value={defaultInspectorId}
-                  onChange={async (e) => {
-                    const val = e.target.value;
-                    setDefaultInspectorId(val);
-                    try {
-                      await updateDefaultInspector(val || null);
-                      alert("บันทึกผู้ตรวจสอบระบบสำเร็จ");
-                    } catch (err: any) {
-                      alert("บันทึกไม่สำเร็จ: " + err.message);
-                    }
-                  }}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                >
-                  <option value="">-- {lang === "en" ? "Select Default Inspector" : "เลือกผู้ตรวจสอบ (หรือระบบเลือก หัวหน้างานบุคคล อัตโนมัติ)"} --</option>
-                  {eligibleInspectors.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} {u.position ? `(${u.position})` : ""}
-                    </option>
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2 space-y-1">
+                  {eligibleInspectors
+                    .filter((u) => u.position !== "ผู้อำนวยการ") // Director is always included, don't show in list
+                    .map((u) => (
+                    <label key={u.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={finalApproverUserIds.includes(u.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFinalApproverUserIds(prev => [...prev, u.id]);
+                          } else {
+                            setFinalApproverUserIds(prev => prev.filter(id => id !== u.id));
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">{u.name}</span>
+                      {u.position && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">({u.position})</span>
+                      )}
+                    </label>
                   ))}
-                </select>
+                  {eligibleInspectors.filter((u) => u.position !== "ผู้อำนวยการ").length === 0 && (
+                    <p className="text-xs text-gray-400 text-center py-3">{lang === "en" ? "No eligible users found" : "ไม่พบผู้ใช้ที่มีสิทธิ์"}</p>
+                  )}
+                </div>
+                {finalApproverUserIds.length > 0 && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-semibold">
+                    ✓ {lang === "en" ? `${finalApproverUserIds.length} additional approver(s) selected` : `เลือกแล้ว ${finalApproverUserIds.length} คน`}
+                  </p>
+                )}
+              </div>
+
+              {/* Acting Director Title Toggle */}
+              <div className="mt-4">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={showActingDirectorTitle}
+                    onChange={(e) => setShowActingDirectorTitle(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>{lang === "en" ? "Show 'Acting Director' title on printed leave forms" : "แสดงแถว \"รักษาการในตำแหน่ง ผอ.\" ในใบลา (กรณีไม่ใช่ ผอ. ลงนาม)"}</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 pl-6">{lang === "en" ? "When enabled, an additional title line will appear below the approver's signature on printed forms when the final approver is not the Director." : "เมื่อเปิดใช้งาน จะแสดงข้อความระบุตำแหน่งรักษาการฯ ใต้ลายเซ็นต์ผู้อนุมัติในใบลาที่พิมพ์ กรณีผู้อนุมัติไม่ใช่ ผอ."}</p>
+              </div>
+
+              {showActingDirectorTitle && (
+                <div className="mt-4 pl-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                      {lang === "en" ? "Acting Director Title Type" : "ข้อความระบุตำแหน่งรักษาการฯ"}
+                    </label>
+                    <select
+                      value={actingDirectorTitleType}
+                      onChange={(e) => setActingDirectorTitleType(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                    >
+                      <option value="ปฏิบัติราชการแทนผู้อำนวยการโรงเรียน">ปฏิบัติราชการแทนผู้อำนวยการโรงเรียน</option>
+                      <option value="รักษาราชการแทนผู้อำนวยการโรงเรียน">รักษาราชการแทนผู้อำนวยการโรงเรียน</option>
+                      <option value="รักษาการในตำแหน่งผู้อำนวยการโรงเรียน">รักษาการในตำแหน่งผู้อำนวยการโรงเรียน</option>
+                      <option value="custom">อื่น ๆ (ระบุเอง)</option>
+                    </select>
+                  </div>
+
+                  {actingDirectorTitleType === "custom" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {lang === "en" ? "Custom Acting Title" : "ระบุข้อความตำแหน่งอื่น ๆ"}
+                      </label>
+                      <input
+                        type="text"
+                        value={customActingDirectorTitle}
+                        onChange={(e) => setCustomActingDirectorTitle(e.target.value)}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                        placeholder="ระบุตำแหน่งรักษาการ เช่น รักษาราชการแทน..."
+                      />
+                    </div>
+                  )}
+
+                  {/* Explanation box */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 text-xs text-gray-600 dark:text-gray-400 space-y-2">
+                    <div className="font-semibold text-gray-900 dark:text-white mb-1">💡 คำชี้แจงการใช้ข้อความตำแหน่งรักษาการ:</div>
+                    <p><strong>• ปฏิบัติราชการแทนผู้อำนวยการโรงเรียน:</strong> ใช้กรณี ผอ.โรงเรียน ดำรงตำแหน่งอยู่ แต่ไม่ได้อยู่ปฏิบัติหน้าที่ชั่วคราว หรือมอบหมายให้รองผู้อำนวยการมีอำนาจลงนามแทนเฉพาะคราวหรือเป็นลายลักษณ์อักษร</p>
+                    <p><strong>• รักษาราชการแทนผู้อำนวยการโรงเรียน:</strong> ใช้กรณีไม่มีผู้ดำรงตำแหน่ง ผอ. หรือมีแต่ไม่สามารถปฏิบัติหน้าที่ได้ชั่วคราว</p>
+                    <p><strong>• รักษาการในตำแหน่งผู้อำนวยการโรงเรียน:</strong> ใช้กรณีตำแหน่ง ผอ.โรงเรียน ว่างลงอย่างเป็นทางการ (เช่น ย้าย เกษียณ หรือเสียชีวิต) และหน่วยงานต้นสังกัด (สพม./สพป.) มีคำสั่งแต่งตั้งบุคคลใดบุคคลหนึ่งมาปฏิบัติหน้าที่แทนชั่วคราว จนกว่าจะมี ผอ. คนใหม่เข้ามาดำรงตำแหน่ง</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* General Restrictions */}
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-6 space-y-4">
+              <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-2">{lang === "en" ? "General Restrictions" : "ข้อจำกัดทั่วไป"}</h4>
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={requirePersonalAdvance}
+                    onChange={(e) => setRequirePersonalAdvance(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>{lang === "en" ? "Require Personal Leave 1-Day in Advance" : "ลากิจส่วนตัวต้องล่วงหน้าอย่างน้อย 1 วันทำการ"}</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 pl-6">หากเปิดใช้งาน บุคลากรจะไม่สามารถยื่นคำขอลากิจส่วนตัวสำหรับวันนี้หรือย้อนหลังได้</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pl-6">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                    เกณฑ์สะสมลารวมลากิจ+ลาป่วย (จำนวนครั้ง) เพื่อส่งข้อความถึง ผอ.
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={memoThresholdTimes}
+                    onChange={(e) => setMemoThresholdTimes(Number(e.target.value))}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                    เกณฑ์สะสมลารวมลากิจ+ลาป่วย (จำนวนวัน) เพื่อส่งข้อความถึง ผอ.
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={memoThresholdDays}
+                    onChange={(e) => setMemoThresholdDays(Number(e.target.value))}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-bold"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+
+            <div className="pt-4 flex justify-end">
+              <button
+                type="submit"
+                disabled={isSavingGeneral}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-500/20 transition-all disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {isSavingGeneral ? t("saving") : t("saveSettings")}
+              </button>
+            </div>
+          </form>
 
           {/* Leave Configuration */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">

@@ -593,7 +593,7 @@ export async function getPendingApprovals() {
 }
 
 // ========= Approve Leave Request (hierarchical) =========
-export async function approveLeaveRequest(id: string) {
+export async function approveLeaveRequest(id: string, pdfBase64?: string, skipDriveUpload: boolean = false) {
   const session = await getSession();
   const user = session.user as any;
 
@@ -639,7 +639,7 @@ export async function approveLeaveRequest(id: string) {
 
   await prisma.leaveRequest.update({ where: { id }, data: updateData });
 
-  if (newStatus === "APPROVED") {
+  if (newStatus === "APPROVED" && !skipDriveUpload) {
     // Auto upload to Google Drive if configured
     const uploadUrl = process.env.GOOGLE_DRIVE_UPLOAD_URL;
     const secret = process.env.GOOGLE_DRIVE_SECRET;
@@ -669,15 +669,23 @@ export async function approveLeaveRequest(id: string) {
       const cleanAppUrl = appUrl.endsWith("/") ? appUrl.slice(0, -1) : appUrl;
       const printUrl = `${cleanAppUrl}/api/print-legacy/${id}?token=${secret}`;
 
+      const payload: any = {
+        secret: secret,
+        filename: filename
+      };
+
+      if (pdfBase64) {
+        payload.action = "upload_base64";
+        payload.fileBase64 = pdfBase64;
+      } else {
+        payload.action = "upload";
+        payload.printUrl = printUrl;
+      }
+
       fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "upload",
-          secret: secret,
-          filename: filename,
-          printUrl: printUrl
-        })
+        body: JSON.stringify(payload)
       })
       .then(res => res.json())
       .then(data => {
@@ -721,8 +729,7 @@ export async function approveLeaveRequest(id: string) {
   return { success: true, newStatus };
 }
 
-// ========= Reject Leave Request =========
-export async function rejectLeaveRequest(id: string, rejectReason?: string) {
+export async function rejectLeaveRequest(id: string, rejectReason?: string, pdfBase64?: string, skipDriveUpload: boolean = false) {
   const session = await getSession();
   const user = session.user as any;
 
@@ -770,7 +777,7 @@ export async function rejectLeaveRequest(id: string, rejectReason?: string) {
   // Auto upload to Google Drive if configured
   const uploadUrl = process.env.GOOGLE_DRIVE_UPLOAD_URL;
   const secret = process.env.GOOGLE_DRIVE_SECRET;
-  if (uploadUrl && secret) {
+  if (uploadUrl && secret && !skipDriveUpload) {
     const fy = request.fiscalYear || getFiscalYear(request.startDate);
     const seq = request.pendingSeq || 0;
     const formattedSeq = String(seq).padStart(3, "0");
@@ -796,15 +803,23 @@ export async function rejectLeaveRequest(id: string, rejectReason?: string) {
     const cleanAppUrl = appUrl.endsWith("/") ? appUrl.slice(0, -1) : appUrl;
     const printUrl = `${cleanAppUrl}/api/print-legacy/${id}?token=${secret}`;
 
+    const payload: any = {
+      secret: secret,
+      filename: filename
+    };
+
+    if (pdfBase64) {
+      payload.action = "upload_base64";
+      payload.fileBase64 = pdfBase64;
+    } else {
+      payload.action = "upload";
+      payload.printUrl = printUrl;
+    }
+
     fetch(uploadUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "upload",
-        secret: secret,
-        filename: filename,
-        printUrl: printUrl
-      })
+      body: JSON.stringify(payload)
     })
     .then(res => res.json())
     .then(data => {
@@ -1601,4 +1616,73 @@ export async function getBatchLeaveRequestsForPrint(
 
   return results;
 }
+
+export async function uploadLeavePdf(id: string, pdfBase64: string, isRejected: boolean) {
+  const session = await getSession();
+  
+  const uploadUrl = process.env.GOOGLE_DRIVE_UPLOAD_URL;
+  const secret = process.env.GOOGLE_DRIVE_SECRET;
+  if (!uploadUrl || !secret) {
+    return { success: false, error: "Google Drive upload not configured" };
+  }
+
+  const request = await prisma.leaveRequest.findUnique({
+    where: { id },
+    include: { user: { select: { name: true } } }
+  });
+  if (!request) return { success: false, error: "Request not found" };
+
+  const fy = request.fiscalYear || getFiscalYear(request.startDate);
+  const seq = isRejected ? (request.pendingSeq || 0) : (request.approvedSeq || 0);
+  const formattedSeq = String(seq).padStart(3, "0");
+  const cleanName = (request.user?.name || "user").replace(/\s+/g, "_");
+  
+  const leaveLabels: Record<string, string> = {
+    SICK: "ลาป่วย",
+    MATERNITY: "ลาคลอดบุตร",
+    PATERNITY: "ลาช่วยเหลือภริยาคลอดบุตร",
+    PERSONAL: "ลากิจส่วนตัว",
+    VACATION: "ลาพักผ่อน",
+    MILITARY: "ลาเข้ารับการตรวจเลือกหรือเตรียมพล",
+    STUDY: "ลาศึกษาต่อ_ฝึกอบรม_หรือดูงาน",
+    INTERNATIONAL: "ลาไปปฏิบัติงานในองค์การระหว่างประเทศ",
+    SPOUSE: "ลาติดตามคู่สมรส",
+    REHABILITATION: "ลาฟื้นฟูสมรรถภาพด้านอาชีพ",
+    ORDINATION: "ลาอุปสมบท_ประกอบพิธีฮัจญ์"
+  };
+  const leaveLabel = leaveLabels[request.type] || request.type;
+  
+  const filename = isRejected 
+    ? `${fy}-REJ-${formattedSeq}-${cleanName}-${leaveLabel}`
+    : `${fy}-${formattedSeq}-${cleanName}-${leaveLabel}`;
+
+  try {
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upload_base64",
+        secret: secret,
+        filename: filename,
+        fileBase64: pdfBase64
+      })
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      console.log(`Successfully uploaded leave request PDF ${id} to Google Drive: ${data.url}`);
+      await writeLog("SYSTEM", `อัปโหลดใบลา ${filename} ลง Google Drive สำเร็จ (${data.url})`, "system");
+      return { success: true, url: data.url };
+    } else {
+      console.error("Google Drive upload failed:", data.error);
+      await writeLog("SYSTEM", `อัปโหลดใบลาลง Google Drive ล้มเหลว: ${data.error}`, "system");
+      return { success: false, error: data.error };
+    }
+  } catch (err: any) {
+    console.error("Google Drive upload fetch error:", err);
+    await writeLog("SYSTEM", `อัปโหลดใบลาลง Google Drive เกิดข้อผิดพลาด: ${err.message}`, "system");
+    return { success: false, error: err.message };
+  }
+}
+
 

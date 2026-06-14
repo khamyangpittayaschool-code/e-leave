@@ -121,7 +121,7 @@ export async function updateSystemSettings(data: {
   finalApproverUserIds?: string;
   showActingDirectorTitle?: boolean;
 }) {
-  await requireSuperAdmin();
+  await requireHROrAdmin();
 
   await prisma.systemSettings.upsert({
     where: { id: "default" },

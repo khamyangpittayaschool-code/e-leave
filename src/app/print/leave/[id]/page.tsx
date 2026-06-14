@@ -180,6 +180,17 @@ export default function PrintLeavePage() {
         setLoading(false);
       });
   }, [id]);
+  
+  useEffect(() => {
+    if (!loading && printData) {
+      if (typeof window !== "undefined" && window.parent && window.parent !== window) {
+        const timer = setTimeout(() => {
+          window.parent.postMessage({ type: "ELEAVE_PRINT_READY", id }, "*");
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading, printData, id]);
 
   const handlePrint = () => {
     window.print();
@@ -252,7 +263,7 @@ export default function PrintLeavePage() {
         
         {/* Paper Container */}
         <div className="flex justify-center">
-          <div className="print-container bg-white dark:bg-slate-950 text-black border border-slate-300 dark:border-slate-850 pt-[20mm] pb-[15mm] pl-[25mm] pr-[15mm] w-[210mm] min-h-[297mm] shadow-lg relative print:shadow-none print:border-none">
+          <div id="print-content" className="print-container bg-white dark:bg-slate-950 text-black border border-slate-300 dark:border-slate-850 pt-[20mm] pb-[15mm] pl-[25mm] pr-[15mm] w-[210mm] min-h-[297mm] shadow-lg relative print:shadow-none print:border-none">
             
             {/* Embedded styles for Sarabun font and exact A4 formatting */}
             <style jsx global>{`

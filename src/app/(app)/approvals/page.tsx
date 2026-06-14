@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getPendingApprovals, approveLeaveRequest, rejectLeaveRequest } from "@/app/actions/leave";
+import { getPendingApprovals, approveLeaveRequest, rejectLeaveRequest, uploadLeavePdf } from "@/app/actions/leave";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { format } from "date-fns";
 import { UserCircle, Calendar, FileText, Check, X, AlertCircle, Printer, Paperclip } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -119,6 +121,8 @@ export default function ApprovalsPage() {
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { t, lang } = useI18n();
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
 
   const loadData = () => {
     setLoading(true);
@@ -135,26 +139,149 @@ export default function ApprovalsPage() {
     return map[type] || type;
   };
 
+  const generatePdfForRequest = (id: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.top = "-9999px";
+      iframe.style.left = "-9999px";
+      iframe.style.width = "210mm";
+      iframe.style.height = "297mm";
+      iframe.style.border = "none";
+      
+      iframe.src = `/print/leave/${id}`;
+      
+      const messageListener = async (event: MessageEvent) => {
+        if (event.data?.type === "ELEAVE_PRINT_READY" && event.data?.id === id) {
+          try {
+            setProcessingStatus("capturing");
+            const iframeWindow = iframe.contentWindow;
+            if (!iframeWindow) {
+              cleanup();
+              reject(new Error("Iframe window not available"));
+              return;
+            }
+            
+            const printContent = iframeWindow.document.getElementById("print-content");
+            if (!printContent) {
+              cleanup();
+              reject(new Error("Print content element not found in iframe"));
+              return;
+            }
+
+            const canvas = await html2canvas(printContent, {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true,
+              backgroundColor: "#ffffff",
+              logging: false
+            });
+
+            const imgData = canvas.toDataURL("image/jpeg", 0.95);
+            
+            const pdf = new jsPDF({
+              orientation: "portrait",
+              unit: "mm",
+              format: "a4"
+            });
+
+            pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+            const pdfBase64 = pdf.output("datauristring").split(",")[1];
+            
+            cleanup();
+            resolve(pdfBase64);
+          } catch (err) {
+            cleanup();
+            reject(err);
+          }
+        }
+      };
+
+      const cleanup = () => {
+        window.removeEventListener("message", messageListener);
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      };
+
+      window.addEventListener("message", messageListener);
+      document.body.appendChild(iframe);
+      
+      // Safety timeout after 15 seconds
+      setTimeout(() => {
+        cleanup();
+        reject(new Error("Timeout waiting for PDF generation"));
+      }, 15000);
+    });
+  };
+
   const handleApprove = async (id: string) => {
-    await approveLeaveRequest(id);
-    window.dispatchEvent(new Event("noti-refresh"));
-    loadData();
+    setProcessingId(id);
+    setProcessingStatus("updating_db");
+    try {
+      const res = await approveLeaveRequest(id, undefined, true);
+      
+      if (res?.newStatus === "APPROVED") {
+        setProcessingStatus("loading_iframe");
+        let pdfBase64: string | undefined = undefined;
+        try {
+          pdfBase64 = await generatePdfForRequest(id);
+        } catch (pdfErr) {
+          console.error("Failed to generate PDF client-side:", pdfErr);
+          alert("คำเตือน: อนุมัติสำเร็จแล้ว แต่ไม่สามารถสร้างไฟล์ PDF บนคลาวด์ได้เนื่องจากปัญหาทางเทคนิค");
+        }
+
+        if (pdfBase64) {
+          setProcessingStatus("uploading");
+          await uploadLeavePdf(id, pdfBase64, false);
+        }
+      }
+
+      window.dispatchEvent(new Event("noti-refresh"));
+      loadData();
+    } catch (error: any) {
+      alert("เกิดข้อผิดพลาด: " + (error?.message || error));
+    } finally {
+      setProcessingId(null);
+      setProcessingStatus(null);
+    }
   };
 
   const handleReject = async (id: string) => {
-    const reason = window.prompt("กรุณากรอกความเห็น/เหตุผลในการไม่อนุมัติ:");
+    const reason = window.prompt("กรุณากรอกความเห็น/เหตุผลในการไม้อนุมัติ:");
     if (reason === null) return;
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
       alert(lang === "en" ? "Rejection reason is required." : "จำเป็นต้องระบุเหตุผลในการปฏิเสธการอนุมัติ");
       return;
     }
+
+    setProcessingId(id);
+    setProcessingStatus("updating_db");
     try {
-      await rejectLeaveRequest(id, trimmedReason);
+      await rejectLeaveRequest(id, trimmedReason, undefined, true);
+
+      setProcessingStatus("loading_iframe");
+      let pdfBase64: string | undefined = undefined;
+      try {
+        pdfBase64 = await generatePdfForRequest(id);
+      } catch (pdfErr) {
+        console.error("Failed to generate PDF client-side:", pdfErr);
+        alert("คำเตือน: ปฏิเสธการลาสำเร็จแล้ว แต่ไม่สามารถสร้างไฟล์ PDF บนคลาวด์ได้เนื่องจากปัญหาทางเทคนิค");
+      }
+
+      if (pdfBase64) {
+        setProcessingStatus("uploading");
+        await uploadLeavePdf(id, pdfBase64, true);
+      }
+
       window.dispatchEvent(new Event("noti-refresh"));
       loadData();
     } catch (err: any) {
       alert(err.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setProcessingId(null);
+      setProcessingStatus(null);
     }
   };
 
@@ -271,6 +398,25 @@ export default function ApprovalsPage() {
           ))
         )}
       </div>
+
+      {processingId && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-200">
+            <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                {processingStatus === "updating_db" && "กำลังอัปเดตสถานะในระบบ..."}
+                {processingStatus === "loading_iframe" && "กำลังโหลดแบบฟอร์มเอกสาร..."}
+                {processingStatus === "capturing" && "กำลังแคปภาพและสร้างไฟล์ PDF..."}
+                {processingStatus === "uploading" && "กำลังนำส่งเอกสารลง Google Drive..."}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                กรุณาอย่าปิดหน้าต่างนี้ ระบบกำลังดำเนินการอัปเดตสถานะและจัดเก็บเอกสารอย่างปลอดภัย
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
