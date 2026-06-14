@@ -1344,7 +1344,13 @@ export async function getLeaveRequestForPrint(id: string) {
 }
 
 // ========= Get Batch Leave Requests for Print =========
-export async function getBatchLeaveRequestsForPrint(year: number, start: number, end: number) {
+export async function getBatchLeaveRequestsForPrint(
+  year: number,
+  start?: number | null,
+  end?: number | null,
+  filterType?: "sequence" | "year" | "cycle1" | "cycle2" | "month" | null,
+  monthVal?: number | null
+) {
   await ensureSequencesPopulated();
   const session = await getSession();
   const currentUser = session.user as any;
@@ -1355,15 +1361,48 @@ export async function getBatchLeaveRequestsForPrint(year: number, start: number,
     throw new Error("Unauthorized");
   }
 
-  const requests = await prisma.leaveRequest.findMany({
-    where: {
-      fiscalYear: year,
-      status: "APPROVED",
-      approvedSeq: {
+  const whereClause: any = {
+    status: "APPROVED",
+  };
+
+  if (filterType === "year" || filterType === "cycle1" || filterType === "cycle2") {
+    const calYear = year - 543;
+    const fyStart = new Date(calYear - 1, 9, 1); // Oct 1 of previous year
+    const fyEnd = new Date(calYear, 8, 30, 23, 59, 59, 999); // Sep 30 of current year
+
+    if (filterType === "year") {
+      whereClause.startDate = { gte: fyStart, lte: fyEnd };
+    } else if (filterType === "cycle1") {
+      const cycle1End = new Date(calYear, 2, 31, 23, 59, 59, 999); // Mar 31 of current year
+      whereClause.startDate = { gte: fyStart, lte: cycle1End };
+    } else if (filterType === "cycle2") {
+      const cycle2Start = new Date(calYear, 3, 1); // Apr 1 of current year
+      whereClause.startDate = { gte: cycle2Start, lte: fyEnd };
+    }
+  } else if (filterType === "month" && monthVal) {
+    const calYear = monthVal >= 10 ? (year - 543 - 1) : (year - 543);
+    const startDate = new Date(calYear, monthVal - 1, 1);
+    const endDate = new Date(calYear, monthVal, 0, 23, 59, 59, 999);
+    whereClause.startDate = { gte: startDate, lte: endDate };
+  } else {
+    // Default sequence mode
+    whereClause.fiscalYear = year;
+    if (start !== undefined && start !== null) {
+      whereClause.approvedSeq = {
+        ...whereClause.approvedSeq,
         gte: start,
-        lte: end
-      }
-    },
+      };
+    }
+    if (end !== undefined && end !== null) {
+      whereClause.approvedSeq = {
+        ...whereClause.approvedSeq,
+        lte: end,
+      };
+    }
+  }
+
+  const requests = await prisma.leaveRequest.findMany({
+    where: whereClause,
     include: {
       user: {
         select: {

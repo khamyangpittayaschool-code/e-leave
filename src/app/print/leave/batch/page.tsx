@@ -72,8 +72,10 @@ function BatchPrintPageContent() {
   const router = useRouter();
   
   const year = Number(searchParams.get("year") || "0");
-  const start = Number(searchParams.get("start") || "0");
-  const end = Number(searchParams.get("end") || "0");
+  const start = searchParams.get("start") ? Number(searchParams.get("start")) : null;
+  const end = searchParams.get("end") ? Number(searchParams.get("end")) : null;
+  const filterType = searchParams.get("filterType") || "sequence";
+  const monthVal = searchParams.get("monthVal") ? Number(searchParams.get("monthVal")) : null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,14 +86,26 @@ function BatchPrintPageContent() {
   const [salutation, setSalutation] = useState("ผู้อำนวยการโรงเรียน");
 
   useEffect(() => {
-    if (!year || !start || !end) {
-      setError("กรุณาระบุปีงบประมาณ ลำดับเริ่มต้น และลำดับสิ้นสุดให้ถูกต้อง");
+    if (!year) {
+      setError("กรุณาระบุปีงบประมาณให้ถูกต้อง");
+      setLoading(false);
+      return;
+    }
+
+    if (filterType === "sequence" && (start === null || end === null)) {
+      setError("กรุณาระบุลำดับเริ่มต้น และลำดับสิ้นสุดให้ถูกต้อง");
+      setLoading(false);
+      return;
+    }
+
+    if (filterType === "month" && monthVal === null) {
+      setError("กรุณาระบุเดือนที่ต้องการพิมพ์ให้ถูกต้อง");
       setLoading(false);
       return;
     }
 
     Promise.all([
-      getBatchLeaveRequestsForPrint(year, start, end),
+      getBatchLeaveRequestsForPrint(year, start, end, filterType as any, monthVal),
       getSystemSettings()
     ])
       .then(([data, sysSettings]) => {
@@ -109,7 +123,7 @@ function BatchPrintPageContent() {
         setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลใบลา");
         setLoading(false);
       });
-  }, [year, start, end]);
+  }, [year, start, end, filterType, monthVal]);
 
   const handlePrint = () => {
     window.print();

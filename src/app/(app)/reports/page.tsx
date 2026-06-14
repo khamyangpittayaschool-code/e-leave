@@ -33,13 +33,21 @@ export default function ReportsPage() {
   const [batchYear, setBatchYear] = useState<number>(currentFY);
   const [batchStart, setBatchStart] = useState<number>(1);
   const [batchEnd, setBatchEnd] = useState<number>(50);
+  const [batchFilterType, setBatchFilterType] = useState<"sequence" | "year" | "cycle1" | "cycle2" | "month">("sequence");
+  const [batchMonth, setBatchMonth] = useState<number>(new Date().getMonth() + 1);
 
   const handleBatchPdfDownload = () => {
-    if (batchStart > batchEnd) {
-      alert("ลำดับเริ่มต้นต้องไม่เกินลำดับสิ้นสุด");
-      return;
+    if (batchFilterType === "sequence") {
+      if (batchStart > batchEnd) {
+        alert("ลำดับเริ่มต้นต้องไม่เกินลำดับสิ้นสุด");
+        return;
+      }
+      window.open(`/print/leave/batch?year=${batchYear}&start=${batchStart}&end=${batchEnd}&filterType=sequence`, "_blank");
+    } else if (batchFilterType === "month") {
+      window.open(`/print/leave/batch?year=${batchYear}&filterType=month&monthVal=${batchMonth}`, "_blank");
+    } else {
+      window.open(`/print/leave/batch?year=${batchYear}&filterType=${batchFilterType}`, "_blank");
     }
-    window.open(`/print/leave/batch?year=${batchYear}&start=${batchStart}&end=${batchEnd}`, "_blank");
   };
 
   const getCycleLabel = () => {
@@ -483,11 +491,11 @@ export default function ReportsPage() {
           ดาวน์โหลดใบลาแบบกลุ่ม (PDF)
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-          ระบุช่วงลำดับการอนุมัติและปีงบประมาณที่ต้องการพิมพ์ใบลาที่ได้รับการอนุมัติแล้วออกเป็น PDF ทั้งหมดพร้อมกัน
+          ระบุเงื่อนไข ปีงบประมาณ หรือช่วงเวลาที่ต้องการดึงข้อมูลใบลาที่ได้รับการอนุมัติแล้วเพื่อพิมพ์ออกเป็น PDF ทั้งหมดพร้อมกัน
         </p>
         
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <div className="md:col-span-3">
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">ปีงบประมาณ</label>
             <select 
               value={batchYear} 
@@ -499,33 +507,80 @@ export default function ReportsPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">จากลำดับอนุมัติที่</label>
-            <input 
-              type="number" 
-              min={1}
-              value={batchStart} 
-              onChange={(e) => setBatchStart(Math.max(1, Number(e.target.value)))}
-              className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all w-full" 
-            />
+
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">เงื่อนไขการดึงข้อมูล</label>
+            <select 
+              value={batchFilterType} 
+              onChange={(e) => setBatchFilterType(e.target.value as any)}
+              className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all w-full cursor-pointer"
+            >
+              <option value="sequence">ตามช่วงลำดับเลขอ้างอิง</option>
+              <option value="year">ทั้งหมดของปีงบประมาณ</option>
+              <option value="cycle1">รอบที่ 1 (ต.ค. - มี.ค.)</option>
+              <option value="cycle2">รอบที่ 2 (เม.ย. - ก.ย.)</option>
+              <option value="month">รอบเดือน (ระบุเดือน)</option>
+            </select>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">ถึงลำดับอนุมัติที่</label>
-            <input 
-              type="number" 
-              min={1}
-              value={batchEnd} 
-              onChange={(e) => setBatchEnd(Math.max(1, Number(e.target.value)))}
-              className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all w-full" 
-            />
+
+          {batchFilterType === "sequence" && (
+            <>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">จากลำดับอนุมัติที่</label>
+                <input 
+                  type="number" 
+                  min={1}
+                  value={batchStart} 
+                  onChange={(e) => setBatchStart(Math.max(1, Number(e.target.value)))}
+                  className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all w-full" 
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">ถึงลำดับอนุมัติที่</label>
+                <input 
+                  type="number" 
+                  min={1}
+                  value={batchEnd} 
+                  onChange={(e) => setBatchEnd(Math.max(1, Number(e.target.value)))}
+                  className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all w-full" 
+                />
+              </div>
+            </>
+          )}
+
+          {batchFilterType === "month" && (
+            <div className="md:col-span-4">
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">เลือกเดือน</label>
+              <select 
+                value={batchMonth} 
+                onChange={(e) => setBatchMonth(Number(e.target.value))}
+                className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all w-full cursor-pointer"
+              >
+                <option value={10}>ตุลาคม</option>
+                <option value={11}>พฤศจิกายน</option>
+                <option value={12}>ธันวาคม</option>
+                <option value={1}>มกราคม</option>
+                <option value={2}>กุมภาพันธ์</option>
+                <option value={3}>มีนาคม</option>
+                <option value={4}>เมษายน</option>
+                <option value={5}>พฤษภาคม</option>
+                <option value={6}>มิถุนายน</option>
+                <option value={7}>กรกฎาคม</option>
+                <option value={8}>สิงหาคม</option>
+                <option value={9}>กันยายน</option>
+              </select>
+            </div>
+          )}
+
+          <div className={batchFilterType === "sequence" ? "md:col-span-2" : (batchFilterType === "month" ? "md:col-span-2" : "md:col-span-6")}>
+            <button 
+              onClick={handleBatchPdfDownload}
+              className="h-10 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer w-full"
+            >
+              <Printer className="w-4.5 h-4.5" />
+              ดาวน์โหลด PDF
+            </button>
           </div>
-          <button 
-            onClick={handleBatchPdfDownload}
-            className="h-10 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Printer className="w-4.5 h-4.5" />
-            ดาวน์โหลด PDF
-          </button>
         </div>
       </div>
     </motion.div>
