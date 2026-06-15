@@ -1185,9 +1185,12 @@ export async function getLeaveRequestForPrint(id: string) {
 
   if (!request) throw new Error("Request not found");
 
-  // Check permissions: Owner or Admin/HR/Exec
+  // Check permissions: Owner or Admin/HR/Exec/Verifier
   const isOwner = request.userId === session.user.id;
-  const isPrivileged = currentUser.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "หัวหน้างานบุคคล"].includes(currentUser.position);
+  const isFinalApprover = await canGiveFinalApproval(session.user.id, currentUser.position, currentUser.role);
+  const isPrivileged = currentUser.role === "ADMIN" || 
+    ["แอดมิน", "ผู้อำนวยการ", "รองผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้ตรวจสอบ"].includes(currentUser.position) ||
+    isFinalApprover;
   if (!isOwner && !isPrivileged) {
     throw new Error("Unauthorized");
   }

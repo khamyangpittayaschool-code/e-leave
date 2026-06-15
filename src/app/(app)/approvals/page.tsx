@@ -157,47 +157,52 @@ export default function ApprovalsPage() {
       iframe.src = `/print/leave/${id}`;
       
       const messageListener = async (event: MessageEvent) => {
-        if (event.data?.type === "ELEAVE_PRINT_READY" && event.data?.id === id) {
-          try {
-            setProcessingStatus("capturing");
-            const iframeWindow = iframe.contentWindow;
-            if (!iframeWindow) {
+        if (event.data?.id === id) {
+          if (event.data?.type === "ELEAVE_PRINT_READY") {
+            try {
+              setProcessingStatus("capturing");
+              const iframeWindow = iframe.contentWindow;
+              if (!iframeWindow) {
+                cleanup();
+                reject(new Error("Iframe window not available"));
+                return;
+              }
+              
+              const printContent = iframeWindow.document.getElementById("print-content");
+              if (!printContent) {
+                cleanup();
+                reject(new Error("Print content element not found in iframe"));
+                return;
+              }
+
+              const canvas = await html2canvas(printContent, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: "#ffffff",
+                logging: false
+              });
+
+              const imgData = canvas.toDataURL("image/jpeg", 0.95);
+              
+              const pdf = new jsPDF({
+                orientation: "portrait",
+                unit: "mm",
+                format: "a4"
+              });
+
+              pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+              const pdfBase64 = pdf.output("datauristring").split(",")[1];
+              
               cleanup();
-              reject(new Error("Iframe window not available"));
-              return;
-            }
-            
-            const printContent = iframeWindow.document.getElementById("print-content");
-            if (!printContent) {
+              resolve(pdfBase64);
+            } catch (err) {
               cleanup();
-              reject(new Error("Print content element not found in iframe"));
-              return;
+              reject(err);
             }
-
-            const canvas = await html2canvas(printContent, {
-              scale: 2,
-              useCORS: true,
-              allowTaint: true,
-              backgroundColor: "#ffffff",
-              logging: false
-            });
-
-            const imgData = canvas.toDataURL("image/jpeg", 0.95);
-            
-            const pdf = new jsPDF({
-              orientation: "portrait",
-              unit: "mm",
-              format: "a4"
-            });
-
-            pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
-            const pdfBase64 = pdf.output("datauristring").split(",")[1];
-            
+          } else if (event.data?.type === "ELEAVE_PRINT_ERROR") {
             cleanup();
-            resolve(pdfBase64);
-          } catch (err) {
-            cleanup();
-            reject(err);
+            reject(new Error(event.data.error || "ไม่สามารถโหลดข้อมูลหน้าใบลาใน iframe ได้"));
           }
         }
       };
@@ -231,9 +236,9 @@ export default function ApprovalsPage() {
         let pdfBase64: string | undefined = undefined;
         try {
           pdfBase64 = await generatePdfForRequest(id);
-        } catch (pdfErr) {
+        } catch (pdfErr: any) {
           console.error("Failed to generate PDF client-side:", pdfErr);
-          alert("คำเตือน: อนุมัติสำเร็จแล้ว แต่ไม่สามารถสร้างไฟล์ PDF บนคลาวด์ได้เนื่องจากปัญหาทางเทคนิค");
+          alert(`คำเตือน: อนุมัติสำเร็จแล้ว แต่ไม่สามารถสร้างไฟล์ PDF บนคลาวด์ได้เนื่องจากปัญหาทางเทคนิค\n\nรายละเอียด: ${pdfErr?.message || pdfErr}`);
         }
 
         if (pdfBase64) {
@@ -270,9 +275,9 @@ export default function ApprovalsPage() {
       let pdfBase64: string | undefined = undefined;
       try {
         pdfBase64 = await generatePdfForRequest(id);
-      } catch (pdfErr) {
+      } catch (pdfErr: any) {
         console.error("Failed to generate PDF client-side:", pdfErr);
-        alert("คำเตือน: ปฏิเสธการลาสำเร็จแล้ว แต่ไม่สามารถสร้างไฟล์ PDF บนคลาวด์ได้เนื่องจากปัญหาทางเทคนิค");
+        alert(`คำเตือน: ปฏิเสธการลาสำเร็จแล้ว แต่ไม่สามารถสร้างไฟล์ PDF บนคลาวด์ได้เนื่องจากปัญหาทางเทคนิค\n\nรายละเอียด: ${pdfErr?.message || pdfErr}`);
       }
 
       if (pdfBase64) {

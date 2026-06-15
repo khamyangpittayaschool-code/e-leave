@@ -182,15 +182,23 @@ export default function PrintLeavePage() {
   }, [id]);
   
   useEffect(() => {
-    if (!loading && printData) {
+    if (!loading) {
       if (typeof window !== "undefined" && window.parent && window.parent !== window) {
-        const timer = setTimeout(() => {
-          window.parent.postMessage({ type: "ELEAVE_PRINT_READY", id }, "*");
-        }, 1500);
-        return () => clearTimeout(timer);
+        if (error || !printData) {
+          window.parent.postMessage({
+            type: "ELEAVE_PRINT_ERROR",
+            id,
+            error: error || "ไม่พบข้อมูลใบลาหรือไม่ได้รับอนุญาตให้เข้าถึง"
+          }, "*");
+        } else {
+          const timer = setTimeout(() => {
+            window.parent.postMessage({ type: "ELEAVE_PRINT_READY", id }, "*");
+          }, 1500);
+          return () => clearTimeout(timer);
+        }
       }
     }
-  }, [loading, printData, id]);
+  }, [loading, printData, error, id]);
 
   const handlePrint = () => {
     window.print();
