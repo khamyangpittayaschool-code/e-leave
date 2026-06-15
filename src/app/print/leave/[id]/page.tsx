@@ -191,10 +191,19 @@ export default function PrintLeavePage() {
             error: error || "ไม่พบข้อมูลใบลาหรือไม่ได้รับอนุญาตให้เข้าถึง"
           }, "*");
         } else {
-          const timer = setTimeout(() => {
-            window.parent.postMessage({ type: "ELEAVE_PRINT_READY", id }, "*");
-          }, 1500);
-          return () => clearTimeout(timer);
+          // Wait for fonts to be ready
+          document.fonts.ready.then(() => {
+            const timer = setTimeout(() => {
+              window.parent.postMessage({ type: "ELEAVE_PRINT_READY", id }, "*");
+            }, 1000);
+            return () => clearTimeout(timer);
+          }).catch((fontErr) => {
+            console.error("Failed to wait for fonts ready:", fontErr);
+            const timer = setTimeout(() => {
+              window.parent.postMessage({ type: "ELEAVE_PRINT_READY", id }, "*");
+            }, 1500);
+            return () => clearTimeout(timer);
+          });
         }
       }
     }
@@ -237,6 +246,8 @@ export default function PrintLeavePage() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 font-sans pb-12">
+      {/* Explicitly load Google Fonts Link to make sure it loads inside the iframe immediately */}
+      <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       {/* Control Panel (Hidden during Print) */}
       <div className="no-print sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 py-4 px-6 shadow-sm">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

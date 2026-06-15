@@ -174,6 +174,13 @@ export default function ApprovalsPage() {
                 reject(new Error("Print content element not found in iframe"));
                 return;
               }
+              
+              // Wait for iframe fonts to be ready
+              try {
+                await iframeWindow.document.fonts.ready;
+              } catch (fErr) {
+                console.warn("Iframe fonts ready check failed:", fErr);
+              }
 
               const canvas = await html2canvas(printContent, {
                 scale: 2,
