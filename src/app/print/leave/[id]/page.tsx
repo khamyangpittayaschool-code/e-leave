@@ -306,6 +306,9 @@ export default function PrintLeavePage() {
                 line-height: 1.5 !important;
                 font-size: 11.5pt !important; /* adjusted body font size down to 11.5pt */
                 color: #000 !important;
+                letter-spacing: normal !important;
+                font-feature-settings: "kern" on, "liga" on !important;
+                text-rendering: optimizeLegibility !important;
               }
               
               .print-container h1, .print-container h2, .print-container h3,
@@ -313,6 +316,7 @@ export default function PrintLeavePage() {
               .print-container td, .print-container th {
                 font-family: 'Sarabun', sans-serif !important;
                 color: #000 !important;
+                letter-spacing: normal !important;
               }
 
               /* Convert pixel-based min-widths to pt to scale perfectly with font-size */
