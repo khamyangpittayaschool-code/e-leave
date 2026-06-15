@@ -100,6 +100,8 @@ model SystemSettings {
   actingDirectorTitle    String   @default("รักษาการในตำแหน่งผู้อำนวยการโรงเรียน")
   finalApproverUserIds   String   @default("") // Comma-separated user IDs allowed to give final approval (in addition to ผู้บริหาร)
   showActingDirectorTitle Boolean @default(true) // Toggle display of acting director title on printed forms
+  pdfFont                String   @default("Prompt") // Google Font for leave form: Prompt, Sarabun, Taviraj, Noto Sans Thai, Kanit
+  googleDriveFormat      String   @default("PDF") // Upload format to Google Drive: PDF, JPG
   updatedAt              DateTime @updatedAt
 }
 

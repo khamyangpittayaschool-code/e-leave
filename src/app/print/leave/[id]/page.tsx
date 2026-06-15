@@ -249,7 +249,7 @@ export default function PrintLeavePage() {
       {/* Explicitly load Google Fonts Link to make sure it loads inside the iframe immediately */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" crossOrigin="anonymous" />
+      <link href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(settings?.pdfFont || 'Prompt').replace(/ /g, '+')}:wght@300;400;500;600;700;800&display=swap`} rel="stylesheet" crossOrigin="anonymous" />
       {/* Control Panel (Hidden during Print) */}
       <div className="no-print sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 py-4 px-6 shadow-sm">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -286,10 +286,10 @@ export default function PrintLeavePage() {
         <div className="flex justify-center">
           <div id="print-content" className="print-container bg-white dark:bg-slate-950 text-black border border-slate-300 dark:border-slate-850 pt-[20mm] pb-[15mm] pl-[25mm] pr-[15mm] w-[210mm] min-h-[297mm] shadow-lg relative print:shadow-none print:border-none">
             
-            {/* Embedded styles for Prompt font and exact A4 formatting */}
+            {/* Embedded styles for dynamic font and exact A4 formatting */}
             <style jsx global>{`
               .print-container {
-                font-family: 'Prompt', sans-serif !important;
+                font-family: '${settings?.pdfFont || 'Prompt'}', sans-serif !important;
                 line-height: 1.5 !important;
                 font-size: 11.5pt !important;
                 color: #000 !important;
@@ -301,7 +301,7 @@ export default function PrintLeavePage() {
               .print-container h1, .print-container h2, .print-container h3,
               .print-container p, .print-container div, .print-container span,
               .print-container td, .print-container th {
-                font-family: 'Prompt', sans-serif !important;
+                font-family: '${settings?.pdfFont || 'Prompt'}', sans-serif !important;
                 color: #000 !important;
                 letter-spacing: normal !important;
               }

@@ -31,6 +31,8 @@ export default function SettingsPage() {
   const [customActingDirectorTitle, setCustomActingDirectorTitle] = useState("");
   const [finalApproverUserIds, setFinalApproverUserIds] = useState<string[]>([]);
   const [showActingDirectorTitle, setShowActingDirectorTitle] = useState(true);
+  const [pdfFont, setPdfFont] = useState("Prompt");
+  const [googleDriveFormat, setGoogleDriveFormat] = useState("PDF");
   const [isImpersonating, setIsImpersonating] = useState(false);
   
   const [leaveConfigs, setLeaveConfigs] = useState<any[]>([]);
@@ -86,6 +88,8 @@ export default function SettingsPage() {
           : []
       );
       setShowActingDirectorTitle(data.showActingDirectorTitle !== false);
+      setPdfFont(data.pdfFont || "Prompt");
+      setGoogleDriveFormat(data.googleDriveFormat || "PDF");
     });
 
     getEligibleInspectors().then(setEligibleInspectors);
@@ -111,7 +115,9 @@ export default function SettingsPage() {
         defaultInspectorId: defaultInspectorId || null,
         actingDirectorTitle: actingDirectorTitleType === "custom" ? customActingDirectorTitle : actingDirectorTitleType,
         finalApproverUserIds: finalApproverUserIds.join(","),
-        showActingDirectorTitle
+        showActingDirectorTitle,
+        pdfFont,
+        googleDriveFormat
       });
       alert("บันทึกการตั้งค่าทั่วไปสำเร็จ");
     } catch (error: any) {
@@ -901,6 +907,67 @@ export default function SettingsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* PDF Font & Format Settings */}
+                <div className="border-t border-gray-100 dark:border-gray-800 pt-6 space-y-4">
+                  <h4 className="text-md font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    {lang === "en" ? "Leave Form Font & Upload Format" : "ฟอนต์ใบลา & รูปแบบไฟล์อัปโหลด"}
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {lang === "en" 
+                      ? "Configure the font used on printed leave forms and the file format for Google Drive uploads." 
+                      : "กำหนดฟอนต์ที่ใช้ในแบบฟอร์มใบลา และรูปแบบไฟล์ที่อัปโหลดไปยัง Google Drive"}
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Font Selector */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        {lang === "en" ? "Leave Form Font (Google Fonts)" : "ฟอนต์ใบลา (Google Fonts)"}
+                      </label>
+                      <select
+                        value={pdfFont}
+                        onChange={(e) => setPdfFont(e.target.value)}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                        style={{ fontFamily: `'${pdfFont}', sans-serif` }}
+                      >
+                        <option value="Prompt" style={{ fontFamily: "'Prompt', sans-serif" }}>Prompt</option>
+                        <option value="Sarabun" style={{ fontFamily: "'Sarabun', sans-serif" }}>Sarabun</option>
+                        <option value="Taviraj" style={{ fontFamily: "'Taviraj', sans-serif" }}>Taviraj (Serif)</option>
+                        <option value="Noto Sans Thai" style={{ fontFamily: "'Noto Sans Thai', sans-serif" }}>Noto Sans Thai</option>
+                        <option value="Kanit" style={{ fontFamily: "'Kanit', sans-serif" }}>Kanit</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {lang === "en" ? "Preview: " : "ตัวอย่าง: "}
+                        <span style={{ fontFamily: `'${pdfFont}', sans-serif`, fontSize: '14px' }}>
+                          กขค ใบลา สวัสดีครับ ABC 123
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Format Selector */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        {lang === "en" ? "Google Drive Upload Format" : "รูปแบบไฟล์ใน Google Drive"}
+                      </label>
+                      <select
+                        value={googleDriveFormat}
+                        onChange={(e) => setGoogleDriveFormat(e.target.value)}
+                        className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                      >
+                        <option value="PDF">PDF (.pdf)</option>
+                        <option value="JPG">JPG (.jpg)</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {lang === "en" 
+                          ? "JPG may display Thai text better in some cases" 
+                          : "JPG อาจแสดงตัวอักษรไทยได้ดีกว่าในบางกรณี"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="border-t border-gray-100 dark:border-gray-800 pt-6 space-y-4">
                   <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-2">{lang === "en" ? "General Restrictions" : "ข้อจำกัดทั่วไป"}</h4>
                   <div>

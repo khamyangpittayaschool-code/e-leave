@@ -121,6 +121,8 @@ export async function updateSystemSettings(data: {
   actingDirectorTitle?: string;
   finalApproverUserIds?: string;
   showActingDirectorTitle?: boolean;
+  pdfFont?: string;
+  googleDriveFormat?: string;
 }) {
   await requireHROrAdmin();
 
@@ -142,6 +144,8 @@ export async function updateSystemSettings(data: {
       actingDirectorTitle: data.actingDirectorTitle !== undefined ? data.actingDirectorTitle : undefined,
       finalApproverUserIds: data.finalApproverUserIds !== undefined ? data.finalApproverUserIds : undefined,
       showActingDirectorTitle: data.showActingDirectorTitle !== undefined ? data.showActingDirectorTitle : undefined,
+      pdfFont: data.pdfFont !== undefined ? data.pdfFont : undefined,
+      googleDriveFormat: data.googleDriveFormat !== undefined ? data.googleDriveFormat : undefined,
     },
     create: {
       id: "default",
@@ -160,6 +164,8 @@ export async function updateSystemSettings(data: {
       actingDirectorTitle: data.actingDirectorTitle || "รักษาการในตำแหน่งผู้อำนวยการโรงเรียน",
       finalApproverUserIds: data.finalApproverUserIds || "",
       showActingDirectorTitle: data.showActingDirectorTitle !== undefined ? data.showActingDirectorTitle : true,
+      pdfFont: data.pdfFont || "Prompt",
+      googleDriveFormat: data.googleDriveFormat || "PDF",
       footerText: "© 2006 Panchapon Getrat KP-school",
       developerSecret: "admin1234"
     }

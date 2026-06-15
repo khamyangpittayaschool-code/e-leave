@@ -105,6 +105,7 @@ const renderDocumentLinks = (documentUrl: string) => {
 export default function HistoryPage() {
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.position === "แอดมิน";
+  const isHR = (session?.user as any)?.position === "หัวหน้างานบุคคล";
   
   const searchParams = useSearchParams();
   const cycleParam = searchParams.get("cycle") || "all";
@@ -542,7 +543,7 @@ export default function HistoryPage() {
                               {t("cancelLeave")}
                             </button>
                           )}
-                          {isAdmin && (
+                          {(isAdmin || isHR) && (
                             <button
                               onClick={() => handleDelete(item.id, getLeaveTypeName(item.type), item.userName || (selectedUserId === "me" ? (session?.user as any)?.name : staffList.find(s => s.id === selectedUserId)?.name) || "ผู้ยื่นคำขอ")}
                               className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"

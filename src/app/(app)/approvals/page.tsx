@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "@/lib/auth-client";
 import { getPendingApprovals, approveLeaveRequest, rejectLeaveRequest, uploadLeavePdf } from "@/app/actions/leave";
+import { getSystemSettings } from "@/app/actions/settings";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
@@ -128,6 +129,7 @@ export default function ApprovalsPage() {
   const { t, lang } = useI18n();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const [settings, setSettings] = useState<any>(null);
 
   const loadData = () => {
     setLoading(true);
@@ -137,25 +139,29 @@ export default function ApprovalsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    getSystemSettings().then(setSettings).catch(console.error);
+  }, []);
 
   useEffect(() => {
-    // Force load Prompt font with Thai character range in the parent window so html2canvas can render it properly
+    // Force load the configured font with Thai character range in the parent window so html2canvas can render it properly
+    const fontName = settings?.pdfFont || "Prompt";
     if (typeof window !== "undefined" && document.fonts) {
-      document.fonts.load("12px Prompt", "กขคไทยใบลาอนุมัติ").then(() => {
-        console.log("Prompt Thai subset loaded in parent window");
+      document.fonts.load(`12px ${fontName}`, "กขคไทยใบลาอนุมัติ").then(() => {
+        console.log(`${fontName} Thai subset loaded in parent window`);
       }).catch((err) => {
-        console.warn("Failed to load Prompt font in parent window:", err);
+        console.warn(`Failed to load ${fontName} font in parent window:`, err);
       });
     }
-  }, []);
+  }, [settings?.pdfFont]);
 
   const getLeaveTypeName = (type: string) => {
     const map: Record<string, string> = { SICK: t("sickLeave"), PERSONAL: t("personalLeave"), VACATION: t("vacationLeave") };
     return map[type] || type;
   };
 
-  const generatePdfForRequest = (id: string): Promise<string> => {
+  const generatePdfForRequest = (id: string): Promise<{ base64: string; mimeType: string }> => {
     return new Promise((resolve, reject) => {
       const iframe = document.createElement("iframe");
       iframe.style.position = "fixed";
@@ -187,10 +193,13 @@ export default function ApprovalsPage() {
               }
               
               // Wait for both parent and iframe fonts to be ready
+              const fontName = settings?.pdfFont || "Prompt";
               try {
                 await Promise.all([
                   document.fonts.ready,
-                  iframeWindow.document.fonts.ready
+                  iframeWindow.document.fonts.ready,
+                  document.fonts.load(`12px ${fontName}`, "กขคไทยใบลาอนุมัติ"),
+                  iframeWindow.document.fonts.load(`12px ${fontName}`, "กขคไทยใบลาอนุมัติ")
                 ]);
               } catch (fErr) {
                 console.warn("Fonts ready check failed:", fErr);
@@ -230,19 +239,28 @@ export default function ApprovalsPage() {
                 logging: false
               });
 
+              const useJpg = settings?.googleDriveFormat === "JPG";
               const imgData = canvas.toDataURL("image/jpeg", 0.95);
-              
-              const pdf = new jsPDF({
-                orientation: "portrait",
-                unit: "mm",
-                format: "a4"
-              });
 
-              pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
-              const pdfBase64 = pdf.output("datauristring").split(",")[1];
-              
-              cleanup();
-              resolve(pdfBase64);
+              if (useJpg) {
+                // Upload as JPG directly
+                const jpgBase64 = imgData.split(",")[1];
+                cleanup();
+                resolve({ base64: jpgBase64, mimeType: "image/jpeg" });
+              } else {
+                // Convert to PDF (default)
+                const pdf = new jsPDF({
+                  orientation: "portrait",
+                  unit: "mm",
+                  format: "a4"
+                });
+
+                pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+                const pdfBase64 = pdf.output("datauristring").split(",")[1];
+                
+                cleanup();
+                resolve({ base64: pdfBase64, mimeType: "application/pdf" });
+              }
             } catch (err) {
               cleanup();
               reject(err);
@@ -280,17 +298,17 @@ export default function ApprovalsPage() {
       
       if (res?.newStatus === "APPROVED") {
         setProcessingStatus("loading_iframe");
-        let pdfBase64: string | undefined = undefined;
+        let result: { base64: string; mimeType: string } | undefined = undefined;
         try {
-          pdfBase64 = await generatePdfForRequest(id);
+          result = await generatePdfForRequest(id);
         } catch (pdfErr: any) {
           console.error("Failed to generate PDF client-side:", pdfErr);
           alert(`คำเตือน: อนุมัติสำเร็จแล้ว แต่ไม่สามารถสร้างไฟล์ PDF บนคลาวด์ได้เนื่องจากปัญหาทางเทคนิค\n\nรายละเอียด: ${pdfErr?.message || pdfErr}`);
         }
 
-        if (pdfBase64) {
+        if (result) {
           setProcessingStatus("uploading");
-          await uploadLeavePdf(id, pdfBase64, false);
+          await uploadLeavePdf(id, result.base64, false, result.mimeType);
         }
       }
 
@@ -319,17 +337,17 @@ export default function ApprovalsPage() {
       await rejectLeaveRequest(id, trimmedReason, undefined, true);
 
       setProcessingStatus("loading_iframe");
-      let pdfBase64: string | undefined = undefined;
+      let result: { base64: string; mimeType: string } | undefined = undefined;
       try {
-        pdfBase64 = await generatePdfForRequest(id);
+        result = await generatePdfForRequest(id);
       } catch (pdfErr: any) {
         console.error("Failed to generate PDF client-side:", pdfErr);
         alert(`คำเตือน: ปฏิเสธการลาสำเร็จแล้ว แต่ไม่สามารถสร้างไฟล์ PDF บนคลาวด์ได้เนื่องจากปัญหาทางเทคนิค\n\nรายละเอียด: ${pdfErr?.message || pdfErr}`);
       }
 
-      if (pdfBase64) {
+      if (result) {
         setProcessingStatus("uploading");
-        await uploadLeavePdf(id, pdfBase64, true);
+        await uploadLeavePdf(id, result.base64, true, result.mimeType);
       }
 
       window.dispatchEvent(new Event("noti-refresh"));

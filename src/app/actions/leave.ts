@@ -268,7 +268,7 @@ export async function getMyLeaveHistory(cycleFilter: "current" | "cycle1" | "cyc
   const session = await getSession();
   const user = session.user as any;
 
-  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
+  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "รองผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
 
   const whereClause: any = {};
   
@@ -315,7 +315,7 @@ export async function getMyLeaveHistory(cycleFilter: "current" | "cycle1" | "cyc
 export async function getStaffList() {
   const session = await getSession();
   const user = session.user as any;
-  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
+  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "รองผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
   if (!isPrivileged) {
     return [];
   }
@@ -1634,7 +1634,7 @@ export async function getBatchLeaveRequestsForPrint(
   return results;
 }
 
-export async function uploadLeavePdf(id: string, pdfBase64: string, isRejected: boolean) {
+export async function uploadLeavePdf(id: string, pdfBase64: string, isRejected: boolean, mimeType?: string) {
   const session = await getSession();
   
   const uploadUrl = process.env.GOOGLE_DRIVE_UPLOAD_URL;
@@ -1673,6 +1673,9 @@ export async function uploadLeavePdf(id: string, pdfBase64: string, isRejected: 
     ? `${fy}-REJ-${formattedSeq}-${cleanName}-${leaveLabel}`
     : `${fy}-${formattedSeq}-${cleanName}-${leaveLabel}`;
 
+  const actualMimeType = mimeType || "application/pdf";
+  const fileExtension = actualMimeType === "image/jpeg" ? ".jpg" : ".pdf";
+
   try {
     const res = await fetch(uploadUrl, {
       method: "POST",
@@ -1680,8 +1683,9 @@ export async function uploadLeavePdf(id: string, pdfBase64: string, isRejected: 
       body: JSON.stringify({
         action: "upload_base64",
         secret: secret,
-        filename: filename,
-        fileBase64: pdfBase64
+        filename: filename + fileExtension,
+        fileBase64: pdfBase64,
+        mimeType: actualMimeType
       })
     });
     
