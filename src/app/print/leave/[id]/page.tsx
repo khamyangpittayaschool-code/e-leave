@@ -629,47 +629,47 @@ export default function PrintLeavePage() {
 
                   {/* Leave Dates */}
                   <div className="w-full text-justify leading-relaxed mt-1.5">
-                    <span>ตั้งแต่วันที่ </span>
+                    <span>ตั้งแต่วันที่&nbsp;</span>
                     <span className="form-line-dotted w-10 text-center">{getThaiDay(request.startDate)}</span>
-                    <span> เดือน </span>
+                    <span>&nbsp;เดือน&nbsp;</span>
                     <span className="form-line-dotted w-28 text-center">{getThaiMonth(request.startDate)}</span>
-                    <span> พ.ศ. </span>
+                    <span>&nbsp;พ.ศ.&nbsp;</span>
                     <span className="form-line-dotted w-14 text-center">{getThaiYear(request.startDate)}</span>
-                    <span> ถึงวันที่ </span>
+                    <span>&nbsp;ถึงวันที่&nbsp;</span>
                     <span className="form-line-dotted w-10 text-center">{getThaiDay(request.endDate)}</span>
-                    <span> เดือน </span>
+                    <span>&nbsp;เดือน&nbsp;</span>
                     <span className="form-line-dotted w-28 text-center">{getThaiMonth(request.endDate)}</span>
-                    <span> พ.ศ. </span>
+                    <span>&nbsp;พ.ศ.&nbsp;</span>
                     <span className="form-line-dotted w-14 text-center">{getThaiYear(request.endDate)}</span>
-                    <span> มีกำหนด </span>
+                    <span>&nbsp;มีกำหนด&nbsp;</span>
                     <span className="form-line-dotted w-12 text-center font-bold">{request.days}</span>
-                    <span> วัน</span>
+                    <span>&nbsp;วัน</span>
                   </div>
 
                   {/* Last Leave History */}
                   <div className="w-full text-justify leading-relaxed mt-1.5">
-                    <span>ข้าพเจ้าได้ลา </span>
+                    <span>ข้าพเจ้าได้ลา&nbsp;</span>
                     <span className="form-line-dotted text-center font-bold min-w-[120px]">
                       {lastLeaveInfo ? getLeaveTypeName(lastLeaveInfo.type) : "-"}
                     </span>
-                    <span> ครั้งสุดท้ายตั้งแต่วันที่ </span>
+                    <span>&nbsp;ครั้งสุดท้ายตั้งแต่วันที่&nbsp;</span>
                     <span className="form-line-dotted w-10 text-center">{lastLeaveInfo ? getThaiDay(lastLeaveInfo.startDate) : "-"}</span>
-                    <span> เดือน </span>
+                    <span>&nbsp;เดือน&nbsp;</span>
                     <span className="form-line-dotted w-28 text-center">{lastLeaveInfo ? getThaiMonth(lastLeaveInfo.startDate) : "-"}</span>
-                    <span> พ.ศ. </span>
+                    <span>&nbsp;พ.ศ.&nbsp;</span>
                     <span className="form-line-dotted w-14 text-center">{lastLeaveInfo ? getThaiYear(lastLeaveInfo.startDate) : "-"}</span>
                   </div>
 
                   <div className="w-full text-justify leading-relaxed mt-1.5">
-                    <span>ถึงวันที่ </span>
+                    <span>ถึงวันที่&nbsp;</span>
                     <span className="form-line-dotted w-10 text-center">{lastLeaveInfo ? getThaiDay(lastLeaveInfo.endDate) : "-"}</span>
-                    <span> เดือน </span>
+                    <span>&nbsp;เดือน&nbsp;</span>
                     <span className="form-line-dotted w-28 text-center">{lastLeaveInfo ? getThaiMonth(lastLeaveInfo.endDate) : "-"}</span>
-                    <span> พ.ศ. </span>
+                    <span>&nbsp;พ.ศ.&nbsp;</span>
                     <span className="form-line-dotted w-14 text-center">{lastLeaveInfo ? getThaiYear(lastLeaveInfo.endDate) : "-"}</span>
-                    <span> มีกำหนด </span>
+                    <span>&nbsp;มีกำหนด&nbsp;</span>
                     <span className="form-line-dotted w-12 text-center">{lastLeaveInfo ? lastLeaveInfo.days : "-"}</span>
-                    <span> วัน</span>
+                    <span>&nbsp;วัน</span>
                   </div>
 
                   {/* Contact Info */}
