@@ -140,10 +140,10 @@ export default function ApprovalsPage() {
   useEffect(() => { loadData(); }, []);
 
   useEffect(() => {
-    // Force load Sarabun font in the parent window so html2canvas can render it properly
+    // Force load Sarabun font with Thai character range in the parent window so html2canvas can render it properly
     if (typeof window !== "undefined" && document.fonts) {
-      document.fonts.load("12px Sarabun").then(() => {
-        console.log("Sarabun font loaded in parent window");
+      document.fonts.load("12px Sarabun", "กขคไทยใบลาอนุมัติ").then(() => {
+        console.log("Sarabun Thai subset loaded in parent window");
       }).catch((err) => {
         console.warn("Failed to load Sarabun font in parent window:", err);
       });
@@ -186,11 +186,14 @@ export default function ApprovalsPage() {
                 return;
               }
               
-              // Wait for iframe fonts to be ready
+              // Wait for both parent and iframe fonts to be ready
               try {
-                await iframeWindow.document.fonts.ready;
+                await Promise.all([
+                  document.fonts.ready,
+                  iframeWindow.document.fonts.ready
+                ]);
               } catch (fErr) {
-                console.warn("Iframe fonts ready check failed:", fErr);
+                console.warn("Fonts ready check failed:", fErr);
               }
 
               // Clean up styles to prevent html2canvas oklch/lab parsing error
