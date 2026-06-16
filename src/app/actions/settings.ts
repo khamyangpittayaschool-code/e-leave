@@ -44,25 +44,72 @@ async function requireHROrAdmin() {
 }
 
 export async function getSystemSettings() {
-  let settings = await prisma.systemSettings.findUnique({
-    where: { id: "default" }
-  });
-
-  if (!settings) {
-    settings = await prisma.systemSettings.create({
-      data: {
-        id: "default",
-        schoolName: "ชื่อโรงเรียน",
-        subheader: "ระบบจัดการการลา",
-        footerText: "© 2006 Panchapon Getrat KP-school",
-        developerSecret: "admin1234"
-      }
+  try {
+    let settings = await prisma.systemSettings.findUnique({
+      where: { id: "default" }
     });
-  }
 
-  // Don't send developerSecret to the client
-  const { developerSecret, ...safeSettings } = settings;
-  return safeSettings;
+    if (!settings) {
+      settings = await prisma.systemSettings.create({
+        data: {
+          id: "default",
+          schoolName: "ชื่อโรงเรียน",
+          subheader: "ระบบจัดการการลา",
+          footerText: "© 2006 Panchapon Getrat KP-school",
+          developerSecret: "admin1234"
+        }
+      });
+    }
+
+    // Don't send developerSecret to the client
+    const { developerSecret, ...safeSettings } = settings;
+    return {
+      ...safeSettings,
+      // Ensure new fields have defaults even if DB column doesn't exist yet
+      pdfFont: (safeSettings as any).pdfFont || "Prompt",
+      googleDriveFormat: (safeSettings as any).googleDriveFormat || "PDF",
+    };
+  } catch (err: any) {
+    // Fallback: if query fails due to missing columns, try raw query
+    console.error("getSystemSettings error, trying fallback:", err?.message);
+    try {
+      const rows: any[] = await prisma.$queryRaw`SELECT * FROM "SystemSettings" WHERE id = 'default' LIMIT 1`;
+      if (rows && rows.length > 0) {
+        const row = rows[0];
+        const { developerSecret, ...safeRow } = row;
+        return {
+          ...safeRow,
+          pdfFont: row.pdfFont || "Prompt",
+          googleDriveFormat: row.googleDriveFormat || "PDF",
+        };
+      }
+    } catch (rawErr) {
+      console.error("Raw query fallback also failed:", rawErr);
+    }
+    // Ultimate fallback - return minimal defaults so the page can still render
+    return {
+      id: "default",
+      schoolName: "ชื่อโรงเรียน",
+      affiliation: "สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาอุดรธานี",
+      subheader: "ระบบจัดการการลา",
+      logoUrl: null,
+      footerText: "© 2006 Panchapon Getrat KP-school",
+      lineChannelAccessToken: null,
+      lineTargetGroupId: null,
+      enableLineNotify: true,
+      leaveRules: "",
+      requirePersonalAdvance: true,
+      memoThresholdTimes: 6,
+      memoThresholdDays: 15,
+      defaultInspectorId: null,
+      actingDirectorTitle: "รักษาการในตำแหน่งผู้อำนวยการโรงเรียน",
+      finalApproverUserIds: "",
+      showActingDirectorTitle: true,
+      pdfFont: "Prompt",
+      googleDriveFormat: "PDF",
+      updatedAt: new Date(),
+    };
+  }
 }
 
 export async function getEligibleInspectors() {
