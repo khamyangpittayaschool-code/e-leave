@@ -356,7 +356,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isAdmin || user.position === "หัวหน้างานบุคคล" || user.position === "เจ้าหน้าที่บุคคล") {
+  if (isAdmin || user.position === "หัวหน้างานบุคคล" || user.position === "เจ้าหน้าที่บุคคล" || user.position === "ผู้ตรวจสอบ") {
     navItems.push({ href: "/settings", label: t("settings"), icon: Settings });
   }
 

@@ -268,7 +268,7 @@ export async function getMyLeaveHistory(cycleFilter: "current" | "cycle1" | "cyc
   const session = await getSession();
   const user = session.user as any;
 
-  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "รองผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
+  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "รองผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้ตรวจสอบ"].includes(user.position);
 
   const whereClause: any = {};
   
@@ -315,7 +315,7 @@ export async function getMyLeaveHistory(cycleFilter: "current" | "cycle1" | "cyc
 export async function getStaffList() {
   const session = await getSession();
   const user = session.user as any;
-  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "รองผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล"].includes(user.position);
+  const isPrivileged = user.role === "ADMIN" || ["แอดมิน", "ผู้อำนวยการ", "รองผู้อำนวยการ", "หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้ตรวจสอบ"].includes(user.position);
   if (!isPrivileged) {
     return [];
   }

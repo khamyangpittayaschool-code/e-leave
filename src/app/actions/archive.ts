@@ -20,6 +20,20 @@ async function requireAdmin() {
   return session;
 }
 
+async function requirePrivilegedLeaveBackup() {
+  const session = await getSession();
+  if (!session || !session.user) {
+    throw new Error("Unauthorized");
+  }
+  const user = session.user as any;
+  const isAdmin = user.role === "ADMIN" || user.position === "แอดมิน";
+  const isPrivileged = isAdmin || ["หัวหน้างานบุคคล", "เจ้าหน้าที่บุคคล", "ผู้ตรวจสอบ"].includes(user.position);
+  if (!isPrivileged) {
+    throw new Error("Unauthorized");
+  }
+  return session;
+}
+
 /**
  * Archive the current leave cycle.
  * Takes a snapshot of all user's quotas and used days, saves to LeaveArchive,
@@ -254,7 +268,7 @@ export async function importBackupFromJson(jsonString: string) {
  * Includes: all leave requests (with user name/email), leave configs, and metadata.
  */
 export async function exportLeaveBackup() {
-  const session = await requireAdmin();
+  const session = await requirePrivilegedLeaveBackup();
   const { getLeaveCycleFilter } = await import("@/lib/cycle");
   const cycle = getLeaveCycleFilter(new Date(), "year");
 
@@ -331,7 +345,7 @@ export async function exportLeaveBackup() {
  * Restores leave requests and optionally updates leave configs.
  */
 export async function importLeaveBackup(jsonString: string, mode: "merge" | "replace" = "merge") {
-  const session = await requireAdmin();
+  const session = await requirePrivilegedLeaveBackup();
   let backup;
   try {
     backup = JSON.parse(jsonString);
