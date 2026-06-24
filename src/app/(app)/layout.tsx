@@ -25,7 +25,8 @@ import {
   Users,
   Activity,
   Archive,
-  Bell
+  Bell,
+  BookOpen
 } from "lucide-react";
 
 function ToolbarButtons({ isAdmin, isApprover }: { isAdmin: boolean; isApprover: boolean }) {
@@ -358,6 +359,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
   if (isAdmin || user.position === "หัวหน้างานบุคคล" || user.position === "เจ้าหน้าที่บุคคล") {
     navItems.push({ href: "/settings", label: t("settings"), icon: Settings });
   }
+
+  navItems.push({ href: "/manual", label: t("userManual"), icon: BookOpen });
 
   const isImpersonating = user.isActualAdmin === true && (user.role !== "ADMIN" && user.position !== "แอดมิน");
 

@@ -16,6 +16,7 @@ const translations = {
     users: "จัดการผู้ใช้",
     logs: "บันทึกระบบ",
     settings: "ตั้งค่า",
+    userManual: "คู่มือการใช้งาน",
     logout: "ออกจากระบบ",
     // Dashboard
     welcomeBack: "ยินดีต้อนรับ",
@@ -529,6 +530,7 @@ const translations = {
     users: "Users",
     logs: "System Logs",
     settings: "Settings",
+    userManual: "User Manual",
     logout: "Log out",
     // Dashboard
     welcomeBack: "Welcome back",
