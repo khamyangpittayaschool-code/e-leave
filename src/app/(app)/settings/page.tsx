@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from "react";
 import { getSystemSettings, updateSystemSettings, updateFooter, generateBackup, getLeaveConfigs, updateLeaveConfig, updateLeaveRules, setImpersonationCookie, clearImpersonation, getEligibleInspectors, updateDefaultInspector, getSimpleUsersList } from "@/app/actions/settings";
 import { archiveCurrentCycle, importBackupFromJson, exportLeaveBackup, importLeaveBackup, importLeaveSimple, getImportHistory, undoImportLeave } from "@/app/actions/archive";
@@ -379,6 +379,70 @@ export default function SettingsPage() {
       alert(`犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ犧ｪ犧ｳ犹犧｣犹�ｸ�!\n\n犧巵ｸｵ犧�ｸ壟ｸ巵ｸ｣犧ｰ犧｡犧ｲ犧�: ${parsed.fiscalYear}\n犧謂ｸｳ犧吭ｸｧ犧吭ｸ伶ｸｱ犹霞ｸ�ｸｫ犧｡犧�: ${parsed.summary.totalRequests} 犧｣犧ｲ犧｢犧≒ｸｲ犧｣\n犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ: ${parsed.summary.approved} | 犧巵ｸ鐘ｸｴ犹犧ｪ犧�: ${parsed.summary.rejected} | 犧｣犧ｭ犧扉ｸｳ犹犧吭ｸｴ犧吭ｸ≒ｸｲ犧｣: ${parsed.summary.pending}`);
     } catch (error: any) {
       alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧�: " + (error.message || "犹�ｸ｡犹謂ｸｪ犧ｲ犧｡犧ｲ犧｣犧籾ｸｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犹�ｸ扉ｹ�"));
+    } finally {
+      setIsExportingLeave(false);
+    }
+  };
+
+  const handleExportLeaveExcel = async () => {
+    setIsExportingLeave(true);
+    try {
+      const backupString = await exportLeaveBackup();
+      const parsed = JSON.parse(backupString);
+      const leaveRequests = parsed.leaveRequests || [];
+      const configs = parsed.leaveConfigs || [];
+
+      // Create a map of Leave Type EN -> TH name for better human editing
+      const typeMap: Record<string, string> = {};
+      configs.forEach((c: any) => {
+        typeMap[c.type] = c.name; // e.g. SICK -> "ลาป่วย"
+      });
+
+      // Prepare Excel rows
+      const rows = leaveRequests.map((r: any) => ({
+        "Email (อีเมล)": r.userEmail,
+        "User Name (ชื่อ-นามสกุล)": r.userName,
+        "Position (ตำแหน่ง)": r.userPosition || "",
+        "Subject Group (กลุ่มสาระฯ/ฝ่าย)": r.userSubjectGroup || "",
+        "Leave Type (ประเภทการลา)": typeMap[r.type] || r.type,
+        "Start Date (วันที่เริ่ม YYYY-MM-DD)": r.startDate ? r.startDate.split("T")[0] : "",
+        "End Date (วันที่สิ้นสุด YYYY-MM-DD)": r.endDate ? r.endDate.split("T")[0] : "",
+        "Reason (เหตุผล)": r.reason || "",
+        "Status (สถานะ)": r.status || "",
+        "Attachment URL (เอกสารแนบ)": r.documentUrl || "",
+      }));
+
+      // Create sheet
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Leave Data");
+
+      // We can also create a second sheet containing Leave Configs/Quotas for reference!
+      const configRows = configs.map((c: any) => ({
+        "Type (ประเภทการลา - ภาษาอังกฤษ)": c.type,
+        "Name (ชื่อประเภทการลา - ภาษาไทย)": c.name,
+        "Max Days (จำนวนวันลาสูงสุด)": c.maxDaysPerYear,
+        "Warning Threshold (เตือนเมื่อวันเหลือต่ำกว่า)": c.warningThreshold,
+      }));
+      const configSheet = XLSX.utils.json_to_sheet(configRows);
+      XLSX.utils.book_append_sheet(workbook, configSheet, "Leave Configs");
+
+      // Generate buffer and download
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = new Date().toISOString().split("T")[0];
+      a.href = url;
+      a.download = `eleave-leave-data-${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast("success", lang === "en" ? "Leave data exported as Excel successfully!" : `สำรองข้อมูลการลาแบบ Excel สำเร็จ!\n\nปีงบประมาณ: ${parsed.fiscalYear}\nจำนวนทั้งหมด: ${parsed.summary.totalRequests} รายการ`);
+    } catch (error: any) {
+      showToast("error", lang === "en" ? "Failed to export Excel" : "เกิดข้อผิดพลาด: " + (error.message || "ไม่สามารถสำรองข้อมูลได้"));
     } finally {
       setIsExportingLeave(false);
     }
