@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from "react";
 import { getSystemSettings, updateSystemSettings, updateFooter, generateBackup, getLeaveConfigs, updateLeaveConfig, updateLeaveRules, setImpersonationCookie, clearImpersonation, getEligibleInspectors, updateDefaultInspector, getSimpleUsersList } from "@/app/actions/settings";
 import { archiveCurrentCycle, importBackupFromJson, exportLeaveBackup, importLeaveBackup, importLeaveSimple } from "@/app/actions/archive";
@@ -827,6 +827,7 @@ export default function SettingsPage() {
                 {isUploading ? t("uploading") : (lang === "en" ? "Manage Logo" : "จัดการโลโก้")}
               </button>
               <p className="text-xs text-gray-500 mt-2">{lang === "en" ? "Supports PNG, JPG max 2MB" : "รองรับ PNG, JPG ขนาดไม่เกิน 2MB"}</p>
+            </div>
           </div>
         </div>
 
