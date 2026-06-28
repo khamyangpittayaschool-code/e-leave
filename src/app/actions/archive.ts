@@ -702,7 +702,7 @@ export async function getImportHistory() {
 
     const userMap: Record<string, string> = {};
     users.forEach(u => {
-      userMap[u.id] = u.name;
+      userMap[u.id] = u.name || "";
     });
 
     const logsWithUser = logs.map(l => ({
