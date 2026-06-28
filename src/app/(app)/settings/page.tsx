@@ -1,481 +1,4 @@
-"use client";
-}
-  const downloadErrorCSV = () => {
-    if (invalidRecords.length === 0) return;
-    const header = "แถวในไฟล์,Username,วันที่เริ่ม,วันที่สิ้นสุด,ประเภท,เหตุผล,ข้อผิดพลาด\\n";
-    const rows = invalidRecords.map(r => 
-      `"${r.rowNum}","${r.username || ""}","${r.startDate || ""}","${r.endDate || ""}","${r.type || ""}","${r.reason || ""}","${r.errors.join("; ")}"`
-    ).join("\\n");
-    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), header + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `eleave_import_errors_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const executeFinalImport = async () => {
-    setIsImportingLeave(true);
-    try {
-      const result = await importLeaveSimple(validRecords, importLeaveMode);
-      if (result.success) {
-        setImportLeaveResult(result);
-        setLastImportedIds(result.createdIds || []);
-        setImportStage("summary");
-        showToast("success", lang === "en" ? `Imported ${result.imported} records successfully` : `นำเข้าข้อมูลการลาสำเร็จ ${result.imported} รายการ`);
-        getImportHistory().then(setImportHistory);
-      } else {
-        showToast("error", "เกิดข้อผิดพลาดในการนำเข้า");
-      }
-    } catch (err: any) {
-      showToast("error", err.message);
-    } finally {
-      setIsImportingLeave(false);
-    }
-  };
-
-  const handleUndoLastImport = async () => {
-    if (lastImportedIds.length === 0) return;
-    if (!confirm(lang === "en" ? "Are you sure you want to undo the last import? All imported records will be deleted." : "คุณแน่ใจหรือไม่ว่าต้องการย้อนกลับการนำเข้าครั้งล่าสุด? รายการลาทั้งหมดที่นำเข้ามาจะถูกลบออก")) return;
-    
-    try {
-      const res = await undoImportLeave(lastImportedIds);
-      if (res.success) {
-        showToast("success", lang === "en" ? `Undo success. Deleted ${res.count} records.` : `ย้อนกลับสำเร็จ ลบรายการที่นำเข้าแล้ว ${res.count} รายการ`);
-        setLastImportedIds([]);
-        getImportHistory().then(setImportHistory);
-      } else {
-        showToast("error", res.error || "ไม่สามารถย้อนกลับได้");
-      }
-    } catch (err: any) {
-      showToast("error", err.message);
-    }
-  };
-
-  const renderBackupSection = () => (
-    <div className="space-y-6">
-      <SectionHeader title={sectionTitles.backup} />
-
-      {/* Floating Undo Import Banner */}
-      {lastImportedIds.length > 0 && (
-        <div className="p-4 bg-indigo-600 dark:bg-indigo-700 text-white rounded-2xl shadow-lg border border-indigo-500 flex items-center justify-between animate-fade-in print:hidden">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
-            <span className="text-sm font-semibold">
-              {lang === "en" ? `Imported successfully. Selected ${lastImportedIds.length} records.` : `นำเข้าข้อมูลเรียบร้อยแล้ว จำนวน ${lastImportedIds.length} รายการ`}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleUndoLastImport}
-            className="px-4 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs shadow-sm transition-all active:scale-95"
-          >
-            {lang === "en" ? "↩️ Undo Import" : "↩️ ย้อนกลับการนำเข้า"}
-          </button>
-        </div>
-      )}
-
-      {/* System Backup - Admin Only */}
-      {isAdmin && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800 relative overflow-hidden">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
-            <DownloadCloud className="w-5 h-5 text-teal-500" />
-            {t("systemBackup") || "ระบบสำรองข้อมูล"}
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
-            {t("systemBackupDesc") || "สำรองข้อมูลการตั้งค่าและประวัติทั้งหมด"}
-          </p>
-          
-          <div className="space-y-3">
-            <button
-              onClick={handleBackup}
-              disabled={isBackingUp}
-              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-teal-50 hover:bg-teal-100 dark:bg-teal-500/10 dark:hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-900/50 font-semibold text-sm transition-all disabled:opacity-50"
-            >
-              <DownloadCloud className="w-4 h-4" />
-              {isBackingUp ? t("creatingBackup") : t("exportBackup")}
-            </button>
-
-            <label className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-teal-200 dark:border-teal-900/50 text-teal-600 dark:text-teal-400 font-semibold hover:bg-teal-50/50 dark:hover:bg-teal-950/20 cursor-pointer transition-all disabled:opacity-50 text-xs">
-              <UploadCloud className="w-4 h-4" />
-              {isImporting ? t("importingData") : t("importBackup")}
-              <input type="file" accept=".json" className="hidden" onChange={handleImportBackup} disabled={isImporting} />
-            </label>
-          </div>
-        </div>
-      )}
-
-      {/* Leave Data Backup / Premium Wizard */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800 relative overflow-hidden">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-start gap-2 mb-2">
-          <Database className="w-5 h-5 text-purple-500 mt-1 shrink-0" />
-          <div>
-            <span className="block">{lang === "th" ? "จัดการนำเข้าและสำรองข้อมูลวันลา" : "Leave Data Import & Export"}</span>
-            <span className="block text-xs font-semibold text-slate-400 dark:text-slate-500 mt-0.5">
-              (Leave Data Management Wizard)
-            </span>
-          </div>
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
-          {lang === "en"
-            ? "Export leave data as JSON/Excel/CSV or use the drag & drop area to upload and preview data before importing."
-            : "นำออกข้อมูลการลาเป็นไฟล์รูปแบบต่างๆ หรือลากไฟล์มาวางเพื่อจำลองตรวจสอบข้อมูล (Preview) ก่อนยืนยันนำเข้าเข้าระบบจริง"}
-        </p>
-        
-        <div className="space-y-4">
-          {/* Export Buttons */}
-          {importStage === "idle" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <button
-                onClick={handleExportLeave}
-                disabled={isExportingLeave}
-                className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900/50 font-bold text-sm transition-all disabled:opacity-50"
-              >
-                <div className="flex items-center gap-1.5 justify-center">
-                  <FileJson className="w-4 h-4 shrink-0" />
-                  <span>{isExportingLeave ? (lang === "en" ? "Exporting JSON..." : "กำลังส่งออก JSON...") : (lang === "en" ? "Export (JSON)" : "ส่งออกข้อมูล (JSON)")}</span>
-                </div>
-              </button>
-              <button
-                onClick={handleExportLeaveExcel}
-                disabled={isExportingLeave}
-                className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 font-bold text-sm transition-all disabled:opacity-50"
-              >
-                <div className="flex items-center gap-1.5 justify-center">
-                  <FileSpreadsheet className="w-4 h-4 shrink-0" />
-                  <span>{isExportingLeave ? (lang === "en" ? "Exporting Excel..." : "กำลังส่งออก Excel...") : (lang === "en" ? "Export (Excel)" : "ส่งออกข้อมูล (Excel)")}</span>
-                </div>
-              </button>
-              <button
-                onClick={handleExportLeaveCSV}
-                disabled={isExportingLeave}
-                className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 font-bold text-sm transition-all disabled:opacity-50"
-              >
-                <div className="flex items-center gap-1.5 justify-center">
-                  <FileSpreadsheet className="w-4 h-4 shrink-0" />
-                  <span>{isExportingLeave ? (lang === "en" ? "Exporting CSV..." : "กำลังส่งออก CSV...") : (lang === "en" ? "Export (CSV)" : "ส่งออกข้อมูล (CSV)")}</span>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* Premium Wizard Stages */}
-          {importStage === "idle" && (
-            <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800/80 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <UploadCloud className="w-4 h-4 text-purple-500" /> {t("importModeLabel") || "เลือกโหมดการนำเข้าข้อมูลการลา"}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleDownloadCSVTemplate}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-100/50 text-[10px] font-bold rounded-lg transition-all"
-                  >
-                    <DownloadCloud className="w-3 h-3" />
-                    {lang === "en" ? "CSV Template" : "ดาวน์โหลดเทมเพลต CSV"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenRefModal}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 text-[10px] font-bold rounded-lg transition-all"
-                  >
-                    <BookOpen className="w-3 h-3" />
-                    {lang === "en" ? "Reference Codes" : "รหัสอ้างอิงข้อมูล"}
-                  </button>
-                </div>
-              </div>
-              
-              {/* Segmented Control for Mode */}
-              <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl max-w-sm mx-auto">
-                <button
-                  type="button"
-                  onClick={() => setImportLeaveMode("merge")}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
-                    importLeaveMode === "merge"
-                      ? "bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm"
-                      : "text-slate-500 hover:text-slate-850 dark:hover:text-slate-200"
-                  }`}
-                >
-                  ผสาน (Merge)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setImportLeaveMode("replace")}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
-                    importLeaveMode === "replace"
-                      ? "bg-rose-500 text-white shadow-sm"
-                      : "text-slate-500 hover:text-rose-550"
-                  }`}
-                >
-                  แทนที่ (Replace)
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center leading-normal">
-                {importLeaveMode === "merge"
-                  ? "ผสาน: จะนำเข้ารายการใหม่โดยละเว้นรายการที่มีผู้ใช้ ประเภท และวันเดียวกันในระบบอยู่แล้ว (ข้อมูลเดิมไม่หาย)"
-                  : "แทนที่: ลบข้อมูลการลาปีงบประมาณปัจจุบันทั้งหมด และนำเข้าข้อมูลใหม่นี้แทนที่ทันที (โปรดระมัดระวัง)"}
-              </p>
-
-              {/* Drag & Drop Zone */}
-              <div
-                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                onDragLeave={() => setIsDragOver(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragOver(false);
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) {
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    const inputEl = document.getElementById("wizard-file-upload") as HTMLInputElement;
-                    if (inputEl) {
-                      inputEl.files = dt.files;
-                      const event = new Event("change", { bubbles: true });
-                      inputEl.dispatchEvent(event);
-                    }
-                  }
-                }}
-                onClick={() => document.getElementById("wizard-file-upload")?.click()}
-                className={`w-full py-8 px-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
-                  isDragOver 
-                    ? "border-indigo-500 bg-indigo-50/20 dark:border-indigo-400 dark:bg-indigo-950/20 scale-[0.99]"
-                    : "border-slate-200 dark:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-850/30"
-                }`}
-              >
-                <UploadCloud className="w-8 h-8 text-slate-400 dark:text-slate-500 animate-bounce" />
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-350">
-                  {lang === "en" ? "Drag & drop files here or click to choose" : "📁 ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์"}
-                </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500">
-                  {lang === "en" ? "Supports JSON, CSV, XLS, XLSX" : "รองรับไฟล์รูปแบบ JSON, CSV, XLS, XLSX"}
-                </span>
-                <input 
-                  type="file" 
-                  id="wizard-file-upload" 
-                  accept=".json,.csv,.xlsx,.xls" 
-                  className="hidden" 
-                  onChange={handleImportLeave} 
-                  disabled={isImportingLeave} 
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Preview Panel */}
-          {importStage === "preview" && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/20 dark:bg-indigo-950/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                <div>
-                  <span className="block text-sm font-bold text-slate-900 dark:text-white">
-                    {lang === "en" ? "Data Import Verification" : "🔍 ผลการตรวจสอบข้อมูลการนำเข้า"}
-                  </span>
-                  <span className="block text-xs text-slate-500 mt-1">
-                    {lang === "en" 
-                      ? `Total parsed: ${parsedRecords.length} records. Valid: ${validRecords.length}, Invalid: ${invalidRecords.length}` 
-                      : `พบข้อมูลทั้งหมด ${parsedRecords.length} รายการ | สมบูรณ์พร้อมนำเข้า: ${validRecords.length} รายการ | มีข้อผิดพลาด: ${invalidRecords.length} รายการ`}
-                  </span>
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                  {invalidRecords.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={downloadErrorCSV}
-                      className="px-3.5 py-1.5 rounded-xl bg-amber-55 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-200/50 text-xs font-bold transition-all flex-1 md:flex-none"
-                    >
-                      ⚠️ {lang === "en" ? "Download Error Report" : "ดาวน์โหลดรายงานข้อผิดพลาด"}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImportStage("idle");
-                      setParsedRecords([]);
-                      setValidRecords([]);
-                      setInvalidRecords([]);
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-300 text-xs font-bold transition-all flex-1 md:flex-none"
-                  >
-                    {lang === "en" ? "Cancel" : "ยกเลิก"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Valid preview (first 5 records) */}
-              {validRecords.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">ตัวอย่างรายการที่ถูกต้อง (แสดง 5 แถวแรก)</h4>
-                  <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-850 text-slate-500 border-b border-slate-100 dark:border-slate-800">
-                          <th className="px-4 py-2.5">แถว</th>
-                          <th className="px-4 py-2.5">ผู้ยื่นคำขอ</th>
-                          <th className="px-4 py-2.5">ประเภทการลา</th>
-                          <th className="px-4 py-2.5">วันที่</th>
-                          <th className="px-4 py-2.5">สถานะ</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {validRecords.slice(0, 5).map((r, i) => (
-                          <tr key={i} className="hover:bg-slate-50/30">
-                            <td className="px-4 py-3 font-semibold text-slate-400">{r.rowNum}</td>
-                            <td className="px-4 py-3">
-                              <div className="font-semibold text-slate-800 dark:text-white">{r.matchedUserName}</div>
-                              <div className="text-[10px] text-slate-400 font-mono">@{r.username}</div>
-                            </td>
-                            <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">{r.type} ({r.mappedType})</td>
-                            <td className="px-4 py-3 text-slate-500">
-                              {r.startDate.split("T")[0]} ถึง {r.endDate.split("T")[0]}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 font-semibold text-[10px] border border-emerald-100">
-                                {r.status || "APPROVED"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Errors list */}
-              {invalidRecords.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-red-500 uppercase tracking-wider pl-1">รายการที่ไม่ถูกต้องและต้องแก้ไข (แสดงสูงสุด 5 แถว)</h4>
-                  <div className="p-3 bg-rose-50/20 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/40 rounded-2xl divide-y divide-rose-100 dark:divide-rose-900/30">
-                    {invalidRecords.slice(0, 5).map((r, i) => (
-                      <div key={i} className="py-2 flex items-start justify-between text-xs gap-3">
-                        <div>
-                          <span className="font-bold text-slate-700 dark:text-slate-350">แถวที่ {r.rowNum} (@{r.username || "ไม่ระบุ"})</span>
-                          <span className="block text-[10px] text-slate-400 mt-0.5">ประเภท: {r.type || "-"} | วันที่: {r.startDate?.split("T")?.[0] || "-"} ถึง {r.endDate?.split("T")?.[0] || "-"}</span>
-                        </div>
-                        <div className="text-right text-red-650 dark:text-red-400 font-semibold">
-                          {r.errors.join(", ")}
-                        </div>
-                      </div>
-                    ))}
-                    {invalidRecords.length > 5 && (
-                      <div className="pt-2 text-center text-[10px] text-slate-400 font-semibold">
-                        ยังมีแถวที่ผิดพลาดเพิ่มเติมอีก {invalidRecords.length - 5} รายการ โปรดกดดาวน์โหลดรายงานด้านบนเพื่อตรวจสอบทั้งหมด
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-                {validRecords.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={executeFinalImport}
-                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all active:scale-95"
-                  >
-                    {lang === "en" ? `Confirm Import (${validRecords.length} records)` : `✅ ยืนยันการนำเข้าข้อมูล (${validRecords.length} รายการ)`}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Post Import Summary */}
-          {importStage === "summary" && importLeaveResult && (
-            <div className="p-6 bg-emerald-50/15 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl text-center space-y-4 animate-fade-in">
-              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-              <div>
-                <span className="block font-bold text-slate-900 dark:text-white text-base">
-                  {lang === "en" ? "Import Complete" : "นำเข้าข้อมูลการลาเสร็จสมบูรณ์"}
-                </span>
-                <span className="block text-xs text-slate-500 mt-1">
-                  {lang === "en" ? "The leave requests have been successfully stored in the database." : "ประวัติการลาที่ถูกต้องได้รับการบันทึกเข้าระบบเรียบร้อยแล้ว"}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 max-w-sm mx-auto">
-                <div className="bg-white dark:bg-slate-850 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <span className="block text-lg font-bold text-emerald-600">{importLeaveResult.imported}</span>
-                  <span className="block text-[10px] text-slate-400 font-semibold">{t("importedSuccess")}</span>
-                </div>
-                <div className="bg-white dark:bg-slate-850 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <span className="block text-lg font-bold text-slate-400">{importLeaveResult.skipped}</span>
-                  <span className="block text-[10px] text-slate-400 font-semibold">{t("skipped")}</span>
-                </div>
-                <div className="bg-white dark:bg-slate-850 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <span className="block text-lg font-bold text-purple-600">{importLeaveResult.total}</span>
-                  <span className="block text-[10px] text-slate-400 font-semibold">{t("total")}</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setImportStage("idle");
-                  setImportLeaveResult(null);
-                  setParsedRecords([]);
-                  setValidRecords([]);
-                  setInvalidRecords([]);
-                }}
-                className="px-6 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 text-white font-bold text-xs shadow-sm transition-all"
-              >
-                {lang === "en" ? "Close" : "ปิดหน้าต่างสรุป"}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Import/Action History Logs */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800 relative overflow-hidden">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-          <HardDrive className="w-5 h-5 text-indigo-500" />
-          {lang === "en" ? "Data Management Action Logs" : "ประวัติการจัดการและนำเข้าข้อมูล"}
-        </h3>
-        <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 p-2 divide-y divide-gray-50 dark:divide-gray-800">
-          {importHistory.map((log) => (
-            <div key={log.id} className="p-3 text-xs flex justify-between items-start gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-              <div>
-                <span className="font-bold text-slate-900 dark:text-white block">{log.description}</span>
-                <span className="block text-[10px] text-slate-400 mt-1">
-                  {lang === "en" ? "Performed by: " : "ดำเนินการโดย: "}{log.user?.name || "System"} | Action: {log.actionType}
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400 shrink-0 font-medium">
-                {new Date(log.createdAt).toLocaleString(lang === "en" ? "en-US" : "th-TH")}
-              </span>
-            </div>
-          ))}
-          {importHistory.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-4">{lang === "en" ? "No action history found" : "ไม่พบประวัติการจัดการข้อมูล"}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Danger Zone */}
-      {isAdmin ? (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-rose-200 dark:border-rose-900/50 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-bl-[100px] -z-10" />
-          <h3 className="text-lg font-semibold mb-2 text-rose-600 flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5" />
-            {t("dangerZone")}
-          </h3>
-          <p className="text-sm text-gray-500 mb-5">
-            {t("dangerZoneDesc")}
-          </p>
-          <button
-            onClick={handleClearData}
-            disabled={isClearing}
-            className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-rose-600 text-white font-medium hover:bg-rose-700 focus:ring-4 focus:ring-rose-500/20 transition-all disabled:opacity-50"
-          >
-            {isClearing ? t("clearing") : t("clearAllLeave")}
-          </button>
-        </div>
-      ) : null}
-
+﻿"use client";
 import { useState, useEffect } from "react";
 import { getSystemSettings, updateSystemSettings, updateFooter, generateBackup, getLeaveConfigs, updateLeaveConfig, updateLeaveRules, setImpersonationCookie, clearImpersonation, getEligibleInspectors, updateDefaultInspector, getSimpleUsersList } from "@/app/actions/settings";
 import { archiveCurrentCycle, importBackupFromJson, exportLeaveBackup, importLeaveBackup, importLeaveSimple } from "@/app/actions/archive";
@@ -1841,19 +1364,92 @@ export default function SettingsPage() {
     </form>
   );
 
+  const downloadErrorCSV = () => {
+    if (invalidRecords.length === 0) return;
+    const header = "แถวในไฟล์,Username,วันที่เริ่ม,วันที่สิ้นสุด,ประเภท,เหตุผล,ข้อผิดพลาด\\n";
+    const rows = invalidRecords.map(r => 
+      `"${r.rowNum}","${r.username || ""}","${r.startDate || ""}","${r.endDate || ""}","${r.type || ""}","${r.reason || ""}","${r.errors.join("; ")}"`
+    ).join("\\n");
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `eleave_import_errors_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const executeFinalImport = async () => {
+    setIsImportingLeave(true);
+    try {
+      const result = await importLeaveSimple(validRecords, importLeaveMode);
+      if (result.success) {
+        setImportLeaveResult(result);
+        setLastImportedIds(result.createdIds || []);
+        setImportStage("summary");
+        showToast("success", lang === "en" ? `Imported ${result.imported} records successfully` : `นำเข้าข้อมูลการลาสำเร็จ ${result.imported} รายการ`);
+        getImportHistory().then(setImportHistory);
+      } else {
+        showToast("error", "เกิดข้อผิดพลาดในการนำเข้า");
+      }
+    } catch (err: any) {
+      showToast("error", err.message);
+    } finally {
+      setIsImportingLeave(false);
+    }
+  };
+
+  const handleUndoLastImport = async () => {
+    if (lastImportedIds.length === 0) return;
+    if (!confirm(lang === "en" ? "Are you sure you want to undo the last import? All imported records will be deleted." : "คุณแน่ใจหรือไม่ว่าต้องการย้อนกลับการนำเข้าครั้งล่าสุด? รายการลาทั้งหมดที่นำเข้ามาจะถูกลบออก")) return;
+    
+    try {
+      const res = await undoImportLeave(lastImportedIds);
+      if (res.success) {
+        showToast("success", lang === "en" ? `Undo success. Deleted ${res.count} records.` : `ย้อนกลับสำเร็จ ลบรายการที่นำเข้าแล้ว ${res.count} รายการ`);
+        setLastImportedIds([]);
+        getImportHistory().then(setImportHistory);
+      } else {
+        showToast("error", res.error || "ไม่สามารถย้อนกลับได้");
+      }
+    } catch (err: any) {
+      showToast("error", err.message);
+    }
+  };
+
   const renderBackupSection = () => (
     <div className="space-y-6">
       <SectionHeader title={sectionTitles.backup} />
+
+      {/* Floating Undo Import Banner */}
+      {lastImportedIds.length > 0 && (
+        <div className="p-4 bg-indigo-600 dark:bg-indigo-700 text-white rounded-2xl shadow-lg border border-indigo-500 flex items-center justify-between animate-fade-in print:hidden">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <span className="text-sm font-semibold">
+              {lang === "en" ? `Imported successfully. Selected ${lastImportedIds.length} records.` : `นำเข้าข้อมูลเรียบร้อยแล้ว จำนวน ${lastImportedIds.length} รายการ`}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleUndoLastImport}
+            className="px-4 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs shadow-sm transition-all active:scale-95"
+          >
+            {lang === "en" ? "↩️ Undo Import" : "↩️ ย้อนกลับการนำเข้า"}
+          </button>
+        </div>
+      )}
 
       {/* System Backup - Admin Only */}
       {isAdmin && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800 relative overflow-hidden">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
             <DownloadCloud className="w-5 h-5 text-teal-500" />
-            {t("systemBackup") || "犧｣犧ｰ犧壟ｸ壟ｸｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･"}
+            {t("systemBackup") || "ระบบสำรองข้อมูล"}
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
-            {t("systemBackupDesc") || "犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犹≒ｸ･犧ｰ犧巵ｸ｣犧ｰ犧ｧ犧ｱ犧歩ｸｴ犧伶ｸｱ犹霞ｸ�ｸｫ犧｡犧�"}
+            {t("systemBackupDesc") || "สำรองข้อมูลการตั้งค่าและประวัติทั้งหมด"}
           </p>
           
           <div className="space-y-3">
@@ -1875,182 +1471,350 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Leave Data Backup */}
+      {/* Leave Data Backup / Premium Wizard */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800 relative overflow-hidden">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-start gap-2 mb-2">
           <Database className="w-5 h-5 text-purple-500 mt-1 shrink-0" />
           <div>
-            <span className="block">{lang === "th" ? "犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ" : "Leave Backup"}</span>
+            <span className="block">{lang === "th" ? "จัดการนำเข้าและสำรองข้อมูลวันลา" : "Leave Data Import & Export"}</span>
             <span className="block text-xs font-semibold text-slate-400 dark:text-slate-500 mt-0.5">
-              (Leave Backup)
+              (Leave Data Management Wizard)
             </span>
           </div>
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
           {lang === "en"
-            ? "Export leave data as JSON/Excel or import JSON/Excel/CSV files to recover leave requests."
-            : "犧吭ｸｳ犧ｭ犧ｭ犧≒ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ犧巵ｸｵ犧�ｸ壟ｸ巵ｸ｣犧ｰ犧｡犧ｲ犧内ｸ巵ｸｱ犧謂ｸ謂ｸｸ犧壟ｸｱ犧吭ｹ犧巵ｹ�ｸ吭ｹ�ｸ游ｸ･犹� JSON/Excel 犧ｫ犧｣犧ｷ犧ｭ犧吭ｸｳ犹犧もｹ霞ｸｲ犹�ｸ游ｸ･犹� JSON/Excel/CSV 犹犧樅ｸｷ犹謂ｸｭ犧≒ｸｹ犹霞ｸ�ｸｷ犧吭ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ"}
+            ? "Export leave data as JSON/Excel/CSV or use the drag & drop area to upload and preview data before importing."
+            : "นำออกข้อมูลการลาเป็นไฟล์รูปแบบต่างๆ หรือลากไฟล์มาวางเพื่อจำลองตรวจสอบข้อมูล (Preview) ก่อนยืนยันนำเข้าเข้าระบบจริง"}
         </p>
         
         <div className="space-y-4">
           {/* Export Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Export JSON */}
-            <button
-              onClick={handleExportLeave}
-              disabled={isExportingLeave}
-              className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900/50 font-bold text-sm transition-all disabled:opacity-50"
-            >
-              <div className="flex items-center gap-1.5 justify-center">
-                <FileJson className="w-4 h-4 shrink-0" />
-                <span>{isExportingLeave ? (lang === "en" ? "Exporting JSON..." : "犧≒ｸｳ犧･犧ｱ犧�ｸｪ犹謂ｸ�ｸｭ犧ｭ犧� JSON...") : (lang === "en" ? "Export (JSON)" : "犧ｪ犹謂ｸ�ｸｭ犧ｭ犧≒ｸもｹ霞ｸｭ犧｡犧ｹ犧･ (JSON)")}</span>
-              </div>
-              {!isExportingLeave && (
-                <span className="text-[10px] font-semibold text-purple-500/70 dark:text-purple-400/70">
-                  (Export Leave Data - JSON)
-                </span>
-              )}
-            </button>
+          {importStage === "idle" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button
+                onClick={handleExportLeave}
+                disabled={isExportingLeave}
+                className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900/50 font-bold text-sm transition-all disabled:opacity-50"
+              >
+                <div className="flex items-center gap-1.5 justify-center">
+                  <FileJson className="w-4 h-4 shrink-0" />
+                  <span>{isExportingLeave ? (lang === "en" ? "Exporting JSON..." : "กำลังส่งออก JSON...") : (lang === "en" ? "Export (JSON)" : "ส่งออกข้อมูล (JSON)")}</span>
+                </div>
+              </button>
+              <button
+                onClick={handleExportLeaveExcel}
+                disabled={isExportingLeave}
+                className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 font-bold text-sm transition-all disabled:opacity-50"
+              >
+                <div className="flex items-center gap-1.5 justify-center">
+                  <FileSpreadsheet className="w-4 h-4 shrink-0" />
+                  <span>{isExportingLeave ? (lang === "en" ? "Exporting Excel..." : "กำลังส่งออก Excel...") : (lang === "en" ? "Export (Excel)" : "ส่งออกข้อมูล (Excel)")}</span>
+                </div>
+              </button>
+              <button
+                onClick={handleExportLeaveCSV}
+                disabled={isExportingLeave}
+                className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 font-bold text-sm transition-all disabled:opacity-50"
+              >
+                <div className="flex items-center gap-1.5 justify-center">
+                  <FileSpreadsheet className="w-4 h-4 shrink-0" />
+                  <span>{isExportingLeave ? (lang === "en" ? "Exporting CSV..." : "กำลังส่งออก CSV...") : (lang === "en" ? "Export (CSV)" : "ส่งออกข้อมูล (CSV)")}</span>
+                </div>
+              </button>
+            </div>
+          )}
 
-            {/* Export Excel */}
-            <button
-              onClick={handleExportLeaveExcel}
-              disabled={isExportingLeave}
-              className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 font-bold text-sm transition-all disabled:opacity-50"
-            >
-              <div className="flex items-center gap-1.5 justify-center">
-                <FileSpreadsheet className="w-4 h-4 shrink-0" />
-                <span>{isExportingLeave ? (lang === "en" ? "Exporting Excel..." : "犧≒ｸｳ犧･犧ｱ犧�ｸｪ犹謂ｸ�ｸｭ犧ｭ犧� Excel...") : (lang === "en" ? "Export (Excel)" : "犧ｪ犹謂ｸ�ｸｭ犧ｭ犧≒ｸもｹ霞ｸｭ犧｡犧ｹ犧･ (Excel)")}</span>
-              </div>
-              {!isExportingLeave && (
-                <span className="text-[10px] font-semibold text-indigo-500/70 dark:text-indigo-400/70">
-                  (Export Leave Data - Excel)
+          {/* Premium Wizard Stages */}
+          {importStage === "idle" && (
+            <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800/80 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <UploadCloud className="w-4 h-4 text-purple-500" /> {t("importModeLabel") || "เลือกโหมดการนำเข้าข้อมูลการลา"}
                 </span>
-              )}
-            </button>
-
-            {/* Export CSV */}
-            <button
-              onClick={handleExportLeaveCSV}
-              disabled={isExportingLeave}
-              className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 font-bold text-sm transition-all disabled:opacity-50"
-            >
-              <div className="flex items-center gap-1.5 justify-center">
-                <FileSpreadsheet className="w-4 h-4 shrink-0" />
-                <span>{isExportingLeave ? (lang === "en" ? "Exporting CSV..." : "犧≒ｸｳ犧･犧ｱ犧�ｸｪ犹謂ｸ�ｸｭ犧ｭ犧� CSV...") : (lang === "en" ? "Export (CSV)" : "犧ｪ犹謂ｸ�ｸｭ犧ｭ犧≒ｸもｹ霞ｸｭ犧｡犧ｹ犧･ (CSV)")}</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadCSVTemplate}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-100/50 text-[10px] font-bold rounded-lg transition-all"
+                  >
+                    <DownloadCloud className="w-3 h-3" />
+                    {lang === "en" ? "CSV Template" : "ดาวน์โหลดเทมเพลต CSV"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenRefModal}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 text-[10px] font-bold rounded-lg transition-all"
+                  >
+                    <BookOpen className="w-3 h-3" />
+                    {lang === "en" ? "Reference Codes" : "รหัสอ้างอิงข้อมูล"}
+                  </button>
+                </div>
               </div>
-              {!isExportingLeave && (
-                <span className="text-[10px] font-semibold text-emerald-500/70 dark:text-emerald-400/70">
-                  (Export Leave Data - CSV)
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Import Section */}
-          {!isInspector ? (
-            <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800/80 space-y-3">
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 justify-center">
-                <UploadCloud className="w-4 h-4 text-purple-500" /> {t("importModeLabel") || "犹犧･犧ｷ犧ｭ犧≒ｹもｸｫ犧｡犧扉ｸ≒ｸｲ犧｣犧吭ｸｳ犹犧もｹ霞ｸｲ"}
-              </p>
               
-              {/* Segmented Control */}
-              <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl">
+              {/* Segmented Control for Mode */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-xl max-w-sm mx-auto">
                 <button
                   type="button"
                   onClick={() => setImportLeaveMode("merge")}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
                     importLeaveMode === "merge"
                       ? "bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      : "text-slate-500 hover:text-slate-850 dark:hover:text-slate-200"
                   }`}
                 >
-                  犧憫ｸｪ犧ｲ犧�
-                  <span className="block text-[10px] font-semibold opacity-80">(Merge)</span>
+                  ผสาน (Merge)
                 </button>
                 <button
                   type="button"
                   onClick={() => setImportLeaveMode("replace")}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
                     importLeaveMode === "replace"
                       ? "bg-rose-500 text-white shadow-sm"
-                      : "text-slate-500 hover:text-rose-500"
+                      : "text-slate-500 hover:text-rose-550"
                   }`}
                 >
-                  犹≒ｸ伶ｸ吭ｸ伶ｸｵ犹�
-                  <span className="block text-[10px] font-semibold opacity-80">(Replace)</span>
+                  แทนที่ (Replace)
                 </button>
               </div>
-
-              {/* Inline Helper Description */}
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-normal text-center min-h-[32px] flex items-center justify-center px-1">
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center leading-normal">
                 {importLeaveMode === "merge"
-                  ? (lang === "en" ? "Only new records will be added without deleting existing data" : "犹犧樅ｸｴ犹謂ｸ｡犹犧霞ｸ樅ｸｲ犧ｰ犧｣犧ｲ犧｢犧≒ｸｲ犧｣犹�ｸｫ犧｡犹謂ｹもｸ扉ｸ｢犹�ｸ｡犹謂ｸ･犧壟ｸｫ犧｣犧ｷ犧ｭ犧ｪ犹謂ｸ�ｸ憫ｸ･犧歩ｹ謂ｸｭ犧もｹ霞ｸｭ犧｡犧ｹ犧･犹犧扉ｸｴ犧｡")
-                  : (lang === "en" ? "Warning: All current leave records will be completely replaced" : "笞��� 犧｣犧ｰ犧ｧ犧ｱ犧�: 犧もｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ犧巵ｸｱ犧謂ｸ謂ｸｸ犧壟ｸｱ犧吭ｸ伶ｸｱ犹霞ｸ�ｸｫ犧｡犧扉ｸ謂ｸｰ犧籾ｸｹ犧≒ｸ･犧壟ｹ≒ｸ･犧ｰ犹犧もｸｵ犧｢犧吭ｸ伶ｸｱ犧壟ｸ扉ｹ霞ｸｧ犧｢犧もｹ霞ｸｭ犧｡犧ｹ犧･犹�ｸｫ犧｡犹�")}
+                  ? "ผสาน: จะนำเข้ารายการใหม่โดยละเว้นรายการที่มีผู้ใช้ ประเภท และวันเดียวกันในระบบอยู่แล้ว (ข้อมูลเดิมไม่หาย)"
+                  : "แทนที่: ลบข้อมูลการลาปีงบประมาณปัจจุบันทั้งหมด และนำเข้าข้อมูลใหม่นี้แทนที่ทันที (โปรดระมัดระวัง)"}
               </p>
 
-              <label className={`w-full flex flex-col items-center justify-center gap-0.5 py-3 px-4 rounded-xl border-2 border-dashed font-semibold cursor-pointer transition-all disabled:opacity-50 text-xs ${
-                importLeaveMode === "replace"
-                  ? "border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50/50 dark:hover:bg-rose-950/20"
-                  : "border-purple-200 dark:border-purple-900/50 text-purple-600 dark:text-purple-400 hover:bg-purple-50/50 dark:hover:bg-purple-950/20"
-              }`}>
-                <div className="flex items-center gap-1.5 justify-center">
-                  <UploadCloud className="w-4 h-4 shrink-0" />
-                  <span>{isImportingLeave ? (lang === "en" ? "Importing..." : "犧≒ｸｳ犧･犧ｱ犧�ｸ吭ｸｳ犹犧もｹ霞ｸｲ犧もｹ霞ｸｭ犧｡犧ｹ犧･...") : (lang === "en" ? "Import JSON / Excel / CSV" : "犧吭ｸｳ犹犧もｹ霞ｸｲ犹�ｸ游ｸ･犹� JSON / Excel / CSV")}</span>
-                </div>
-                {!isImportingLeave && (
-                  <span className="text-[10px] font-semibold opacity-70">
-                    (Import Leave Data)
-                  </span>
-                )}
-                <input type="file" accept=".json,.xlsx,.xls,.csv" className="hidden" onChange={handleImportLeave} disabled={isImportingLeave} />
-              </label>
-            </div>
-          ) : (
-            <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800/80 text-center text-xs text-slate-500 dark:text-slate-400">
-              <ShieldAlert className="w-5 h-5 text-amber-500 mx-auto mb-2" />
-              <span>{lang === "en" ? "Import is disabled in Inspector view mode." : "犧≒ｸｲ犧｣犧吭ｸｳ犹犧もｹ霞ｸｲ犧もｹ霞ｸｭ犧｡犧ｹ犧･犧籾ｸｹ犧≒ｸ巵ｸｴ犧扉ｹ�ｸ癌ｹ霞ｸ�ｸｲ犧吭ｹ�ｸ吭ｹもｸｫ犧｡犧扉ｸ憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧�"}</span>
+              {/* Drag & Drop Zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) {
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    const inputEl = document.getElementById("wizard-file-upload") as HTMLInputElement;
+                    if (inputEl) {
+                      inputEl.files = dt.files;
+                      const event = new Event("change", { bubbles: true });
+                      inputEl.dispatchEvent(event);
+                    }
+                  }
+                }}
+                onClick={() => document.getElementById("wizard-file-upload")?.click()}
+                className={`w-full py-8 px-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+                  isDragOver 
+                    ? "border-indigo-500 bg-indigo-50/20 dark:border-indigo-400 dark:bg-indigo-950/20 scale-[0.99]"
+                    : "border-slate-200 dark:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-850/30"
+                }`}
+              >
+                <UploadCloud className="w-8 h-8 text-slate-400 dark:text-slate-500 animate-bounce" />
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-350">
+                  {lang === "en" ? "Drag & drop files here or click to choose" : "📁 ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์"}
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  {lang === "en" ? "Supports JSON, CSV, XLS, XLSX" : "รองรับไฟล์รูปแบบ JSON, CSV, XLS, XLSX"}
+                </span>
+                <input 
+                  type="file" 
+                  id="wizard-file-upload" 
+                  accept=".json,.csv,.xlsx,.xls" 
+                  className="hidden" 
+                  onChange={handleImportLeave} 
+                  disabled={isImportingLeave} 
+                />
+              </div>
             </div>
           )}
 
-          {/* Import Result */}
-          {importLeaveResult && (
-            <div className={`rounded-2xl p-4 border text-xs ${
-              importLeaveResult.errors?.length > 0
-                ? "bg-amber-50/50 dark:bg-amber-500/5 border-amber-200 dark:border-amber-900/50"
-                : "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-900/50"
-            }`}>
-              <div className="flex items-center gap-2 mb-2">
-                {importLeaveResult.errors?.length > 0 ? (
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                )}
-                <span className="font-bold text-slate-800 dark:text-slate-200">{t("importResult")}</span>
+          {/* Preview Panel */}
+          {importStage === "preview" && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/20 dark:bg-indigo-950/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div>
+                  <span className="block text-sm font-bold text-slate-900 dark:text-white">
+                    {lang === "en" ? "Data Import Verification" : "🔍 ผลการตรวจสอบข้อมูลการนำเข้า"}
+                  </span>
+                  <span className="block text-xs text-slate-500 mt-1">
+                    {lang === "en" 
+                      ? `Total parsed: ${parsedRecords.length} records. Valid: ${validRecords.length}, Invalid: ${invalidRecords.length}` 
+                      : `พบข้อมูลทั้งหมด ${parsedRecords.length} รายการ | สมบูรณ์พร้อมนำเข้า: ${validRecords.length} รายการ | มีข้อผิดพลาด: ${invalidRecords.length} รายการ`}
+                  </span>
+                </div>
+                <div className="flex gap-2 w-full md:w-auto">
+                  {invalidRecords.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={downloadErrorCSV}
+                      className="px-3.5 py-1.5 rounded-xl bg-amber-55 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-200/50 text-xs font-bold transition-all flex-1 md:flex-none"
+                    >
+                      ⚠️ {lang === "en" ? "Download Error Report" : "ดาวน์โหลดรายงานข้อผิดพลาด"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportStage("idle");
+                      setParsedRecords([]);
+                      setValidRecords([]);
+                      setInvalidRecords([]);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-300 text-xs font-bold transition-all flex-1 md:flex-none"
+                  >
+                    {lang === "en" ? "Cancel" : "ยกเลิก"}
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center mb-1">
-                <div className="bg-white/80 dark:bg-slate-800 rounded-lg p-2 border border-slate-100 dark:border-slate-800">
-                  <div className="font-bold text-sm text-emerald-600">{importLeaveResult.imported}</div>
-                  <div className="text-[10px] text-slate-400">{t("importedSuccess")}</div>
-                </div>
-                <div className="bg-white/80 dark:bg-slate-800 rounded-lg p-2 border border-slate-100 dark:border-slate-800">
-                  <div className="font-bold text-sm text-slate-400">{importLeaveResult.skipped}</div>
-                  <div className="text-[10px] text-slate-400">{t("skipped")}</div>
-                </div>
-                <div className="bg-white/80 dark:bg-slate-800 rounded-lg p-2 border border-slate-100 dark:border-slate-800">
-                  <div className="font-bold text-sm text-purple-600">{importLeaveResult.total}</div>
-                  <div className="text-[10px] text-slate-400">{t("total")}</div>
-                </div>
-              </div>
-              {importLeaveResult.errors?.length > 0 && (
-                <div className="mt-2 text-slate-600 dark:text-slate-400 space-y-1">
-                  <p className="font-bold">{t("errorDetails")}</p>
-                  {importLeaveResult.errors.map((err: string, i: number) => (
-                    <p key={i} className="pl-2">窶｢ {err}</p>
-                  ))}
+
+              {/* Valid preview (first 5 records) */}
+              {validRecords.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">ตัวอย่างรายการที่ถูกต้อง (แสดง 5 แถวแรก)</h4>
+                  <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-850 text-slate-500 border-b border-slate-100 dark:border-slate-800">
+                          <th className="px-4 py-2.5">แถว</th>
+                          <th className="px-4 py-2.5">ผู้ยื่นคำขอ</th>
+                          <th className="px-4 py-2.5">ประเภทการลา</th>
+                          <th className="px-4 py-2.5">วันที่</th>
+                          <th className="px-4 py-2.5">สถานะ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {validRecords.slice(0, 5).map((r, i) => (
+                          <tr key={i} className="hover:bg-slate-50/30">
+                            <td className="px-4 py-3 font-semibold text-slate-400">{r.rowNum}</td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-slate-800 dark:text-white">{r.matchedUserName}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">@{r.username}</div>
+                            </td>
+                            <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">{r.type} ({r.mappedType})</td>
+                            <td className="px-4 py-3 text-slate-500">
+                              {r.startDate.split("T")[0]} ถึง {r.endDate.split("T")[0]}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 font-semibold text-[10px] border border-emerald-100">
+                                {r.status || "APPROVED"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
+
+              {/* Errors list */}
+              {invalidRecords.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-red-500 uppercase tracking-wider pl-1">รายการที่ไม่ถูกต้องและต้องแก้ไข (แสดงสูงสุด 5 แถว)</h4>
+                  <div className="p-3 bg-rose-50/20 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/40 rounded-2xl divide-y divide-rose-100 dark:divide-rose-900/30">
+                    {invalidRecords.slice(0, 5).map((r, i) => (
+                      <div key={i} className="py-2 flex items-start justify-between text-xs gap-3">
+                        <div>
+                          <span className="font-bold text-slate-700 dark:text-slate-350">แถวที่ {r.rowNum} (@{r.username || "ไม่ระบุ"})</span>
+                          <span className="block text-[10px] text-slate-400 mt-0.5">ประเภท: {r.type || "-"} | วันที่: {r.startDate?.split("T")?.[0] || "-"} ถึง {r.endDate?.split("T")?.[0] || "-"}</span>
+                        </div>
+                        <div className="text-right text-red-650 dark:text-red-400 font-semibold">
+                          {r.errors.join(", ")}
+                        </div>
+                      </div>
+                    ))}
+                    {invalidRecords.length > 5 && (
+                      <div className="pt-2 text-center text-[10px] text-slate-400 font-semibold">
+                        ยังมีแถวที่ผิดพลาดเพิ่มเติมอีก {invalidRecords.length - 5} รายการ โปรดกดดาวน์โหลดรายงานด้านบนเพื่อตรวจสอบทั้งหมด
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+                {validRecords.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={executeFinalImport}
+                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all active:scale-95"
+                  >
+                    {lang === "en" ? `Confirm Import (${validRecords.length} records)` : `✅ ยืนยันการนำเข้าข้อมูล (${validRecords.length} รายการ)`}
+                  </button>
+                )}
+              </div>
             </div>
+          )}
+
+          {/* Post Import Summary */}
+          {importStage === "summary" && importLeaveResult && (
+            <div className="p-6 bg-emerald-50/15 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl text-center space-y-4 animate-fade-in">
+              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
+              <div>
+                <span className="block font-bold text-slate-900 dark:text-white text-base">
+                  {lang === "en" ? "Import Complete" : "นำเข้าข้อมูลการลาเสร็จสมบูรณ์"}
+                </span>
+                <span className="block text-xs text-slate-500 mt-1">
+                  {lang === "en" ? "The leave requests have been successfully stored in the database." : "ประวัติการลาที่ถูกต้องได้รับการบันทึกเข้าระบบเรียบร้อยแล้ว"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 max-w-sm mx-auto">
+                <div className="bg-white dark:bg-slate-850 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <span className="block text-lg font-bold text-emerald-600">{importLeaveResult.imported}</span>
+                  <span className="block text-[10px] text-slate-400 font-semibold">{t("importedSuccess")}</span>
+                </div>
+                <div className="bg-white dark:bg-slate-850 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <span className="block text-lg font-bold text-slate-400">{importLeaveResult.skipped}</span>
+                  <span className="block text-[10px] text-slate-400 font-semibold">{t("skipped")}</span>
+                </div>
+                <div className="bg-white dark:bg-slate-850 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <span className="block text-lg font-bold text-purple-600">{importLeaveResult.total}</span>
+                  <span className="block text-[10px] text-slate-400 font-semibold">{t("total")}</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImportStage("idle");
+                  setImportLeaveResult(null);
+                  setParsedRecords([]);
+                  setValidRecords([]);
+                  setInvalidRecords([]);
+                }}
+                className="px-6 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 text-white font-bold text-xs shadow-sm transition-all"
+              >
+                {lang === "en" ? "Close" : "ปิดหน้าต่างสรุป"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Import/Action History Logs */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800 relative overflow-hidden">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+          <HardDrive className="w-5 h-5 text-indigo-500" />
+          {lang === "en" ? "Data Management Action Logs" : "ประวัติการจัดการและนำเข้าข้อมูล"}
+        </h3>
+        <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 p-2 divide-y divide-gray-50 dark:divide-gray-800">
+          {importHistory.map((log) => (
+            <div key={log.id} className="p-3 text-xs flex justify-between items-start gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white block">{log.description}</span>
+                <span className="block text-[10px] text-slate-400 mt-1">
+                  {lang === "en" ? "Performed by: " : "ดำเนินการโดย: "}{log.user?.name || "System"} | Action: {log.actionType}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-400 shrink-0 font-medium">
+                {new Date(log.createdAt).toLocaleString(lang === "en" ? "en-US" : "th-TH")}
+              </span>
+            </div>
+          ))}
+          {importHistory.length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-4">{lang === "en" ? "No action history found" : "ไม่พบประวัติการจัดการข้อมูล"}</p>
           )}
         </div>
       </div>
@@ -2075,9 +1839,9 @@ export default function SettingsPage() {
           </button>
         </div>
       ) : null}
+
     </div>
   );
-
   const renderImpersonateSection = () => (
     <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-indigo-100 dark:border-indigo-900/30 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-bl-[100px] -z-10" />

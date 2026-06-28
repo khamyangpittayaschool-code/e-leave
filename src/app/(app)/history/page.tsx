@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { getMyLeaveHistory, cancelLeaveRequest, getStaffList, adminDeleteLeaveRequest } from "@/app/actions/leave";
@@ -794,3 +794,4 @@ export default function HistoryPage() {
       </div>
     </div>
   );
+}

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "@/lib/auth-client";
@@ -935,7 +935,6 @@ export default function ProfilePage() {
           </div>
         )}
       </AnimatePresence>
-    </div>
       {/* Action Sheet for Avatar */}
       {avatarActionSheetOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center p-4">
@@ -1028,5 +1027,6 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+    </div>
   );
 }
