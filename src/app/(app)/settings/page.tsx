@@ -1970,6 +1970,79 @@ export default function SettingsPage() {
     </div>
   );
 
+  const renderFontSection = () => (
+    <form onSubmit={handleGeneralSubmit} className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">
+      <SectionHeader title={sectionTitles.font} />
+      <div className="space-y-6">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {lang === "en" 
+            ? "Configure the font used on printed leave forms and the file format for Google Drive uploads." 
+            : "กำหนดฟอนต์ที่ใช้ในแบบฟอร์มใบลา และรูปแบบไฟล์ที่อัปโหลดไปยัง Google Drive"}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Font Selector */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              {lang === "en" ? "Leave Form Font (Google Fonts)" : "ฟอนต์ใบลา (Google Fonts)"}
+            </label>
+            <div className="relative">
+              <select
+                value={pdfFont}
+                onChange={(e) => setPdfFont(e.target.value)}
+                className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                style={{ fontFamily: `'${pdfFont}', sans-serif` }}
+              >
+                <option value="Prompt" style={{ fontFamily: "'Prompt', sans-serif" }}>Prompt</option>
+                <option value="Sarabun" style={{ fontFamily: "'Sarabun', sans-serif" }}>Sarabun</option>
+                <option value="Taviraj" style={{ fontFamily: "'Taviraj', sans-serif" }}>Taviraj (Serif)</option>
+                <option value="Noto Sans Thai" style={{ fontFamily: "'Noto Sans Thai', sans-serif" }}>Noto Sans Thai</option>
+                <option value="Kanit" style={{ fontFamily: "'Kanit', sans-serif" }}>Kanit</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                <ChevronRight className="w-4 h-4 rotate-90" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1.5">
+              <span>{lang === "en" ? "Preview: " : "ตัวอย่าง: "}</span>
+              <span className="font-semibold px-2 py-0.5 bg-gray-50 dark:bg-gray-800 border border-gray-150 dark:border-gray-700 rounded-lg" style={{ fontFamily: `'${pdfFont}', sans-serif`, fontSize: '14px' }}>
+                กขค ใบลา สวัสดีครับ ABC 123
+              </span>
+            </p>
+          </div>
+
+          {/* Format Selector */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              {lang === "en" ? "Google Drive Upload Format" : "รูปแบบไฟล์ใน Google Drive"}
+            </label>
+            <div className="relative">
+              <select
+                value={googleDriveFormat}
+                onChange={(e) => setGoogleDriveFormat(e.target.value)}
+                className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+              >
+                <option value="PDF">PDF (.pdf)</option>
+                <option value="JPG">JPG (.jpg)</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                <ChevronRight className="w-4 h-4 rotate-90" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {lang === "en" 
+                ? "JPG may display Thai text better in some cases" 
+                : "JPG อาจแสดงตัวอักษรไทยได้ดีกว่าในบางกรณี"}
+            </p>
+          </div>
+        </div>
+      </div>
+      {!isInspector && (
+        <StickySaveBar isSaving={isSavingGeneral} label={isSavingGeneral ? t("saving") : t("saveSettings")} color="indigo" />
+      )}
+    </form>
+  );
+
   const renderFooterSection = () => (
     <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-rose-100 dark:border-rose-900/30 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-bl-[100px] -z-10" />
