@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { auth } from "@/lib/auth";
 import { getSession } from "@/lib/auth-session";
@@ -307,10 +307,10 @@ export async function exportLeaveBackup() {
     leaveRequests: leaveRequests.map(r => ({
       id: r.id,
       userId: r.userId,
-      userName: r.user.name,
-      userEmail: r.user.email,
-      userPosition: r.user.position,
-      userSubjectGroup: r.user.subjectGroup,
+      userName: r.user?.name || "ไม่ระบุชื่อ",
+      userEmail: r.user?.email || "ไม่ระบุอีเมล",
+      userPosition: r.user?.position || "",
+      userSubjectGroup: r.user?.subjectGroup || "",
       type: r.type,
       startDate: r.startDate.toISOString(),
       endDate: r.endDate.toISOString(),
@@ -460,3 +460,249 @@ export async function importLeaveBackup(jsonString: string, mode: "merge" | "rep
     total: backup.leaveRequests.length
   };
 }
+
+function getFiscalYear(date: Date): number {
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0 = Jan, 9 = Oct
+  return (month >= 9 ? year + 1 : year) + 543;
+}
+
+export async function importLeaveSimple(records: any[], mode: "merge" | "replace" = "merge") {
+  const session = await requirePrivilegedLeaveBackup();
+  
+  // Load all active users to create lookups
+  const existingUsers = await prisma.user.findMany({
+    select: { id: true, email: true, name: true, username: true }
+  });
+
+  const { getCurrentLeaveCycle } = await import("@/lib/cycle");
+  const cycle = getCurrentLeaveCycle();
+
+  // If replace mode, delete existing requests in this cycle
+  if (mode === "replace") {
+    await prisma.leaveRequest.deleteMany({
+      where: {
+        startDate: { gte: cycle.start, lte: cycle.end }
+      }
+    });
+  }
+
+  let imported = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+  const createdIds: string[] = [];
+
+  // Load leave configurations for type matching
+  const leaveConfigs = await prisma.leaveConfig.findMany();
+  const typeMap: Record<string, string> = {};
+  leaveConfigs.forEach((c) => {
+    typeMap[c.name.trim()] = c.type;
+  });
+
+  for (const record of records) {
+    if (!record.username || !record.startDate || !record.endDate || !record.type) {
+      skipped++;
+      errors.push("ข้อมูลไม่ครบถ้วน (ต้องระบุ Username, วันที่เริ่ม, วันที่สิ้นสุด, ประเภทการลา)");
+      continue;
+    }
+
+    // Find applicant
+    const matchedUser = existingUsers.find(u => 
+      u.username?.toLowerCase() === String(record.username).trim().toLowerCase() ||
+      u.email.toLowerCase() === String(record.username).trim().toLowerCase() ||
+      u.id === String(record.username).trim()
+    );
+
+    if (!matchedUser) {
+      skipped++;
+      errors.push(`ไม่พบผู้ใช้งานไอดี: ${record.username}`);
+      continue;
+    }
+
+    // Map leave type
+    let mappedType = String(record.type).trim();
+    if (typeMap[mappedType]) {
+      mappedType = typeMap[mappedType];
+    } else {
+      const typeUpper = mappedType.toUpperCase();
+      if (["SICK", "PERSONAL", "VACATION", "MATERNITY", "ORDINATION", "MILITARY", "STUDY"].includes(typeUpper)) {
+        mappedType = typeUpper;
+      } else if (mappedType.includes("ป่วย") || typeUpper.includes("SICK")) {
+        mappedType = "SICK";
+      } else if (mappedType.includes("กิจ") || typeUpper.includes("PERSONAL")) {
+        mappedType = "PERSONAL";
+      } else if (mappedType.includes("พัก") || typeUpper.includes("VACATION") || mappedType.includes("ร้อน")) {
+        mappedType = "VACATION";
+      } else {
+        skipped++;
+        errors.push(`ประเภทการลาไม่ถูกต้อง: ${record.type} (ผู้ใช้: ${matchedUser.name || record.username})`);
+        continue;
+      }
+    }
+
+    // Map status
+    let mappedStatus = "APPROVED";
+    const s = String(record.status || "APPROVED").trim().toUpperCase();
+    if (["APPROVED", "REJECTED", "CANCELLED", "PENDING_HEAD", "PENDING_EXEC"].includes(s)) {
+      mappedStatus = s;
+    } else {
+      if (s.includes("อนุมัติ") && !s.includes("รอ") && !s.includes("ไม่")) {
+        mappedStatus = "APPROVED";
+      } else if (s.includes("ปฏิเสธ") || s.includes("ไม่อนุมัติ") || s.includes("REJECT")) {
+        mappedStatus = "REJECTED";
+      } else if (s.includes("ยกเลิก") || s.includes("CANCEL")) {
+        mappedStatus = "CANCELLED";
+      } else if (s.includes("รอหัวหน้า") || s.includes("PENDING_HEAD")) {
+        mappedStatus = "PENDING_HEAD";
+      } else if (s.includes("รอผู้บริหาร") || s.includes("PENDING_EXEC")) {
+        mappedStatus = "PENDING_EXEC";
+      }
+    }
+
+    // Resolve final executive approver (e.g. Director)
+    let execApproverId = null;
+    if (record.finalApproverUsername) {
+      const approver = existingUsers.find(u => 
+        u.username?.toLowerCase() === String(record.finalApproverUsername).trim().toLowerCase() ||
+        u.email.toLowerCase() === String(record.finalApproverUsername).trim().toLowerCase() ||
+        u.id === String(record.finalApproverUsername).trim()
+      );
+      if (approver) {
+        execApproverId = approver.id;
+      }
+    }
+
+    // Resolve department head/inspector approver
+    let headApproverId = null;
+    if (record.headApproverUsername) {
+      const approver = existingUsers.find(u => 
+        u.username?.toLowerCase() === String(record.headApproverUsername).trim().toLowerCase() ||
+        u.email.toLowerCase() === String(record.headApproverUsername).trim().toLowerCase() ||
+        u.id === String(record.headApproverUsername).trim()
+      );
+      if (approver) {
+        headApproverId = approver.id;
+      }
+    }
+
+    // Check duplicate in merge mode
+    if (mode === "merge") {
+      const existing = await prisma.leaveRequest.findFirst({
+        where: {
+          userId: matchedUser.id,
+          type: mappedType,
+          startDate: new Date(record.startDate),
+          endDate: new Date(record.endDate),
+        }
+      });
+      if (existing) {
+        skipped++;
+        continue;
+      }
+    }
+
+    try {
+      const startD = new Date(record.startDate);
+      const endD = new Date(record.endDate);
+      const fy = getFiscalYear(startD);
+
+      const created = await prisma.leaveRequest.create({
+        data: {
+          userId: matchedUser.id,
+          type: mappedType,
+          startDate: startD,
+          endDate: endD,
+          reason: record.reason || "นำเข้าข้อมูลเข้าระบบ",
+          status: mappedStatus,
+          execApproverId,
+          headApproverId,
+          fiscalYear: fy,
+        }
+      });
+      createdIds.push(created.id);
+      imported++;
+    } catch (err: any) {
+      skipped++;
+      errors.push(`เกิดข้อผิดพลาดในการนำเข้ารายการ (ผู้ใช้: ${matchedUser.name || record.username}): ${err.message}`);
+    }
+  }
+
+  // Backfill sequence counters
+  const { ensureSequencesPopulated } = await import("./leave");
+  await ensureSequencesPopulated();
+
+  await prisma.systemLog.create({
+    data: {
+      actionType: "IMPORT_LEAVE_SIMPLE",
+      description: `นำเข้าข้อมูลการลาอย่างง่าย: สำเร็จ ${imported} รายการ, ข้าม ${skipped} รายการ`,
+      userId: session.user.id
+    }
+  });
+
+  return {
+    success: true,
+    imported,
+    skipped,
+    errors: errors.slice(0, 10),
+    total: records.length,
+    createdIds
+  };
+}
+
+export async function undoImportLeave(ids: string[]) {
+  const session = await requirePrivilegedLeaveBackup();
+  
+  if (!ids || ids.length === 0) {
+    return { success: false, error: "ไม่มีรหัสข้อมูลการลาย้อนกลับ" };
+  }
+
+  try {
+    const res = await prisma.leaveRequest.deleteMany({
+      where: {
+        id: { in: ids }
+      }
+    });
+
+    await prisma.systemLog.create({
+      data: {
+        actionType: "UNDO_IMPORT_LEAVE",
+        description: `ย้อนกลับการนำเข้าข้อมูลการลา: ลบสำเร็จ ${res.count} รายการ`,
+        userId: session.user.id
+      }
+    });
+
+    return { success: true, count: res.count };
+  } catch (err: any) {
+    console.error("Failed to undo import:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getImportHistory() {
+  await requirePrivilegedLeaveBackup();
+
+  try {
+    const logs = await prisma.systemLog.findMany({
+      where: {
+        actionType: {
+          in: ["IMPORT_LEAVE_SIMPLE", "IMPORT_LEAVE_BACKUP", "UNDO_IMPORT_LEAVE"]
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 10,
+      include: {
+        user: {
+          select: { name: true }
+        }
+      }
+    });
+
+    return logs;
+  } catch (err: any) {
+    console.error("Failed to get import history:", err);
+    return [];
+  }
+}
+

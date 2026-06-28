@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { getMyLeaveHistory, cancelLeaveRequest, getStaffList, adminDeleteLeaveRequest } from "@/app/actions/leave";
@@ -406,9 +406,17 @@ export default function HistoryPage() {
     );
   };
 
+  // Stats calculation
+  const stats = {
+    total: filteredHistory.length,
+    approved: filteredHistory.filter(h => h.status === "APPROVED").length,
+    pending: filteredHistory.filter(h => h.status === "PENDING_HEAD" || h.status === "PENDING_EXEC").length,
+    rejected: filteredHistory.filter(h => h.status === "REJECTED" || h.status === "CANCELLED").length
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6" ref={printRef}>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{t("leaveHistory")}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -419,12 +427,12 @@ export default function HistoryPage() {
                 : `${t("leaveHistory")}: ${staffList.find(s => s.id === selectedUserId)?.name || ""}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap print:hidden">
+        <div className="flex items-center gap-2 flex-wrap print:hidden w-full md:w-auto">
           {staffList.length > 0 && (
             <select
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
-              className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer"
+              className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer flex-1 md:flex-none"
             >
               <option value="me">{t("myHistory")}</option>
               <option value="all">{t("allStaffOption")}</option>
@@ -442,7 +450,7 @@ export default function HistoryPage() {
               setSelectedStatus(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer"
+            className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer flex-1 md:flex-none"
           >
             <option value="all">{t("status")}: {t("allOptions")}</option>
             <option value="pending">{t("status")}: {t("pending")}</option>
@@ -450,10 +458,10 @@ export default function HistoryPage() {
             <option value="rejected">{t("status")}: {lang === "en" ? "Rejected/Cancelled" : "ไม่อนุมัติ/ยกเลิก"}</option>
           </select>
           {filteredHistory.length > 0 && (
-            <>
+            <div className="flex gap-2 w-full md:w-auto">
               <button
                 onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 text-sm font-semibold rounded-xl border border-indigo-200 dark:border-indigo-800 transition-colors shadow-sm"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 text-sm font-semibold rounded-xl border border-indigo-200 dark:border-indigo-800 transition-colors shadow-sm flex-1 md:flex-none"
                 title="พิมพ์ / บันทึกเป็น PDF"
               >
                 <Printer className="w-4 h-4" />
@@ -461,14 +469,54 @@ export default function HistoryPage() {
               </button>
               <button
                 onClick={handleExportXlsx}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20 text-sm font-semibold rounded-xl border border-emerald-200 dark:border-emerald-800 transition-colors shadow-sm"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20 text-sm font-semibold rounded-xl border border-emerald-200 dark:border-emerald-800 transition-colors shadow-sm flex-1 md:flex-none"
                 title="ส่งออกเป็น Excel"
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 Export Excel
               </button>
-            </>
+            </div>
           )}
+        </div>
+      </div>
+
+      {/* Summary Stats Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
+            <CalendarDays className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="block text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</span>
+            <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{lang === "en" ? "Total Records" : "รายการลาทั้งหมด"}</span>
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="block text-2xl font-bold text-slate-900 dark:text-white">{stats.approved}</span>
+            <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{t("approved")}</span>
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400">
+            <Clock className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <span className="block text-2xl font-bold text-slate-900 dark:text-white">{stats.pending}</span>
+            <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{t("pending")}</span>
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400">
+            <FileX className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="block text-2xl font-bold text-slate-900 dark:text-white">{stats.rejected}</span>
+            <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{lang === "en" ? "Rejected/Cancelled" : "ไม่อนุมัติ/ยกเลิก"}</span>
+          </div>
         </div>
       </div>
 
@@ -484,120 +532,212 @@ export default function HistoryPage() {
           const paginatedHistory = filteredHistory.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
           
           return (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800">
-                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">เลขที่ใบลา</th>
-                    {selectedUserId === "all" && (
-                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">ผู้ขอลา</th>
-                    )}
-                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("type")}</th>
-                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("date")}</th>
-                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">จำนวนวัน</th>
-                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("reason")}</th>
-                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">เอกสารแนบ</th>
-                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("status")}</th>
-                    <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 text-right print:hidden">{t("manage")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredHistory.length === 0 ? (
+            <div className="space-y-4">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto max-h-[600px] custom-scrollbar">
+                <table className="w-full text-left text-sm whitespace-nowrap border-collapse">
+                  <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10 border-b border-slate-100 dark:border-slate-800">
                     <tr>
-                      <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
-                        <div className="flex flex-col items-center gap-2">
-                          <CalendarDays className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-                          <p>
-                            {history.length === 0
-                              ? t("noLeaveHistory")
-                              : lang === "en"
-                                ? "No leave records match the filter"
-                                : "ไม่พบข้อมูลการลาที่ตรงกับตัวกรอง"}
-                          </p>
-                        </div>
-                      </td>
+                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">เลขที่ใบลา</th>
+                      {selectedUserId === "all" && (
+                        <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">ผู้ขอลา</th>
+                      )}
+                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">{t("type")}</th>
+                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">{t("date")}</th>
+                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">จำนวนวัน</th>
+                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">{t("reason")}</th>
+                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">เอกสารแนบ</th>
+                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">{t("status")}</th>
+                      <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 text-right print:hidden">{t("manage")}</th>
                     </tr>
-                  ) : paginatedHistory.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4">
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
+                          <div className="flex flex-col items-center gap-2">
+                            <CalendarDays className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                            <p>
+                              {history.length === 0
+                                ? t("noLeaveHistory")
+                                : lang === "en"
+                                  ? "No leave records match the filter"
+                                  : "ไม่พบข้อมูลการลาที่ตรงกับตัวกรอง"}
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : paginatedHistory.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="px-6 py-4">
+                          {item.status === "APPROVED" ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-200/40 dark:border-emerald-800/40">
+                              {lang === "en" ? `Approved No. ${item.approvedSeq}/${item.fiscalYear}` : `อนุมัติที่ ${item.approvedSeq}/${item.fiscalYear}`}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 dark:text-slate-400 text-xs bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200/40 dark:border-slate-700/40">
+                              {lang === "en" ? `Request No. ${item.pendingSeq}/${item.fiscalYear}` : `คำขอที่ ${item.pendingSeq}/${item.fiscalYear}`}
+                            </span>
+                          )}
+                        </td>
+                        {selectedUserId === "all" && (
+                          <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">
+                            {item.userName}
+                          </td>
+                        )}
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-slate-900 dark:text-white">
+                            {getLeaveTypeName(item.type)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                          {format(new Date(item.startDate), "dd MMM yyyy")} - {format(new Date(item.endDate), "dd MMM yyyy")}
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-semibold">
+                          {calculateDays(item.startDate, item.endDate, item.type) === 0 && item.type !== "MATERNITY" ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs" title="วันที่เลือกตรงกับวันเสาร์-อาทิตย์ทั้งหมด">
+                              {t("weekendZeroDays")}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs">
+                              {calculateDays(item.startDate, item.endDate, item.type)} {t("days")}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 dark:text-slate-300 max-w-[200px] truncate">
+                          {item.reason}
+                        </td>
+                        <td className="px-6 py-4">
+                          {renderDocumentLinks(item.documentUrl)}
+                        </td>
+                        <td className="px-6 py-4">
+                          {getStatusBadge(item.status)}
+                        </td>
+                        <td className="px-6 py-4 text-right print:hidden">
+                          <div className="flex items-center justify-end gap-2">
+                            <a
+                              href={`/print/leave/${item.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 text-xs font-semibold rounded-lg border border-indigo-200/40 dark:border-indigo-800/40 transition-colors shadow-sm"
+                              title="พิมพ์ใบลาทางการ / บันทึก PDF"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>{t("print")}</span>
+                            </a>
+                            {selectedUserId === "me" && (item.status === "PENDING_HEAD" || item.status === "PENDING_EXEC") && (
+                              <button
+                                onClick={() => handleCancel(item.id)}
+                                className="text-xs font-medium text-slate-500 hover:text-rose-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                              >
+                                {t("cancelLeave")}
+                              </button>
+                            )}
+                            {(isAdmin || isHR) && (
+                              <button
+                                onClick={() => handleDelete(item.id, getLeaveTypeName(item.type), item.userName || (selectedUserId === "me" ? (session?.user as any)?.name : staffList.find(s => s.id === selectedUserId)?.name) || "ผู้ยื่นคำขอ")}
+                                className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
+                                title="ลบข้อมูลนี้ออกจากระบบ (Admin Only)"
+                              >
+                                {t("deleteRecord")}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card Grid View */}
+              <div className="md:hidden space-y-4">
+                {filteredHistory.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
+                    <CalendarDays className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                    <span>{t("noLeaveHistory")}</span>
+                  </div>
+                ) : paginatedHistory.map((item) => (
+                  <div key={item.id} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-shadow">
+                    <div className="flex justify-between items-start">
+                      <div>
                         {item.status === "APPROVED" ? (
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-200/40 dark:border-emerald-800/40">
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-200/40">
                             {lang === "en" ? `Approved No. ${item.approvedSeq}/${item.fiscalYear}` : `อนุมัติที่ ${item.approvedSeq}/${item.fiscalYear}`}
                           </span>
                         ) : (
-                          <span className="text-slate-500 dark:text-slate-400 text-xs bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200/40 dark:border-slate-700/40">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200/40">
                             {lang === "en" ? `Request No. ${item.pendingSeq}/${item.fiscalYear}` : `คำขอที่ ${item.pendingSeq}/${item.fiscalYear}`}
                           </span>
                         )}
-                      </td>
-                      {selectedUserId === "all" && (
-                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">
-                          {item.userName}
-                        </td>
-                      )}
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-slate-900 dark:text-white">
-                          {getLeaveTypeName(item.type)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
-                        {format(new Date(item.startDate), "dd MMM yyyy")} - {format(new Date(item.endDate), "dd MMM yyyy")}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-semibold">
-                        {calculateDays(item.startDate, item.endDate, item.type) === 0 && item.type !== "MATERNITY" ? (
-                          <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs" title="วันที่เลือกตรงกับวันเสาร์-อาทิตย์ทั้งหมด">
-                            {t("weekendZeroDays")}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs">
-                            {calculateDays(item.startDate, item.endDate, item.type)} {t("days")}
-                          </span>
+                        {selectedUserId === "all" && (
+                          <span className="block mt-1.5 font-bold text-slate-900 dark:text-white text-xs">{item.userName}</span>
                         )}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300 max-w-[200px] truncate">
-                        {item.reason}
-                      </td>
-                      <td className="px-6 py-4">
-                        {renderDocumentLinks(item.documentUrl)}
-                      </td>
-                      <td className="px-6 py-4">
-                        {getStatusBadge(item.status)}
-                      </td>
-                      <td className="px-6 py-4 text-right print:hidden">
-                        <div className="flex items-center justify-end gap-2">
-                          <a
-                            href={`/print/leave/${item.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 text-xs font-semibold rounded-lg border border-indigo-200/40 dark:border-indigo-800/40 transition-colors shadow-sm"
-                            title="พิมพ์ใบลาทางการ / บันทึก PDF"
+                      </div>
+                      {getStatusBadge(item.status)}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500 block">{t("type")}:</span>
+                        <span className="font-semibold text-slate-950 dark:text-white">{getLeaveTypeName(item.type)}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500 block">จำนวนวัน:</span>
+                        <span className="font-semibold text-slate-950 dark:text-white">
+                          {calculateDays(item.startDate, item.endDate, item.type) === 0 && item.type !== "MATERNITY" ? t("weekendZeroDays") : `${calculateDays(item.startDate, item.endDate, item.type)} ${t("days")}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-xs">
+                      <span className="text-slate-400 dark:text-slate-500 block">{t("date")}:</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        {format(new Date(item.startDate), "dd MMM yyyy")} - {format(new Date(item.endDate), "dd MMM yyyy")}
+                      </span>
+                    </div>
+
+                    {item.reason && (
+                      <div className="text-xs bg-slate-50 dark:bg-slate-850 p-2 rounded-xl border border-slate-100/50 dark:border-slate-800/40">
+                        <span className="text-slate-400 dark:text-slate-500 block mb-0.5">{t("reason")}:</span>
+                        <p className="text-slate-700 dark:text-slate-300 font-medium">{item.reason}</p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                      <div>{renderDocumentLinks(item.documentUrl)}</div>
+                      
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={`/print/leave/${item.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-650 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 text-xs font-semibold rounded-lg border border-indigo-200/40"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>{t("print")}</span>
+                        </a>
+                        {selectedUserId === "me" && (item.status === "PENDING_HEAD" || item.status === "PENDING_EXEC") && (
+                          <button
+                            onClick={() => handleCancel(item.id)}
+                            className="text-xs font-medium text-slate-500 hover:text-rose-600 transition-colors px-2.5 py-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-850"
                           >
-                            <Printer className="w-3.5 h-3.5" />
-                            <span>{t("print")}</span>
-                          </a>
-                          {selectedUserId === "me" && (item.status === "PENDING_HEAD" || item.status === "PENDING_EXEC") && (
-                            <button
-                              onClick={() => handleCancel(item.id)}
-                              className="text-xs font-medium text-slate-500 hover:text-rose-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                            >
-                              {t("cancelLeave")}
-                            </button>
-                          )}
-                          {(isAdmin || isHR) && (
-                            <button
-                              onClick={() => handleDelete(item.id, getLeaveTypeName(item.type), item.userName || (selectedUserId === "me" ? (session?.user as any)?.name : staffList.find(s => s.id === selectedUserId)?.name) || "ผู้ยื่นคำขอ")}
-                              className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
-                              title="ลบข้อมูลนี้ออกจากระบบ (Admin Only)"
-                            >
-                              {t("deleteRecord")}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            {t("cancelLeave")}
+                          </button>
+                        )}
+                        {(isAdmin || isHR) && (
+                          <button
+                            onClick={() => handleDelete(item.id, getLeaveTypeName(item.type), item.userName || "ผู้ยื่นคำขอ")}
+                            className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
+                          >
+                            {t("deleteRecord")}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {/* Pagination Bar */}
               {filteredHistory.length > itemsPerPage && (
@@ -629,7 +769,7 @@ export default function HistoryPage() {
                           onClick={() => setCurrentPage(pageNum)}
                           className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
                             currentPage === pageNum
-                              ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+                              ? "bg-purple-650 text-white shadow-md shadow-purple-500/20"
                               : "border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 shadow-sm"
                           }`}
                         >
@@ -654,4 +794,3 @@ export default function HistoryPage() {
       </div>
     </div>
   );
-}

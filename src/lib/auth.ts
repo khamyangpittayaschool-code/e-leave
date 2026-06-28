@@ -70,6 +70,10 @@ export const auth = betterAuth({
         type: "string",
         required: false,
       },
+      level: {
+        type: "string",
+        required: false,
+      },
     },
   },
 });

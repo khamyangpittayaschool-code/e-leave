@@ -123,15 +123,39 @@ export async function getAllUsers() {
       role: true,
       position: true,
       subjectGroup: true,
+      level: true,
       image: true,
       isApproved: true,
       createdAt: true,
+      phoneNumber: true,
+      address: true,
+      signatureUrl: true,
+      sessions: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          createdAt: true
+        }
+      }
     }
   });
 
   return users.map(u => ({
-    ...u,
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    username: u.username,
+    role: u.role,
+    position: u.position,
+    subjectGroup: u.subjectGroup,
+    level: u.level,
+    image: u.image,
+    isApproved: u.isApproved,
     createdAt: u.createdAt.toISOString(),
+    lastLogin: u.sessions[0]?.createdAt.toISOString() || null,
+    hasPhone: !!u.phoneNumber?.trim(),
+    hasAddress: !!u.address?.trim(),
+    hasSignature: !!u.signatureUrl?.trim(),
   }));
 }
 
@@ -319,7 +343,7 @@ export async function resetUserPasswordByAdmin(userId: string, newPassword: stri
 }
 
 // ========= Create User by Admin =========
-export async function createUserByAdmin(data: { name: string; email: string; username?: string; password?: string; position: string; subjectGroup: string }) {
+export async function createUserByAdmin(data: { name: string; email: string; username?: string; password?: string; position: string; subjectGroup: string; level?: string }) {
   await requireSuperAdmin();
 
   if (!data.email) {
@@ -358,6 +382,7 @@ export async function createUserByAdmin(data: { name: string; email: string; use
       role,
       position: data.position,
       subjectGroup: data.subjectGroup,
+      level: data.level || null,
       isApproved: true, // auto approve admin created users
       emailVerified: true
     }

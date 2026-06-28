@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
+import { ToastProvider, useToast } from "@/components/toast-provider";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
 import { useTheme } from "next-themes";
@@ -266,6 +267,7 @@ function ToolbarButtons({ isAdmin, isApprover }: { isAdmin: boolean; isApprover:
 }
 
 function AppContent({ children }: { children: React.ReactNode }) {
+  const { showToast } = useToast();
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
@@ -370,7 +372,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       await clearImpersonation();
       window.location.reload();
     } catch (error: any) {
-      alert("เกิดข้อผิดพลาด: " + (error?.message || error));
+      showToast("error", "เกิดข้อผิดพลาด: " + (error?.message || error));
     }
   };
 
@@ -527,11 +529,34 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 px-6 lg:px-10 pb-12 w-full max-w-[1600px] mx-auto">
+        <div className="flex-1 px-6 lg:px-10 pb-24 lg:pb-12 w-full max-w-[1600px] mx-auto">
           {children}
         </div>
       </main>
 
+      </div>
+
+      {/* Mobile Bottom Navbar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200/50 dark:border-slate-800/50 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] px-2 py-1.5 flex justify-around items-center lg:hidden print:hidden">
+        {navItems.slice(0, isApprover ? 4 : 3).map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link key={item.href} href={item.href} className="flex-1 flex flex-col items-center justify-center py-1 group transition-all">
+              <div className={`flex flex-col items-center gap-1 ${isActive ? "text-purple-600 dark:text-purple-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}>
+                <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110 stroke-[2.5]" : "group-hover:scale-110"}`} />
+                <span className="text-[10px] font-semibold tracking-tight">{item.label}</span>
+              </div>
+            </Link>
+          );
+        })}
+        {/* Profile Item (always 5th or 4th item) */}
+        <Link href="/profile" className="flex-1 flex flex-col items-center justify-center py-1 group transition-all">
+          <div className={`flex flex-col items-center gap-1 ${pathname === "/profile" ? "text-purple-600 dark:text-purple-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}>
+            <UserCircle className={`w-5 h-5 transition-transform duration-200 ${pathname === "/profile" ? "scale-110 stroke-[2.5]" : "group-hover:scale-110"}`} />
+            <span className="text-[10px] font-semibold tracking-tight">{t("profile")}</span>
+          </div>
+        </Link>
       </div>
     </div>
   );
@@ -539,6 +564,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppContent>{children}</AppContent>
+    <ToastProvider>
+      <AppContent>{children}</AppContent>
+    </ToastProvider>
   );
 }

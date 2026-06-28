@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { submitLeaveRequest, getMyLeaveUsageForCurrentCycle } from "@/app/actions/leave";
@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Calendar, FileText, Send, Clock, Briefcase, Plus, AlertCircle, Paperclip, X, Image as ImageIcon, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/components/toast-provider";
 
 function getTodayStr() {
   const d = new Date();
@@ -68,6 +69,7 @@ const compressImage = (dataUrl: string): Promise<string> => {
 
 export default function RequestLeavePage() {
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
   const [attachedFiles, setAttachedFiles] = useState<{ name: string; preview: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -81,6 +83,8 @@ export default function RequestLeavePage() {
   const [leaveUsage, setLeaveUsage] = useState<any>(null);
   const [requirePersonalAdvance, setRequirePersonalAdvance] = useState(true);
   const [memoConfirmed, setMemoConfirmed] = useState(false);
+  const [quotaExceededAction, setQuotaExceededAction] = useState("ALLOW_WITH_MEMO");
+  const [reportedToDirector, setReportedToDirector] = useState(false);
 
   // For special leave fields
   const [extraWifeName, setExtraWifeName] = useState("");
@@ -130,10 +134,17 @@ export default function RequestLeavePage() {
         setLeaveRules(s.leaveRules.split("\n").filter((r: string) => r.trim()));
       }
       setRequirePersonalAdvance(s.requirePersonalAdvance !== false);
+      if (s.quotaExceededAction) {
+        setQuotaExceededAction(s.quotaExceededAction);
+      }
     }).catch(console.error);
 
     getMyLeaveUsageForCurrentCycle().then(setLeaveUsage).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    setReportedToDirector(false);
+  }, [selectedType, startDate, endDate]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -141,7 +152,7 @@ export default function RequestLeavePage() {
 
     const maxAllowed = 2 - attachedFiles.length;
     if (maxAllowed <= 0) {
-      alert("แนบไฟล์ได้สูงสุด 2 ไฟล์");
+      showToast("warning", "แนบไฟล์ได้สูงสุด 2 ไฟล์");
       return;
     }
 
@@ -151,7 +162,7 @@ export default function RequestLeavePage() {
     for (const file of filesToProcess) {
       if (file.type === "application/pdf") {
         if (file.size > 5 * 1024 * 1024) {
-          alert(t("fileTooLarge"));
+          showToast("error", t("fileTooLarge"));
           continue;
         }
         try {
@@ -169,7 +180,7 @@ export default function RequestLeavePage() {
           console.error(err);
         }
       } else {
-        alert("รองรับเฉพาะไฟล์รูปภาพและ PDF เท่านั้น");
+        showToast("warning", "รองรับเฉพาะไฟล์รูปภาพและ PDF เท่านั้น");
       }
     }
 
@@ -220,27 +231,63 @@ export default function RequestLeavePage() {
   const exceedsThreshold = leaveUsage ? (leaveUsage.totalTimes >= limitTimes || leaveUsage.totalDays >= limitDays) : false;
   const isAccumulationRuleActive = exceedsThreshold && (selectedType === "SICK" || selectedType === "PERSONAL");
 
+  const isQuotaExceeded = (() => {
+    if (!leaveUsage?.typeQuotas || !leaveUsage?.typeUsage || !selectedType) return false;
+    const quota = leaveUsage.typeQuotas[selectedType];
+    if (!quota || quota <= 0) return false;
+    const used = leaveUsage.typeUsage[selectedType] || 0;
+    
+    // Calculate days being requested
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    let reqDays = 0;
+    if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+      if (selectedType === "MATERNITY") {
+        reqDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      } else {
+        const current = new Date(start);
+        while (current <= end) {
+          const day = current.getDay();
+          if (day !== 0 && day !== 6) reqDays++;
+          current.setDate(current.getDate() + 1);
+        }
+      }
+    }
+    return (used + reqDays) > quota;
+  })();
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     // Final validation: endDate must not be before startDate
     if (endDate < startDate) {
-      alert(t("endBeforeStart"));
+      showToast("error", t("endBeforeStart"));
       return;
     }
 
     if (isPersonalLeaveInvalid) {
-      alert("การลากิจส่วนตัวต้องยื่นคำขอล่วงหน้าอย่างน้อย 1 วันทำการ (ไม่สามารถลาในวันนี้หรือย้อนหลังได้)");
+      showToast("warning", "การลากิจส่วนตัวต้องยื่นคำขอล่วงหน้าอย่างน้อย 1 วันทำการ (ไม่สามารถลาในวันนี้หรือย้อนหลังได้)");
       return;
     }
 
     if (isAccumulationRuleActive) {
       if (!memoConfirmed) {
-        alert("กรุณาติ๊กกล่องยืนยันว่าได้จัดทำบันทึกข้อความเสนอผู้อำนวยการเรียบร้อยแล้ว");
+        showToast("warning", "กรุณาติ๊กกล่องยืนยันว่าได้จัดทำบันทึกข้อความเสนอผู้อำนวยการเรียบร้อยแล้ว");
         return;
       }
       if (attachedFiles.length === 0) {
-        alert("กรุณาแนบไฟล์บันทึกข้อความเสนอผู้อำนวยการในช่องแนบเอกสาร");
+        showToast("warning", "กรุณาแนบไฟล์บันทึกข้อความเสนอผู้อำนวยการในช่องแนบเอกสาร");
+        return;
+      }
+    }
+
+    if (isQuotaExceeded) {
+      if (quotaExceededAction === "BLOCK") {
+        showToast("error", lang === "th" ? "ขออภัย จำนวนวันลาประเภทนี้เกินโควตาสูงสุดที่กำหนด ระบบไม่อนุญาตให้ยื่นคำขอลาเกินโควตา" : "Sorry, this leave type exceeds the maximum quota. Submission is blocked.");
+        return;
+      }
+      if (quotaExceededAction === "ALLOW_WITH_MEMO" && !reportedToDirector) {
+        showToast("warning", lang === "th" ? "กรุณายืนยันว่าได้รายงานผู้อำนวยการแล้วสำหรับการลาที่เกินโควตา" : "Please confirm that you have reported to the Director.");
         return;
       }
     }
@@ -298,11 +345,12 @@ export default function RequestLeavePage() {
         reason: formData.get("reason") as string,
         documentUrl: attachedFiles.length > 0 ? JSON.stringify(attachedFiles) : undefined,
         extraFields: Object.keys(extraObj).length > 0 ? JSON.stringify(extraObj) : undefined,
+        reportedToDirector: isQuotaExceeded && quotaExceededAction === "ALLOW_WITH_MEMO" ? reportedToDirector : undefined,
       });
-      alert(t("submitSuccess"));
+      showToast("success", t("submitSuccess"));
       router.push("/history");
     } catch (error: any) {
-      alert(error.message || t("submitError"));
+      showToast("error", error.message || t("submitError"));
     } finally {
       setLoading(false);
     }
@@ -544,32 +592,74 @@ export default function RequestLeavePage() {
 
                       if (!willExceed) return null;
 
+                      if (quotaExceededAction === "BLOCK") {
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-5 bg-rose-50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-900/40 rounded-3xl flex items-start gap-3.5 text-rose-800 dark:text-rose-300"
+                          >
+                            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                            <div className="text-xs space-y-1.5">
+                              <p className="font-bold">{t("quotaExceedBlockedTitle")}</p>
+                              <div className="opacity-90 font-medium leading-relaxed">
+                                {t("quotaExceedBlockedDesc")
+                                  .replace("{quota}", String(quota))
+                                  .replace("{used}", String(used))
+                                  .replace("{remaining}", String(remaining))
+                                  .replace("{reqDays}", String(reqDays))
+                                  .split("\n").map((line, i) => (
+                                    <span key={i} className="block mt-0.5">
+                                      {line}
+                                    </span>
+                                  ))
+                                }
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      }
+
                       return (
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-900/40 rounded-2xl flex items-start gap-2.5 text-orange-800 dark:text-orange-300"
+                          className="p-5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-3xl space-y-4 text-amber-800 dark:text-amber-300"
                         >
-                          <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
-                          <div className="text-xs space-y-1">
-                            <p className="font-bold">{t("quotaExceedWarningTitle")}</p>
-                            <div className="opacity-90 font-medium leading-relaxed">
-                              {t("quotaExceedWarningDesc")
-                                .replace("{quota}", String(quota))
-                                .replace("{used}", String(used))
-                                .replace("{remaining}", String(remaining))
-                                .replace("{reqDays}", String(reqDays))
-                                .split("\n").map((line, i) => (
-                                  <span key={i} className="block mt-0.5">
-                                    {line}
-                                  </span>
-                                ))
-                              }
+                          <div className="flex items-start gap-2.5">
+                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                            <div className="text-xs space-y-1">
+                              <p className="font-bold">{t("quotaExceedWarningTitle")}</p>
+                              <div className="opacity-90 font-medium leading-relaxed">
+                                {t("quotaExceedWarningDesc")
+                                  .replace("{quota}", String(quota))
+                                  .replace("{used}", String(used))
+                                  .replace("{remaining}", String(remaining))
+                                  .replace("{reqDays}", String(reqDays))
+                                  .split("\n").map((line, i) => (
+                                    <span key={i} className="block mt-0.5">
+                                      {line}
+                                    </span>
+                                  ))
+                                }
+                              </div>
+                              <p className="font-bold text-amber-700 dark:text-amber-200 mt-1.5 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4" />
+                                {t("directorAutoNotify")}
+                              </p>
                             </div>
-                            <p className="font-bold text-orange-700 dark:text-orange-200 mt-1.5 flex items-center gap-1.5">
-                              <CheckCircle2 className="w-4 h-4" />
-                              {t("directorAutoNotify")}
-                            </p>
+                          </div>
+                          
+                          <div className="border-t border-amber-200/50 dark:border-amber-900/30 pt-3">
+                            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-200">
+                              <input
+                                type="checkbox"
+                                checked={reportedToDirector}
+                                onChange={(e) => setReportedToDirector(e.target.checked)}
+                                className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                              />
+                              <span>{t("reportedToDirectorCheckbox")}</span>
+                            </label>
                           </div>
                         </motion.div>
                       );
@@ -779,7 +869,17 @@ export default function RequestLeavePage() {
 
             {/* Submit */}
             <div className="pt-4 flex justify-end">
-              <button type="submit" disabled={loading || isPersonalLeaveInvalid || (isAccumulationRuleActive && (!memoConfirmed || attachedFiles.length === 0))} className="flex items-center gap-2 px-8 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium hover:bg-slate-800 dark:hover:bg-slate-100 focus:ring-4 focus:ring-slate-900/20 transition-all disabled:opacity-50">
+              <button
+                type="submit"
+                disabled={
+                  loading ||
+                  isPersonalLeaveInvalid ||
+                  (isAccumulationRuleActive && (!memoConfirmed || attachedFiles.length === 0)) ||
+                  (isQuotaExceeded && quotaExceededAction === "BLOCK") ||
+                  (isQuotaExceeded && quotaExceededAction === "ALLOW_WITH_MEMO" && !reportedToDirector)
+                }
+                className="flex items-center gap-2 px-8 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium hover:bg-slate-800 dark:hover:bg-slate-100 focus:ring-4 focus:ring-slate-900/20 transition-all disabled:opacity-50"
+              >
                 {loading ? (
                   <>
                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-5 h-5 border-2 border-white/30 dark:border-slate-900/30 border-t-white dark:border-t-slate-900 rounded-full" />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useSession } from "@/lib/auth-client";
@@ -9,6 +9,8 @@ import { jsPDF } from "jspdf";
 import { format } from "date-fns";
 import { UserCircle, Calendar, FileText, Check, X, AlertCircle, Printer, Paperclip } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { motion, AnimatePresence } from "framer-motion";
+import { useToast } from "@/components/toast-provider";
 
 function calculateDays(startDateStr: string, endDateStr: string, type: string): number {
   const start = new Date(startDateStr);
@@ -59,11 +61,13 @@ const handleViewAttachment = (preview: string, fileName?: string) => {
 
 export default function ApprovalsPage() {
   const { data: session } = useSession();
+  const { showToast } = useToast();
   const user = session?.user as any;
   const isAdmin = user?.role === "ADMIN" || user?.position === "แอดมิน";
 
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [zoomedImage, setZoomedImage] = useState<{ src: string; name: string } | null>(null);
   const { t, lang, tLeaveType, tPosition, tSubjectGroup } = useI18n();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
@@ -240,7 +244,7 @@ export default function ApprovalsPage() {
           result = await generatePdfForRequest(id);
         } catch (pdfErr: any) {
           console.error("Failed to generate PDF client-side:", pdfErr);
-          alert(t("approveSuccessPdfError") + `\n\n${lang === "en" ? "Details" : "รายละเอียด"}: ${pdfErr?.message || pdfErr}`);
+          showToast("warning", t("approveSuccessPdfError") + `\n\n${lang === "en" ? "Details" : "รายละเอียด"}: ${pdfErr?.message || pdfErr}`);
         }
 
         if (result) {
@@ -252,7 +256,7 @@ export default function ApprovalsPage() {
       window.dispatchEvent(new Event("noti-refresh"));
       loadData();
     } catch (error: any) {
-      alert((lang === "en" ? "Error: " : "เกิดข้อผิดพลาด: ") + (error?.message || error));
+      showToast("error", (lang === "en" ? "Error: " : "เกิดข้อผิดพลาด: ") + (error?.message || error));
     } finally {
       setProcessingId(null);
       setProcessingStatus(null);
@@ -264,7 +268,7 @@ export default function ApprovalsPage() {
     if (reason === null) return;
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
-      alert(t("rejectReasonRequired"));
+      showToast("warning", t("rejectReasonRequired"));
       return;
     }
 
@@ -279,7 +283,7 @@ export default function ApprovalsPage() {
         result = await generatePdfForRequest(id);
       } catch (pdfErr: any) {
         console.error("Failed to generate PDF client-side:", pdfErr);
-        alert(t("rejectSuccessPdfError") + `\n\n${lang === "en" ? "Details" : "รายละเอียด"}: ${pdfErr?.message || pdfErr}`);
+        showToast("warning", t("rejectSuccessPdfError") + `\n\n${lang === "en" ? "Details" : "รายละเอียด"}: ${pdfErr?.message || pdfErr}`);
       }
 
       if (result) {
@@ -290,7 +294,7 @@ export default function ApprovalsPage() {
       window.dispatchEvent(new Event("noti-refresh"));
       loadData();
     } catch (err: any) {
-      alert(err.message || t("operationFailed"));
+      showToast("error", err.message || t("operationFailed"));
     } finally {
       setProcessingId(null);
       setProcessingStatus(null);
@@ -394,7 +398,12 @@ export default function ApprovalsPage() {
               {/* User Info */}
               <div className="flex items-center gap-4 min-w-[240px]">
                 {item.user?.image ? (
-                  <img src={item.user.image} alt={item.user.name} className="w-12 h-12 rounded-2xl object-cover shadow-md border border-slate-200 dark:border-slate-700" />
+                  <img 
+                    src={item.user.image} 
+                    alt={item.user.name} 
+                    onClick={() => setZoomedImage({ src: item.user.image, name: item.user.name })}
+                    className="w-12 h-12 rounded-2xl object-cover shadow-md border border-slate-200 dark:border-slate-700 cursor-zoom-in hover:opacity-90 transition-opacity" 
+                  />
                 ) : (
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
                     {item.user?.name?.charAt(0) || "U"}
@@ -458,9 +467,9 @@ export default function ApprovalsPage() {
 
               {/* Actions */}
               <div className="flex gap-2 w-full md:w-auto md:min-w-[200px] justify-end items-center">
-                {isAdmin ? (
+                {isAdmin && item.status === "PENDING_HEAD" ? (
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                    {t("viewOnlyAdmin")}
+                    {lang === "en" ? "Pending HR Head (View Only)" : "รอหัวหน้างานบุคคลพิจารณา (ดูได้อย่างเดียว)"}
                   </span>
                 ) : (
                   <>
@@ -504,6 +513,39 @@ export default function ApprovalsPage() {
           </div>
         </div>
       )}
+
+      {/* Zoomed Image Modal */}
+      <AnimatePresence>
+        {zoomedImage && (
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-955/80 backdrop-blur-md cursor-zoom-out"
+            onClick={() => setZoomedImage(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-2xl max-h-[85vh] overflow-hidden flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img 
+                src={zoomedImage.src} 
+                alt={zoomedImage.name} 
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl border border-white/10 shadow-2xl"
+              />
+              <div className="mt-3 text-center text-white font-bold text-sm bg-slate-900/60 backdrop-blur-md py-1.5 px-4 rounded-full border border-white/10">
+                {zoomedImage.name}
+              </div>
+              <button 
+                onClick={() => setZoomedImage(null)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/60 hover:bg-slate-950 text-white flex items-center justify-center font-bold text-sm cursor-pointer border border-white/10"
+              >
+                ✕
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

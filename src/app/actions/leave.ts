@@ -110,6 +110,7 @@ export async function submitLeaveRequest(data: {
   reason: string;
   documentUrl?: string;
   extraFields?: string;
+  reportedToDirector?: boolean;
 }) {
   const session = await getSession();
   const user = session.user as any;
@@ -182,31 +183,37 @@ export async function submitLeaveRequest(data: {
     }
   }
 
-  // Validate leave quota ONLY for non-sick and non-personal leave types
-  if (data.type !== "SICK" && data.type !== "PERSONAL") {
-    const { getLeaveConfigs } = await import("./settings");
-    const leaveConfigs = await getLeaveConfigs();
-    const config = leaveConfigs.find((c) => c.type === data.type);
+  // Validate leave quota
+  if (config) {
+    const settings = await prisma.systemSettings.findUnique({
+      where: { id: "default" },
+      select: { quotaExceededAction: true }
+    });
+    const quotaExceededAction = settings?.quotaExceededAction || "ALLOW_WITH_MEMO";
 
-    if (config) {
-      const cycle = getCurrentLeaveCycle();
-      const pastRequests = await prisma.leaveRequest.findMany({
-        where: {
-          userId: session.user.id,
-          type: data.type,
-          status: { in: ["APPROVED", "PENDING_HEAD", "PENDING_EXEC"] },
-          startDate: { gte: cycle.start, lte: cycle.end },
-        },
-      });
+    const cycle = getCurrentLeaveCycle();
+    const pastRequests = await prisma.leaveRequest.findMany({
+      where: {
+        userId: session.user.id,
+        type: data.type,
+        status: { in: ["APPROVED", "PENDING_HEAD", "PENDING_EXEC"] },
+        startDate: { gte: cycle.start, lte: cycle.end },
+      },
+    });
 
-      let usedDays = 0;
-      for (const r of pastRequests) {
-        const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
-        usedDays += days;
-      }
+    let usedDays = 0;
+    for (const r of pastRequests) {
+      const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+      usedDays += days;
+    }
 
-      if (config.maxDaysPerYear > 0 && (usedDays + requestedDays > config.maxDaysPerYear)) {
-        throw new Error(`ขออภัย จำนวนวันลาประเภทนี้เกินโควตาสูงสุดที่กำหนด (คุณเหลือสิทธิ์ลาได้อีก ${Math.max(config.maxDaysPerYear - usedDays, 0)} วัน จากทั้งหมด ${config.maxDaysPerYear} วัน)`);
+    if (config.maxDaysPerYear > 0 && (usedDays + requestedDays > config.maxDaysPerYear)) {
+      if (quotaExceededAction === "BLOCK") {
+        throw new Error(`ขออภัย จำนวนวันลาประเภทนี้เกินโควตาสูงสุดที่กำหนด (คุณเหลือสิทธิ์ลาได้อีก ${Math.max(config.maxDaysPerYear - usedDays, 0)} วัน จากทั้งหมด ${config.maxDaysPerYear} วัน) และระบบไม่ให้ยื่นคำขอลาเกินโควตา`);
+      } else if (quotaExceededAction === "ALLOW_WITH_MEMO") {
+        if (!data.reportedToDirector) {
+          throw new Error("กรุณายืนยันว่าได้รายงานผู้อำนวยการแล้วสำหรับการลาที่เกินโควตา");
+        }
       }
     }
   }
@@ -556,6 +563,8 @@ export async function getDashboardStats(
     })),
     leaveLeaderboard,
     userWatchlistStats,
+    limitTimes,
+    limitDays,
   };
 }
 
@@ -629,7 +638,7 @@ export async function approveLeaveRequest(id: string, pdfBase64?: string, skipDr
     updateData = { status: newStatus, headApproverId: session.user.id };
   } else if (
     isFinalApprover &&
-    (request.status === "PENDING_EXEC" || request.status === "PENDING_HEAD")
+    request.status === "PENDING_EXEC"
   ) {
     // Director / configured final approver gives final approval
     newStatus = "APPROVED";
@@ -765,7 +774,7 @@ export async function rejectLeaveRequest(id: string, rejectReason?: string, pdfB
     canReject = true;
   } else if (
     isFinalApprover &&
-    (request.status === "PENDING_EXEC" || request.status === "PENDING_HEAD")
+    request.status === "PENDING_EXEC"
   ) {
     canReject = true;
   }
@@ -1340,14 +1349,24 @@ export async function getLeaveRequestForPrint(id: string) {
     stats[type].total = stats[type].prev + stats[type].current;
   }
 
-  // 5. Find the last approved request of the SAME type
+  // 5. Find the last approved request of the SAME type or ANY type based on settings
+  const systemSettings = await prisma.systemSettings.findUnique({
+    where: { id: "default" },
+    select: { lastLeaveMode: true }
+  });
+  const lastLeaveMode = systemSettings?.lastLeaveMode || "SAME";
+
+  const lastRequestWhere: any = {
+    userId: request.userId,
+    status: "APPROVED",
+    startDate: { lt: request.startDate }
+  };
+  if (lastLeaveMode === "SAME") {
+    lastRequestWhere.type = request.type;
+  }
+
   const lastRequest = await prisma.leaveRequest.findFirst({
-    where: {
-      userId: request.userId,
-      type: request.type,
-      status: "APPROVED",
-      startDate: { lt: request.startDate }
-    },
+    where: lastRequestWhere,
     orderBy: { startDate: "desc" }
   });
 
@@ -1464,8 +1483,9 @@ export async function getBatchLeaveRequestsForPrint(
   
   const sysSettings = await prisma.systemSettings.findUnique({
     where: { id: "default" },
-    select: { defaultInspectorId: true }
+    select: { defaultInspectorId: true, lastLeaveMode: true }
   });
+  const lastLeaveMode = sysSettings?.lastLeaveMode || "SAME";
 
   let defaultInspector = null;
   if (sysSettings?.defaultInspectorId) {
@@ -1593,13 +1613,17 @@ export async function getBatchLeaveRequestsForPrint(
       stats[type].total = stats[type].prev + stats[type].current;
     }
 
+    const lastRequestWhere: any = {
+      userId: request.userId,
+      status: "APPROVED",
+      startDate: { lt: request.startDate }
+    };
+    if (lastLeaveMode === "SAME") {
+      lastRequestWhere.type = request.type;
+    }
+
     const lastRequest = await prisma.leaveRequest.findFirst({
-      where: {
-        userId: request.userId,
-        type: request.type,
-        status: "APPROVED",
-        startDate: { lt: request.startDate }
-      },
+      where: lastRequestWhere,
       orderBy: { startDate: "desc" }
     });
 

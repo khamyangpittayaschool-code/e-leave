@@ -1,16 +1,114 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "@/lib/auth-client";
 import { updateProfile } from "@/app/actions/user";
 import { authClient } from "@/lib/auth-client";
-import { Save, Lock, User as UserIcon, ShieldCheck, Mail, BookOpen, KeyRound, CheckCircle, Fingerprint, Camera, Trash2, Pencil, RefreshCw, Paperclip, Phone, MapPin, Award } from "lucide-react";
+import { Save, Lock, User as UserIcon, ShieldCheck, Mail, BookOpen, KeyRound, CheckCircle, Fingerprint, Camera, Trash2, Pencil, RefreshCw, Paperclip, Phone, MapPin, Award, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/components/toast-provider";
+import { motion, AnimatePresence } from "framer-motion";
+
+const compressImage = (file: File, maxWidth: number, maxHeight: number, format: "jpeg" | "png" = "jpeg", quality: number = 0.8): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Could not get canvas context"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL(`image/${format}`, quality));
+      };
+      img.onerror = () => reject(new Error("Image load error"));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("File read error"));
+    reader.readAsDataURL(file);
+  });
+};
+
+const processSignatureFile = (file: File, removeBackground: boolean): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas context error"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        if (removeBackground) {
+          const imgData = ctx.getImageData(0, 0, width, height);
+          const data = imgData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            if (r > 200 && g > 200 && b > 200) {
+              data[i + 3] = 0; // Alpha
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+        }
+
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => reject(new Error("Image load error"));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("File read error"));
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function ProfilePage() {
   const { data: session, isPending, refetch } = useSession();
   const user = session?.user as any;
   const { t, lang, tPosition, tSubjectGroup, tLevel } = useI18n();
+  const { showToast } = useToast();
+  const [avatarActionSheetOpen, setAvatarActionSheetOpen] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -35,6 +133,11 @@ export default function ProfilePage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const signatureInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [selectedSigFile, setSelectedSigFile] = useState<File | null>(null);
+  const [removeBg, setRemoveBg] = useState(true);
+  const [isDrawingModalOpen, setIsDrawingModalOpen] = useState(false);
+  const [sigMethod, setSigMethod] = useState<"upload" | "draw">("upload");
 
   // Sync state with user data once loaded
   useEffect(() => {
@@ -72,9 +175,9 @@ export default function ProfilePage() {
     try {
       await updateProfile({ name, email, subjectGroup, address, phoneNumber, level });
       await refetch();
-      alert(t("profileUpdateSuccess"));
+      showToast("success", t("profileUpdateSuccess"));
     } catch (error) {
-      alert(t("profileUpdateError"));
+      showToast("error", t("profileUpdateError"));
     } finally {
       setSavingProfile(false);
     }
@@ -84,50 +187,82 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert(t("imageSizeWarning"));
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("error", lang === "en" ? "Image size must not exceed 10MB" : "ขนาดรูปภาพต้องไม่เกิน 10MB");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const base64 = ev.target?.result as string;
-      setAvatarPreview(base64);
-      try {
-        await updateProfile({ name, subjectGroup, address, phoneNumber, level, image: base64 });
-        await refetch();
-      } catch (err) {
-        console.error("Failed to save avatar", err);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedBase64 = await compressImage(file, 200, 200, "jpeg", 0.85);
+      setAvatarPreview(compressedBase64);
+      await updateProfile({ name, subjectGroup, address, phoneNumber, level, image: compressedBase64 });
+      await refetch();
+    } catch (err) {
+      console.error("Failed to save avatar", err);
+      showToast("error", lang === "en" ? "Failed to save avatar" : "เกิดข้อผิดพลาดในการบันทึกรูปภาพประจำตัว");
+    }
   };
 
   const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1 * 1024 * 1024) {
-      alert(t("sigSizeWarning"));
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("error", lang === "en" ? "File size must not exceed 10MB" : "ขนาดไฟล์ต้องไม่เกิน 10MB");
       return;
     }
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setSignaturePreview(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    setSelectedSigFile(file);
   };
 
+  useEffect(() => {
+    if (selectedSigFile) {
+      processSignatureFile(selectedSigFile, removeBg)
+        .then(base64 => {
+          setSignaturePreview(base64);
+        })
+        .catch(err => {
+          console.error("Failed to process signature", err);
+        });
+    }
+  }, [selectedSigFile, removeBg]);
+
   // --- Signature Canvas Drawing Handlers ---
+  useEffect(() => {
+    if (isDrawingModalOpen) {
+      setTimeout(() => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          canvas.width = rect.width;
+          canvas.height = rect.height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = "#4F46E5"; // Indigo-600
+          }
+        }
+      }, 150);
+    }
+  }, [isDrawingModalOpen]);
+
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
 
-    // Scale coords to handle canvas size vs ClientBoundingRect
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    let clientX: number;
+    let clientY: number;
+
+    if ('touches' in e) {
+      if (e.touches.length === 0) return { x: 0, y: 0 };
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
 
     const x = ((clientX - rect.left) / rect.width) * canvas.width;
     const y = ((clientY - rect.top) / rect.height) * canvas.height;
@@ -142,11 +277,14 @@ export default function ProfilePage() {
 
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.strokeStyle = "#4F46E5"; // Indigo-600
 
     const { x, y } = getCanvasCoords(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
+    ctx.lineTo(x + 0.1, y);
+    ctx.stroke();
     setIsDrawing(true);
   };
 
@@ -182,13 +320,14 @@ export default function ProfilePage() {
     const isEmpty = !buffer.some(color => color !== 0);
 
     if (isEmpty) {
-      alert(t("drawSigWarning"));
+      showToast("warning", t("drawSigWarning"));
       return;
     }
 
     const base64 = canvas.toDataURL("image/png");
     setSignaturePreview(base64);
     clearCanvas();
+    setIsDrawingModalOpen(false);
   };
 
   const handleSaveSignatureToDb = async () => {
@@ -197,9 +336,9 @@ export default function ProfilePage() {
     try {
       await updateProfile({ name, subjectGroup, address, phoneNumber, level, signatureUrl: signaturePreview });
       await refetch();
-      alert(t("sigSaveSuccess"));
+      showToast("success", t("sigSaveSuccess"));
     } catch (err) {
-      alert(t("sigSaveError"));
+      showToast("error", t("sigSaveError"));
     } finally {
       setSavingSignature(false);
     }
@@ -212,9 +351,9 @@ export default function ProfilePage() {
       await updateProfile({ name, subjectGroup, address, phoneNumber, level, signatureUrl: "" });
       await refetch();
       setSignaturePreview("");
-      alert(t("sigDeleteSuccess"));
+      showToast("success", t("sigDeleteSuccess"));
     } catch (err) {
-      alert(t("sigDeleteError"));
+      showToast("error", t("sigDeleteError"));
     } finally {
       setSavingSignature(false);
     }
@@ -296,7 +435,7 @@ export default function ProfilePage() {
           <div className="px-6 pb-8 pt-0 flex flex-col items-center text-center relative">
             {/* Avatar */}
             <div
-              onClick={() => avatarInputRef.current?.click()}
+              onClick={() => setAvatarActionSheetOpen(true)}
               className="-mt-16 w-28 h-28 rounded-full border-4 border-white dark:border-slate-950 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-4xl font-extrabold shadow-xl relative group overflow-hidden cursor-pointer"
             >
               {avatarPreview ? (
@@ -452,6 +591,13 @@ export default function ProfilePage() {
                       <option value="ครูชำนาญการพิเศษ">{tLevel("ครูชำนาญการพิเศษ")}</option>
                       <option value="ครูเชี่ยวชาญ">{tLevel("ครูเชี่ยวชาญ")}</option>
                       <option value="ครูเชี่ยวชาญพิเศษ">{tLevel("ครูเชี่ยวชาญพิเศษ")}</option>
+                      <option value="รองผู้อำนวยการชำนาญการ">{tLevel("รองผู้อำนวยการชำนาญการ")}</option>
+                      <option value="รองผู้อำนวยการชำนาญการพิเศษ">{tLevel("รองผู้อำนวยการชำนาญการพิเศษ")}</option>
+                      <option value="รองผู้อำนวยการเชี่ยวชาญ">{tLevel("รองผู้อำนวยการเชี่ยวชาญ")}</option>
+                      <option value="ผู้อำนวยการชำนาญการ">{tLevel("ผู้อำนวยการชำนาญการ")}</option>
+                      <option value="ผู้อำนวยการชำนาญการพิเศษ">{tLevel("ผู้อำนวยการชำนาญการพิเศษ")}</option>
+                      <option value="ผู้อำนวยการเชี่ยวชาญ">{tLevel("ผู้อำนวยการเชี่ยวชาญ")}</option>
+                      <option value="ผู้อำนวยการเชี่ยวชาญพิเศษ">{tLevel("ผู้อำนวยการเชี่ยวชาญพิเศษ")}</option>
                     </select>
                     <Award className="w-4 h-4 text-slate-400 absolute right-4 top-3.5 pointer-events-none" />
                   </div>
@@ -560,112 +706,71 @@ export default function ProfilePage() {
 
                 {/* Method selector tab */}
                 <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
-                  <label
-                    onClick={() => {
-                      const drawEl = document.getElementById("sig-draw-section");
-                      const uploadEl = document.getElementById("sig-upload-section");
-                      const tabUpload = document.getElementById("tab-upload-label");
-                      const tabDraw = document.getElementById("tab-draw-label");
-                      if (drawEl) drawEl.style.display = "none";
-                      if (uploadEl) uploadEl.style.display = "block";
-                      if (tabUpload) {
-                        tabUpload.className = "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 shadow-sm border border-slate-200/40 dark:border-slate-800/40 cursor-pointer transition-all";
-                      }
-                      if (tabDraw) {
-                        tabDraw.className = "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer transition-all";
-                      }
-                    }}
-                    id="tab-upload-label"
-                    className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 shadow-sm border border-slate-200/40 dark:border-slate-800/40 cursor-pointer transition-all"
+                  <button
+                    type="button"
+                    onClick={() => setSigMethod("upload")}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${sigMethod === "upload" 
+                      ? "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm border border-slate-200/40 dark:border-slate-800/40" 
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-205"}`}
                   >
                     <Paperclip className="w-3.5 h-3.5" />
                     <span>{t("uploadImageTab")}</span>
-                  </label>
-                  <label
-                    onClick={() => {
-                      const drawEl = document.getElementById("sig-draw-section");
-                      const uploadEl = document.getElementById("sig-upload-section");
-                      const tabUpload = document.getElementById("tab-upload-label");
-                      const tabDraw = document.getElementById("tab-draw-label");
-                      if (drawEl) drawEl.style.display = "block";
-                      if (uploadEl) uploadEl.style.display = "none";
-                      if (tabUpload) {
-                        tabUpload.className = "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer transition-all";
-                      }
-                      if (tabDraw) {
-                        tabDraw.className = "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 shadow-sm border border-slate-200/40 dark:border-slate-800/40 cursor-pointer transition-all";
-                      }
-                      // Wait for display change then ensure canvas width is matched to layout
-                      setTimeout(() => {
-                        const canvas = canvasRef.current;
-                        if (canvas) {
-                          const rect = canvas.getBoundingClientRect();
-                          canvas.width = rect.width * 2;
-                          canvas.height = rect.height * 2;
-                          const ctx = canvas.getContext("2d");
-                          if (ctx) {
-                            ctx.scale(2, 2);
-                          }
-                        }
-                      }, 50);
-                    }}
-                    id="tab-draw-label"
-                    className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer transition-all"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSigMethod("draw")}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${sigMethod === "draw" 
+                      ? "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm border border-slate-200/40 dark:border-slate-800/40" 
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-205"}`}
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     <span>{t("drawSigTab")}</span>
-                  </label>
+                  </button>
                 </div>
 
                 {/* Upload Section */}
-                <div id="sig-upload-section" className="block">
-                  <label className="flex flex-col items-center justify-center w-full h-32 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/10 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50/30 dark:hover:bg-purple-500/5 transition-all cursor-pointer group">
-                    <input
-                      ref={signatureInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleSignatureUpload}
-                      className="hidden"
-                    />
-                    <Paperclip className="w-7 h-7 text-slate-300 dark:text-slate-700 group-hover:text-purple-400 transition-colors mb-1.5" />
-                    <span className="text-xs text-slate-400 group-hover:text-purple-500 transition-colors">{t("clickUploadSig")}</span>
-                    <span className="text-[10px] text-slate-300 dark:text-slate-700 mt-1">{t("sigTransparentDesc")}</span>
-                  </label>
-                </div>
+                {sigMethod === "upload" && (
+                  <div className="space-y-3">
+                    <label className="flex flex-col items-center justify-center w-full h-32 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/10 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50/30 dark:hover:bg-purple-500/5 transition-all cursor-pointer group">
+                      <input
+                        ref={signatureInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSignatureUpload}
+                        className="hidden"
+                      />
+                      <Paperclip className="w-7 h-7 text-slate-300 dark:text-slate-700 group-hover:text-purple-400 transition-colors mb-1.5" />
+                      <span className="text-xs text-slate-400 group-hover:text-purple-500 transition-colors">{t("clickUploadSig")}</span>
+                      <span className="text-[10px] text-slate-300 dark:text-slate-700 mt-1">{t("sigTransparentDesc")}</span>
+                    </label>
 
-                {/* Draw Section */}
-                <div id="sig-draw-section" className="hidden">
-                  <div className="relative rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955/20 overflow-hidden">
-                    <canvas
-                      ref={canvasRef}
-                      onMouseDown={startDrawing}
-                      onMouseMove={draw}
-                      onMouseUp={stopDrawing}
-                      onMouseLeave={stopDrawing}
-                      onTouchStart={startDrawing}
-                      onTouchMove={draw}
-                      onTouchEnd={stopDrawing}
-                      className="w-full h-32 bg-slate-50/50 dark:bg-slate-900/10 cursor-crosshair touch-none"
-                    />
-                    <div className="absolute top-2 right-2 flex gap-1.5 z-10">
-                      <button
-                        type="button"
-                        onClick={clearCanvas}
-                        className="flex items-center justify-center p-1.5 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 transition-colors hover:border-rose-100 shadow-sm cursor-pointer"
-                        title={t("clearCanvas")}
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={saveDrawnSignature}
-                        className="flex items-center justify-center px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold shadow-sm transition-colors cursor-pointer"
-                      >
-                        {t("applySig")}
-                      </button>
+                    <div className="flex items-center gap-2 mt-2 px-1">
+                      <input
+                        type="checkbox"
+                        id="remove-bg-checkbox"
+                        checked={removeBg}
+                        onChange={(e) => setRemoveBg(e.target.checked)}
+                        className="w-4 h-4 rounded text-purple-650 focus:ring-purple-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                      />
+                      <label htmlFor="remove-bg-checkbox" className="text-xs font-semibold text-slate-500 dark:text-slate-400 cursor-pointer select-none">
+                        {lang === "en" ? "Automatically remove white background" : "ลบพื้นหลังสีขาวอัตโนมัติ (แนะนำ)"}
+                      </label>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {sigMethod === "draw" && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDrawingModalOpen(true)}
+                    className="flex flex-col items-center justify-center w-full h-32 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/10 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50/30 dark:hover:bg-purple-500/5 transition-all cursor-pointer group"
+                  >
+                    <Pencil className="w-7 h-7 text-slate-300 dark:text-slate-700 group-hover:text-purple-400 transition-colors mb-1.5" />
+                    <span className="text-xs text-slate-400 group-hover:text-purple-500 transition-colors">
+                      {lang === "en" ? "Click to open signature drawing pad" : "คลิกเพื่อเปิดหน้าจอวาดลายเซ็น"}
+                    </span>
+                  </button>
+                )}
 
               </div>
             </div>
@@ -755,6 +860,173 @@ export default function ProfilePage() {
 
         </div>
       </div>
+
+      {/* Drawing Signature Modal */}
+      <AnimatePresence>
+        {isDrawingModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-6 md:p-8 flex flex-col gap-6"
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Pencil className="w-5 h-5 text-indigo-500" />
+                    {lang === "en" ? "Draw Your Signature" : "วาดลายเซ็นของคุณ"}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {lang === "en" ? "Please sign inside the frame below. The line will follow your movement directly." : "กรุณาลากเส้นเพื่อเขียนชื่อในช่องด้านล่าง เส้นวาดจะตรงตามตำแหน่งการลากของคุณ"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDrawingModalOpen(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="relative rounded-2xl border-2 border-slate-200 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 overflow-hidden shadow-inner">
+                <canvas
+                  ref={canvasRef}
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onTouchStart={startDrawing}
+                  onTouchMove={draw}
+                  onTouchEnd={stopDrawing}
+                  className="w-full h-80 cursor-crosshair touch-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+                <button
+                  type="button"
+                  onClick={clearCanvas}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-xs font-bold text-slate-600 dark:text-slate-300 transition-all shadow-sm cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  {t("clearCanvas")}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsDrawingModalOpen(false)}
+                    className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    {t("cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveDrawnSignature}
+                    className="px-6 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                  >
+                    {t("applySig")}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
+      {/* Action Sheet for Avatar */}
+      {avatarActionSheetOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center p-4">
+          <div className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-2xl shadow-xl overflow-hidden animate-slide-up sm:animate-fade-in border border-gray-150 dark:border-gray-800">
+            <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800 text-center">
+              <span className="text-sm font-bold text-gray-950 dark:text-white">
+                {lang === "en" ? "Manage Profile Image" : "จัดการรูปโปรไฟล์ของคุณ"}
+              </span>
+            </div>
+            <div className="p-2 space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  avatarInputRef.current?.click();
+                  setAvatarActionSheetOpen(false);
+                }}
+                className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-gray-955 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-850 text-center transition-colors"
+              >
+                {lang === "en" ? "🖼️ Choose from Gallery" : "🖼️ เลือกจากคลังรูปภาพ"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.capture = "environment";
+                  input.onchange = async (e: any) => {
+                    if (!e.target.files?.[0]) return;
+                    try {
+                      const file = e.target.files[0];
+                      if (file.size > 10 * 1024 * 1024) {
+                        showToast("error", lang === "en" ? "Image size must not exceed 10MB" : "ขนาดรูปภาพต้องไม่เกิน 10MB");
+                        return;
+                      }
+                      const compressedBase64 = await compressImage(file, 400, 400);
+                      setAvatarPreview(compressedBase64);
+                      const res = await updateProfile({ image: compressedBase64 });
+                      if (res.success) {
+                        showToast("success", lang === "en" ? "Avatar saved successfully" : "บันทึกรูปโปรไฟล์สำเร็จ");
+                        refetch();
+                      } else {
+                        throw new Error(res.error);
+                      }
+                    } catch (err: any) {
+                      console.error("Failed to save avatar", err);
+                      showToast("error", lang === "en" ? "Failed to save avatar" : "เกิดข้อผิดพลาดในการบันทึกรูปประจำตัว");
+                    }
+                    setAvatarActionSheetOpen(false);
+                  };
+                  input.click();
+                }}
+                className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-gray-955 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-850 text-center transition-colors"
+              >
+                {lang === "en" ? "📷 Take Photo" : "📷 ถ่ายรูปด้วยกล้อง"}
+              </button>
+              {avatarPreview && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setAvatarPreview("");
+                      setAvatarActionSheetOpen(false);
+                      const res = await updateProfile({ image: "" });
+                      if (res.success) {
+                        showToast("success", lang === "en" ? "Profile image removed successfully" : "ลบรูปโปรไฟล์สำเร็จ");
+                        refetch();
+                      } else {
+                        throw new Error(res.error);
+                      }
+                    } catch (err: any) {
+                      showToast("error", lang === "en" ? "Failed to remove avatar" : "เกิดข้อผิดพลาดในการลบรูปประจำตัว");
+                    }
+                  }}
+                  className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-center transition-colors"
+                >
+                  {lang === "en" ? "🗑️ Remove Current Image" : "🗑️ ลบรูปภาพปัจจุบัน"}
+                </button>
+              )}
+            </div>
+            <div className="p-2 border-t border-gray-100 dark:border-gray-850">
+              <button
+                type="button"
+                onClick={() => setAvatarActionSheetOpen(false)}
+                className="w-full py-3 px-4 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-850 text-center transition-colors"
+              >
+                {lang === "en" ? "Cancel" : "ยกเลิก"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }

@@ -2,14 +2,15 @@
 
 import { useState, useEffect, ChangeEvent } from "react";
 import { getAllUsers, updateUserProfile, deleteUser, approveUser, resetUserPasswordByAdmin, suspendUser, createUserByAdmin, importUsersByAdmin } from "@/app/actions/admin";
-import { motion } from "framer-motion";
-import { Users, Shield, Trash2, Search, UserCog, ChevronDown, Key, Ban, UserX, CheckCircle, Plus, Upload, Download } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Users, Shield, Trash2, Search, UserCog, ChevronDown, Key, Ban, UserX, CheckCircle, Plus, Upload, Download, Phone, MapPin, Fingerprint } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import * as XLSX from "xlsx";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [zoomedImage, setZoomedImage] = useState<{ src: string; name: string } | null>(null);
   const [searchText, setSearchText] = useState("");
   const [editingData, setEditingData] = useState<any>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
@@ -18,7 +19,23 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const { t, lang, tPosition, tSubjectGroup } = useI18n();
+  const { t, lang, tPosition, tSubjectGroup, tLevel } = useI18n();
+  const levelOptions = [
+    "",
+    "ครูผู้ช่วย",
+    "ครู",
+    "ครูชำนาญการ",
+    "ครูชำนาญการพิเศษ",
+    "ครูเชี่ยวชาญ",
+    "ครูเชี่ยวชาญพิเศษ",
+    "รองผู้อำนวยการชำนาญการ",
+    "รองผู้อำนวยการชำนาญการพิเศษ",
+    "รองผู้อำนวยการเชี่ยวชาญ",
+    "ผู้อำนวยการชำนาญการ",
+    "ผู้อำนวยการชำนาญการพิเศษ",
+    "ผู้อำนวยการเชี่ยวชาญ",
+    "ผู้อำนวยการเชี่ยวชาญพิเศษ",
+  ];
   const [importResult, setImportResult] = useState<{
     created: number;
     updated: number;
@@ -66,7 +83,8 @@ export default function UsersPage() {
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
       const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
       
-      const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvOutput], { type: "text/csv;charset=utf-8;" });
+      const BOM = "\uFEFF";
+      const blob = new Blob([BOM + csvOutput], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
@@ -169,7 +187,8 @@ export default function UsersPage() {
       username: editingData.username,
       role,
       position: editingData.position,
-      subjectGroup: editingData.subjectGroup
+      subjectGroup: editingData.subjectGroup,
+      level: editingData.level || ""
     });
     setEditingData(null);
     loadUsers();
@@ -184,7 +203,8 @@ export default function UsersPage() {
         username: addingData.username,
         password: addingData.password,
         position: addingData.position,
-        subjectGroup: addingData.subjectGroup
+        subjectGroup: addingData.subjectGroup,
+        level: addingData.level || ""
       });
       setIsAddingUser(false);
       setAddingData(null);
@@ -323,7 +343,7 @@ export default function UsersPage() {
           <button
             onClick={() => {
               setIsAddingUser(true);
-              setAddingData({ name: "", email: "", username: "", password: "", position: "ครู", subjectGroup: "" });
+              setAddingData({ name: "", email: "", username: "", password: "", position: "ครู", subjectGroup: "", level: "" });
             }}
             className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white text-xs font-semibold rounded-xl shadow-md shadow-purple-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
           >
@@ -362,6 +382,7 @@ export default function UsersPage() {
                   <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("position")}</th>
                   <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("subjectGroup")}</th>
                   <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("registeredDateCol")}</th>
+                  <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400">{t("lastLoginCol")}</th>
                   <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 text-right">{t("manage")}</th>
                 </tr>
               </thead>
@@ -375,13 +396,31 @@ export default function UsersPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             {user.image ? (
-                              <img src={user.image} alt={user.name} className="w-9 h-9 rounded-full object-cover shadow-sm border border-slate-200 dark:border-slate-700" />
+                              <img 
+                                src={user.image} 
+                                alt={user.name} 
+                                onClick={() => setZoomedImage({ src: user.image, name: user.name })}
+                                className="w-9 h-9 rounded-full object-cover shadow-sm border border-slate-200 dark:border-slate-700 cursor-zoom-in hover:opacity-90 transition-opacity" 
+                              />
                             ) : (
                               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
                                 {user.name?.charAt(0)?.toUpperCase() || "?"}
                               </div>
                             )}
-                            <span className="font-medium text-slate-900 dark:text-white">{user.name || "-"}</span>
+                            <div>
+                              <span className="font-medium text-slate-900 dark:text-white block">{user.name || "-"}</span>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span title={user.hasPhone ? (lang === "en" ? "Phone number provided" : "เบอร์โทรศัพท์ (บันทึกแล้ว)") : (lang === "en" ? "No phone number" : "เบอร์โทรศัพท์ (ยังไม่มี)")}>
+                                  <Phone className={`w-3.5 h-3.5 ${user.hasPhone ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`} />
+                                </span>
+                                <span title={user.hasAddress ? (lang === "en" ? "Address provided" : "ที่อยู่ (บันทึกแล้ว)") : (lang === "en" ? "No address" : "ที่อยู่ (ยังไม่มี)")}>
+                                  <MapPin className={`w-3.5 h-3.5 ${user.hasAddress ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`} />
+                                </span>
+                                <span title={user.hasSignature ? (lang === "en" ? "Signature provided" : "ลายเซ็น (บันทึกแล้ว)") : (lang === "en" ? "No signature" : "ลายเซ็น (ยังไม่มี)")}>
+                                  <Fingerprint className={`w-3.5 h-3.5 ${user.hasSignature ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`} />
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-900 dark:text-white text-xs font-semibold">{user.username || "-"}</td>
@@ -394,6 +433,21 @@ export default function UsersPage() {
                         <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">{tSubjectGroup(user.subjectGroup) || "-"}</td>
                         <td className="px-6 py-4 text-slate-400 text-xs">
                           {new Date(user.createdAt).toLocaleDateString(lang === "th" ? "th-TH" : "en-US")}
+                        </td>
+                        <td className="px-6 py-4 text-slate-400 text-xs">
+                          {user.lastLogin ? (
+                            <>
+                              <span className="block font-medium text-slate-700 dark:text-slate-300">
+                                {new Date(user.lastLogin).toLocaleDateString(lang === "th" ? "th-TH" : "en-US")}
+                              </span>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                                {new Date(user.lastLogin).toLocaleTimeString(lang === "th" ? "th-TH" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+                                {lang === "th" ? " น." : ""}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-right space-x-2 flex items-center justify-end">
                           {!user.isApproved ? (
@@ -636,6 +690,16 @@ export default function UsersPage() {
                   {subjectGroupOptions.map(sg => <option key={sg} value={sg}>{tSubjectGroup(sg)}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{lang === "en" ? "Level" : "ระดับ"}</label>
+                <select
+                  value={editingData.level || ""}
+                  onChange={e => setEditingData({ ...editingData, level: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-sm focus:ring-2 focus:ring-purple-500/30 outline-none"
+                >
+                  {levelOptions.map(lvl => <option key={lvl} value={lvl}>{tLevel(lvl)}</option>)}
+                </select>
+              </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button
@@ -729,6 +793,16 @@ export default function UsersPage() {
                   {subjectGroupOptions.map(sg => <option key={sg} value={sg}>{tSubjectGroup(sg)}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{lang === "en" ? "Level" : "ระดับ"}</label>
+                <select
+                  value={addingData.level || ""}
+                  onChange={e => setAddingData({ ...addingData, level: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-855 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500/30 outline-none"
+                >
+                  {levelOptions.map(lvl => <option key={lvl} value={lvl}>{tLevel(lvl)}</option>)}
+                </select>
+              </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button
@@ -804,6 +878,39 @@ export default function UsersPage() {
           </motion.div>
         </div>
       )}
+
+      {/* Zoomed Image Modal */}
+      <AnimatePresence>
+        {zoomedImage && (
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-955/80 backdrop-blur-md cursor-zoom-out"
+            onClick={() => setZoomedImage(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-2xl max-h-[85vh] overflow-hidden flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img 
+                src={zoomedImage.src} 
+                alt={zoomedImage.name} 
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl border border-white/10 shadow-2xl"
+              />
+              <div className="mt-3 text-center text-white font-bold text-sm bg-slate-900/60 backdrop-blur-md py-1.5 px-4 rounded-full border border-white/10">
+                {zoomedImage.name}
+              </div>
+              <button 
+                onClick={() => setZoomedImage(null)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/60 hover:bg-slate-950 text-white flex items-center justify-center font-bold text-sm cursor-pointer border border-white/10"
+              >
+                ✕
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -86,14 +86,16 @@ export default function DashboardPage() {
     );
   }
 
-  const { isOverview, usedDaysMap, leaveConfigs, pendingCount, totalStaff, approvalRate, monthlyData, deptStats, recentRequests } = stats;
+  const { isOverview, usedDaysMap, leaveConfigs, pendingCount, totalStaff, approvalRate, monthlyData, deptStats, recentRequests, limitTimes = 6, limitDays = 15 } = stats;
   
   let totalUsed = 0;
   for (const type in usedDaysMap) {
     totalUsed += usedDaysMap[type];
   }
 
-  const totalQuota = 15;
+  const totalQuota = leaveConfigs
+    ?.filter((c: any) => c.isActive !== false && c.maxDaysPerYear > 0)
+    .reduce((sum: number, c: any) => sum + c.maxDaysPerYear, 0) || 15;
   const totalRemaining = Math.max(totalQuota - totalUsed, 0);
 
 
@@ -203,14 +205,14 @@ export default function DashboardPage() {
             <div>
               <div className="flex justify-between text-sm font-semibold mb-2">
                 <span className="text-slate-700 dark:text-slate-300">{t("usedQuotaTimes")}</span>
-                <span className="text-slate-900 dark:text-white">{stats.userWatchlistStats?.totalTimes || 0} / 6 {t("timesUnit")}</span>
+                <span className="text-slate-900 dark:text-white">{stats.userWatchlistStats?.totalTimes || 0} / {limitTimes} {t("timesUnit")}</span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(((stats.userWatchlistStats?.totalTimes || 0) / 6) * 100, 100)}%` }}
+                  animate={{ width: `${Math.min(((stats.userWatchlistStats?.totalTimes || 0) / limitTimes) * 100, 100)}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
-                  className={`h-full rounded-full ${(stats.userWatchlistStats?.totalTimes || 0) >= 4 ? 'bg-orange-500' : 'bg-purple-500'}`}
+                  className={`h-full rounded-full ${(stats.userWatchlistStats?.totalTimes || 0) >= Math.floor(limitTimes * 0.67) ? 'bg-orange-500' : 'bg-purple-500'}`}
                 />
               </div>
             </div>
@@ -219,14 +221,14 @@ export default function DashboardPage() {
             <div>
               <div className="flex justify-between text-sm font-semibold mb-2">
                 <span className="text-slate-700 dark:text-slate-300">{t("usedQuotaDays")}</span>
-                <span className="text-slate-900 dark:text-white">{stats.userWatchlistStats?.totalDays || 0} / 15 {t("days")}</span>
+                <span className="text-slate-900 dark:text-white">{stats.userWatchlistStats?.totalDays || 0} / {limitDays} {t("days")}</span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(((stats.userWatchlistStats?.totalDays || 0) / 15) * 100, 100)}%` }}
+                  animate={{ width: `${Math.min(((stats.userWatchlistStats?.totalDays || 0) / limitDays) * 100, 100)}%` }}
                   transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-                  className={`h-full rounded-full ${(stats.userWatchlistStats?.totalDays || 0) >= 12 ? 'bg-rose-500' : 'bg-blue-500'}`}
+                  className={`h-full rounded-full ${(stats.userWatchlistStats?.totalDays || 0) >= Math.floor(limitDays * 0.8) ? 'bg-rose-500' : 'bg-blue-500'}`}
                 />
               </div>
             </div>

@@ -27,6 +27,8 @@ model User {
   sessions      Session[]
   accounts      Account[]
   leaveRequests LeaveRequest[]
+  documentRecords  DocumentRecord[]
+  templates        DocumentTemplate[]
 }
 
 model Session {
@@ -102,6 +104,8 @@ model SystemSettings {
   showActingDirectorTitle Boolean @default(true) // Toggle display of acting director title on printed forms
   pdfFont                String   @default("Prompt") // Google Font for leave form: Prompt, Sarabun, Taviraj, Noto Sans Thai, Kanit
   googleDriveFormat      String   @default("PDF") // Upload format to Google Drive: PDF, JPG
+  lastLeaveMode          String   @default("SAME")
+  quotaExceededAction    String   @default("ALLOW_WITH_MEMO")
   updatedAt              DateTime @updatedAt
 }
 
@@ -143,3 +147,102 @@ model SystemBackup {
   createdBy String // userId
   createdAt DateTime @default(now())
 }
+
+model MemoSection {
+  id               String             @id @default(cuid())
+  name             String
+  code             String             @unique
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  
+  documentConfigs  DocumentConfig[]
+  documentRecords  DocumentRecord[]
+  templates        DocumentTemplate[]
+}
+
+model DocumentConfig {
+  id               String             @id @default(cuid())
+  docType          String             // MEMO, COMMAND, OUTGOING
+  memoSectionId    String?            @unique
+  prefix           String             @default("")
+  useThaiNumerals  Boolean            @default(true)
+  paddingDigits    Int                @default(1)
+  yearFormat       String             @default("TH_BE")
+  currentSeq       Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  memoSection      MemoSection?       @relation(fields: [memoSectionId], references: [id], onDelete: Cascade)
+}
+
+model DocumentRecord {
+  id               String             @id @default(cuid())
+  docType          String             // MEMO, COMMAND, OUTGOING
+  memoSectionId    String?
+  docNo            String?            @unique
+  seqNo            Int?
+  year             Int
+  title            String
+  to               String
+  origin           String
+  date             DateTime
+  content          String             @db.Text
+  signeeName       String
+  signeePosition   String
+  enclosures       String?
+  references       String?
+  status           String             @default("DRAFT") // DRAFT, ISSUED, PRINTED, CANCELLED, RESERVED
+  cancelReason     String?
+  isPinned         Boolean            @default(false)
+  createdById      String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  user             User               @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  memoSection      MemoSection?       @relation(fields: [memoSectionId], references: [id], onDelete: SetNull)
+  outgoingLinks    DocumentRelation[] @relation("FromDocument")
+  incomingLinks    DocumentRelation[] @relation("ToDocument")
+}
+
+model SigneePreset {
+  id               String             @id @default(cuid())
+  name             String
+  position         String
+  isCommon         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
+
+model DocumentTemplate {
+  id               String             @id @default(cuid())
+  name             String
+  docType          String             // MEMO, COMMAND, OUTGOING
+  memoSectionId    String?
+  title            String
+  to               String
+  origin           String
+  content          String             @db.Text
+  signeeName       String
+  signeePosition   String
+  isPublic         Boolean            @default(true)
+  createdById      String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  memoSection      MemoSection?       @relation(fields: [memoSectionId], references: [id], onDelete: SetNull)
+  user             User               @relation(fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+model DocumentRelation {
+  id               String             @id @default(cuid())
+  fromId           String
+  toId             String
+  createdAt        DateTime           @default(now())
+
+  fromDoc          DocumentRecord     @relation("FromDocument", fields: [fromId], references: [id], onDelete: Cascade)
+  toDoc            DocumentRecord     @relation("ToDocument", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId])
+}
+

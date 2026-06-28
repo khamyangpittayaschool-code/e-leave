@@ -397,6 +397,9 @@ const translations = {
     confirmMemoCheckbox: "ข้าพเจ้ายืนยันว่าได้จัดทำบันทึกข้อความเสนอผู้อำนวยการเรียบร้อยแล้ว",
     quotaExceedWarningTitle: "⚠️ แจ้งเตือน: จำนวนวันลาเกินโควตาที่กำหนด",
     quotaExceedWarningDesc: "ประเภทนี้มีโควตาสูงสุด {quota} วัน/ปี — คุณใช้ไปแล้ว {used} วัน เหลืออีก {remaining} วัน\nคำขอลาครั้งนี้ ({reqDays} วัน) จะทำให้ยอดสะสมเกินโควตา",
+    quotaExceedBlockedTitle: "❌ ไม่สามารถส่งคำขอลาได้ (เกินโควตา)",
+    quotaExceedBlockedDesc: "ประเภทนี้มีโควตาสูงสุด {quota} วัน/ปี — คุณใช้ไปแล้ว {used} วัน เหลืออีก {remaining} วัน\nคำขอลาครั้งนี้ ({reqDays} วัน) จะทำให้ยอดสะสมเกินโควตา ซึ่งระบบไม่อนุญาตให้ลาเกินโควตา",
+    reportedToDirectorCheckbox: "ข้าพเจ้ายืนยันว่าได้รายงานผู้อำนวยการเรียบร้อยแล้ว",
     directorAutoNotify: "ระบบจะแจ้งผู้อำนวยการโดยอัตโนมัติเมื่อส่งคำขอ",
     paternityInfoTitle: "ข้อมูลสำหรับลาไปช่วยเหลือภริยาที่คลอดบุตร",
     wifeNameLabel: "ชื่อภริยาโดยชอบด้วยกฎหมาย",
@@ -491,6 +494,7 @@ const translations = {
     editUserModalTitle: "แก้ไขข้อมูลผู้ใช้",
     addUserModalTitle: "เพิ่มบัญชีผู้ใช้ใหม่",
     registeredDateCol: "วันที่สมัคร",
+    lastLoginCol: "เข้าใช้งานล่าสุด",
     fullNameLabel: "ชื่อ - นามสกุล",
     usernameLabel: "ไอดีเข้าใช้งาน (ID / Username)",
     usernamePlaceholderText: "เช่น 1002",
@@ -913,6 +917,9 @@ const translations = {
     confirmMemoCheckbox: "I confirm that I have prepared the memorandum for the Director.",
     quotaExceedWarningTitle: "⚠️ Warning: Requested days exceed the leave quota",
     quotaExceedWarningDesc: "This type has a maximum quota of {quota} days/year — You used {used} days, {remaining} days remaining. This request ({reqDays} days) will exceed the quota.",
+    quotaExceedBlockedTitle: "❌ Cannot submit request (Quota exceeded)",
+    quotaExceedBlockedDesc: "This type has a maximum quota of {quota} days/year — You used {used} days, {remaining} days remaining. This request ({reqDays} days) exceeds the quota and submission is blocked.",
+    reportedToDirectorCheckbox: "I confirm that I have reported this to the Director.",
     directorAutoNotify: "The system will automatically notify the Director upon submission.",
     paternityInfoTitle: "Paternity Leave Information",
     wifeNameLabel: "Wife's Legal Name",
@@ -1007,6 +1014,7 @@ const translations = {
     editUserModalTitle: "Edit User Info",
     addUserModalTitle: "Add New User Account",
     registeredDateCol: "Registered Date",
+    lastLoginCol: "Last Login",
     fullNameLabel: "Full Name",
     usernameLabel: "Login ID (ID / Username)",
     usernamePlaceholderText: "e.g., 1002",
@@ -1126,7 +1134,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       "ครูชำนาญการ": { th: "ครูชำนาญการ", en: "Professional Teacher" },
       "ครูชำนาญการพิเศษ": { th: "ครูชำนาญการพิเศษ", en: "Senior Professional Teacher" },
       "ครูเชี่ยวชาญ": { th: "ครูเชี่ยวชาญ", en: "Expert Teacher" },
-      "ครูเชี่ยวชาญพิเศษ": { th: "ครูเชี่ยวชาญพิเศษ", en: "Special Expert Teacher" }
+      "ครูเชี่ยวชาญพิเศษ": { th: "ครูเชี่ยวชาญพิเศษ", en: "Special Expert Teacher" },
+      "รองผู้อำนวยการชำนาญการ": { th: "รองผู้อำนวยการชำนาญการ", en: "Professional Deputy Director" },
+      "รองผู้อำนวยการชำนาญการพิเศษ": { th: "รองผู้อำนวยการชำนาญการพิเศษ", en: "Senior Professional Deputy Director" },
+      "รองผู้อำนวยการเชี่ยวชาญ": { th: "รองผู้อำนวยการเชี่ยวชาญ", en: "Expert Deputy Director" },
+      "ผู้อำนวยการชำนาญการ": { th: "ผู้อำนวยการชำนาญการ", en: "Professional Director" },
+      "ผู้อำนวยการชำนาญการพิเศษ": { th: "ผู้อำนวยการชำนาญการพิเศษ", en: "Senior Professional Director" },
+      "ผู้อำนวยการเชี่ยวชาญ": { th: "ผู้อำนวยการเชี่ยวชาญ", en: "Expert Director" },
+      "ผู้อำนวยการเชี่ยวชาญพิเศษ": { th: "ผู้อำนวยการเชี่ยวชาญพิเศษ", en: "Special Expert Director" }
     }
     const match = mapping[lvl]
     if (match) return lang === "en" ? match.en : match.th

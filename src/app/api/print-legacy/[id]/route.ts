@@ -290,14 +290,20 @@ export async function GET(
     stats[type].total = stats[type].prev + stats[type].current;
   }
 
-  // Find last request of same type
+  const lastLeaveMode = settings?.lastLeaveMode || "SAME";
+
+  const lastRequestWhere: any = {
+    userId: request.userId,
+    status: "APPROVED",
+    startDate: { lt: request.startDate }
+  };
+  if (lastLeaveMode === "SAME") {
+    lastRequestWhere.type = request.type;
+  }
+
+  // Find last request
   const lastRequest = await prisma.leaveRequest.findFirst({
-    where: {
-      userId: request.userId,
-      type: request.type,
-      status: "APPROVED",
-      startDate: { lt: request.startDate }
-    },
+    where: lastRequestWhere,
     orderBy: { startDate: "desc" }
   });
 
