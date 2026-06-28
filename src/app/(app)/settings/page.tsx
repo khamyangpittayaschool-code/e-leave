@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from "react";
 import { getSystemSettings, updateSystemSettings, updateFooter, generateBackup, getLeaveConfigs, updateLeaveConfig, updateLeaveRules, setImpersonationCookie, clearImpersonation, getEligibleInspectors, updateDefaultInspector, getSimpleUsersList } from "@/app/actions/settings";
 import { archiveCurrentCycle, importBackupFromJson, exportLeaveBackup, importLeaveBackup, importLeaveSimple } from "@/app/actions/archive";
@@ -2285,7 +2285,7 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
-    </div>
+
       {/* Action Sheet for Logo */}
       {logoActionSheetOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center p-4">
@@ -2349,5 +2349,6 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+    </div>
   );
 }
