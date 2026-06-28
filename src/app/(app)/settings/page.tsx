@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from "react";
 import { getSystemSettings, updateSystemSettings, updateFooter, generateBackup, getLeaveConfigs, updateLeaveConfig, updateLeaveRules, setImpersonationCookie, clearImpersonation, getEligibleInspectors, updateDefaultInspector, getSimpleUsersList } from "@/app/actions/settings";
 import { archiveCurrentCycle, importBackupFromJson, exportLeaveBackup, importLeaveBackup, importLeaveSimple, getImportHistory, undoImportLeave } from "@/app/actions/archive";
@@ -2450,7 +2450,7 @@ export default function SettingsPage() {
                   input.type = "file";
                   input.accept = "image/*";
                   input.capture = "environment";
-                  input.onchange = (e) => {
+                  input.onchange = (e: any) => {
                     handleFileChange(e);
                     setLogoActionSheetOpen(false);
                   };
