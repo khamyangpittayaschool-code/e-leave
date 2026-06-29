@@ -509,7 +509,7 @@ export async function importLeaveSimple(records: any[], mode: "merge" | "replace
     // Find applicant
     const matchedUser = existingUsers.find(u => 
       u.username?.toLowerCase() === String(record.username).trim().toLowerCase() ||
-      u.email.toLowerCase() === String(record.username).trim().toLowerCase() ||
+      u.email?.toLowerCase() === String(record.username).trim().toLowerCase() ||
       u.id === String(record.username).trim()
     );
 
@@ -564,7 +564,7 @@ export async function importLeaveSimple(records: any[], mode: "merge" | "replace
     if (record.finalApproverUsername) {
       const approver = existingUsers.find(u => 
         u.username?.toLowerCase() === String(record.finalApproverUsername).trim().toLowerCase() ||
-        u.email.toLowerCase() === String(record.finalApproverUsername).trim().toLowerCase() ||
+        u.email?.toLowerCase() === String(record.finalApproverUsername).trim().toLowerCase() ||
         u.id === String(record.finalApproverUsername).trim()
       );
       if (approver) {
@@ -577,7 +577,7 @@ export async function importLeaveSimple(records: any[], mode: "merge" | "replace
     if (record.headApproverUsername) {
       const approver = existingUsers.find(u => 
         u.username?.toLowerCase() === String(record.headApproverUsername).trim().toLowerCase() ||
-        u.email.toLowerCase() === String(record.headApproverUsername).trim().toLowerCase() ||
+        u.email?.toLowerCase() === String(record.headApproverUsername).trim().toLowerCase() ||
         u.id === String(record.headApproverUsername).trim()
       );
       if (approver) {

@@ -20,10 +20,13 @@ export async function getSession() {
   if (isActualAdmin) {
     actualUser.isActualAdmin = true;
     const cookieStore = await cookies();
-    const impPosition = cookieStore.get("imp_position")?.value;
+    let impPosition = cookieStore.get("imp_position")?.value;
     const impRole = cookieStore.get("imp_role")?.value;
     
     if (impPosition) {
+      try {
+        impPosition = decodeURIComponent(impPosition);
+      } catch (e) {}
       actualUser.position = impPosition === "CLEAR" ? null : impPosition;
     }
     if (impRole) {

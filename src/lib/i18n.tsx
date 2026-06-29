@@ -91,7 +91,7 @@ const translations = {
     overviewStats: "ภาพรวมสถิติบุคลากรทั้งหมด",
     yourQuotaStats: "ข้อมูลการใช้งานโควตาส่วนตัวของคุณ",
     allStaff: "บุคลากรทั้งหมด",
-    quotaRemaining: "โควตาคงเหลือ",
+    quotaRemaining: "โควต้าของ เกณฑ์สะสมลารวมลากิจ+ลาป่วย (จำนวนวัน) เพื่อส่งข้อความถึง ผอ.",
     usedQuota: "ใช้สิทธิ์ไปแล้ว",
     pendingItems: "รอการอนุมัติ",
     approvalRate: "อัตราการอนุมัติ",

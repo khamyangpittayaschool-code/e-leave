@@ -349,7 +349,7 @@ export async function setImpersonationCookie(position: string | null, role: stri
   const cookieStore = await cookies();
   
   if (position) {
-    cookieStore.set("imp_position", position, { path: "/" });
+    cookieStore.set("imp_position", encodeURIComponent(position), { path: "/" });
   } else {
     cookieStore.set("imp_position", "CLEAR", { path: "/" });
   }

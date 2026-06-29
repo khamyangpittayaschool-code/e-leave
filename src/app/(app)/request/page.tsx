@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { submitLeaveRequest, getMyLeaveUsageForCurrentCycle } from "@/app/actions/leave";
@@ -950,8 +950,8 @@ export default function RequestLeavePage() {
                   {/* Global Days Progress */}
                   <div>
                     <div className="flex justify-between text-xs font-semibold mb-1.5">
-                      <span className="text-slate-700 dark:text-slate-300">จำนวนวันที่ใช้สิทธิ์ไปแล้ว</span>
-                      <span className="text-slate-900 dark:text-white">{leaveUsage.totalDays} / {limitDays} วัน</span>
+                      <span className="text-slate-700 dark:text-slate-300">{t("usedQuotaDays")}</span>
+                      <span className="text-slate-900 dark:text-white">{leaveUsage.totalDays} / {limitDays} {t("days")}</span>
                     </div>
                     <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden flex">
                       <motion.div 
@@ -967,7 +967,9 @@ export default function RequestLeavePage() {
                     <div className="flex items-center gap-2 mt-4 p-2.5 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-800 rounded-xl">
                       <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
                       <p className="text-[11px] text-rose-700 dark:text-rose-400 font-medium">
-                        คุณใช้สิทธิ์ลารวมถึงเกณฑ์ ({limitTimes} ครั้ง หรือ {limitDays} วัน) แล้ว ต้องแนบบันทึกข้อความเสนอ ผอ.
+                        {lang === "th" 
+                          ? `คุณใช้สิทธิ์ลารวมถึงเกณฑ์ (${limitTimes} ครั้ง หรือ ${limitDays} วัน) แล้ว ต้องแนบบันทึกข้อความเสนอ ผอ.` 
+                          : `You have reached the leave threshold (${limitTimes} times or ${limitDays} days). You must attach a memorandum for the Director.`}
                       </p>
                     </div>
                   )}

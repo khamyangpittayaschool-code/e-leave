@@ -175,7 +175,7 @@ export default function DashboardPage() {
       {/* KPI Cards Layer */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: isOverview ? t("allStaff") : t("quotaRemaining"), value: isOverview ? `${totalStaff} ${t("persons")}` : `${totalRemaining} ${t("days")}`, icon: isOverview ? Users : CheckCircle2, color: "text-blue-500 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10" },
+          { title: isOverview ? t("allStaff") : t("quotaRemaining"), value: isOverview ? `${totalStaff} ${t("persons")}` : `${limitDays} ${t("days")}`, icon: isOverview ? Users : CheckCircle2, color: "text-blue-500 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10" },
           { title: t("usedQuota"), value: `${totalUsed} ${t("days")}`, icon: Activity, color: "text-orange-500 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-500/10" },
           { title: t("pendingItems"), value: `${pendingCount} ${t("requestsCount")}`, icon: AlertCircle, color: "text-purple-500 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-500/10" },
           { title: t("approvalRate"), value: `${approvalRate}%`, icon: Briefcase, color: "text-green-500 dark:text-green-400", bg: "bg-green-50 dark:bg-green-500/10" }

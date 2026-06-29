@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const [memoThresholdTimes, setMemoThresholdTimes] = useState(6);
   const [memoThresholdDays, setMemoThresholdDays] = useState(15);
   const [actingDirectorTitle, setActingDirectorTitle] = useState("");
-  const [actingDirectorTitleType, setActingDirectorTitleType] = useState("犧｣犧ｱ犧≒ｸｩ犧ｲ犧≒ｸｲ犧｣犹�ｸ吭ｸ歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�ｸ憫ｸｹ犹霞ｸｭ犧ｳ犧吭ｸｧ犧｢犧≒ｸｲ犧｣犹もｸ｣犧�ｹ犧｣犧ｵ犧｢犧�");
+  const [actingDirectorTitleType, setActingDirectorTitleType] = useState("• รักษาการในตำแหน่งผู้อำนวยการโรงเรียน:");
   const [customActingDirectorTitle, setCustomActingDirectorTitle] = useState("");
   const [finalApproverUserIds, setFinalApproverUserIds] = useState<string[]>([]);
   const [showActingDirectorTitle, setShowActingDirectorTitle] = useState(true);
@@ -88,7 +88,7 @@ export default function SettingsPage() {
       setSettings(data);
       setSchoolName(data.schoolName);
       setSubheader(data.subheader);
-      setAffiliation(data.affiliation || "犧ｪ犧ｳ犧吭ｸｱ犧≒ｸ�ｸｲ犧吭ｹ犧もｸ歩ｸ樅ｸｷ犹霞ｸ吭ｸ伶ｸｵ犹謂ｸ≒ｸｲ犧｣犧ｨ犧ｶ犧≒ｸｩ犧ｲ犧｡犧ｱ犧倨ｸ｢犧｡犧ｨ犧ｶ犧≒ｸｩ犧ｲ犧ｭ犧ｸ犧扉ｸ｣犧倨ｸｲ犧吭ｸｵ");
+      setAffiliation(data.affiliation || "สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาอุดรธานี");
       setLogoUrl(data.logoUrl || "");
       setFooterText(data.footerText);
       setLineChannelAccessToken(data.lineChannelAccessToken || "");
@@ -99,12 +99,12 @@ export default function SettingsPage() {
       setMemoThresholdTimes(data.memoThresholdTimes ?? 6);
       setMemoThresholdDays(data.memoThresholdDays ?? 15);
       setDefaultInspectorId(data.defaultInspectorId || "");
-      const loadedTitle = data.actingDirectorTitle || "犧｣犧ｱ犧≒ｸｩ犧ｲ犧≒ｸｲ犧｣犹�ｸ吭ｸ歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�ｸ憫ｸｹ犹霞ｸｭ犧ｳ犧吭ｸｧ犧｢犧≒ｸｲ犧｣犹もｸ｣犧�ｹ犧｣犧ｵ犧｢犧�";
+      const loadedTitle = data.actingDirectorTitle || "• รักษาการในตำแหน่งผู้อำนวยการโรงเรียน:";
       setActingDirectorTitle(loadedTitle);
       if ([
-        "犧巵ｸ鐘ｸｴ犧壟ｸｱ犧歩ｸｴ犧｣犧ｲ犧癌ｸ≒ｸｲ犧｣犹≒ｸ伶ｸ吭ｸ憫ｸｹ犹霞ｸｭ犧ｳ犧吭ｸｧ犧｢犧≒ｸｲ犧｣犹もｸ｣犧�ｹ犧｣犧ｵ犧｢犧�",
-        "犧｣犧ｱ犧≒ｸｩ犧ｲ犧｣犧ｲ犧癌ｸ≒ｸｲ犧｣犹≒ｸ伶ｸ吭ｸ憫ｸｹ犹霞ｸｭ犧ｳ犧吭ｸｧ犧｢犧≒ｸｲ犧｣犹もｸ｣犧�ｹ犧｣犧ｵ犧｢犧�",
-        "犧｣犧ｱ犧≒ｸｩ犧ｲ犧≒ｸｲ犧｣犹�ｸ吭ｸ歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�ｸ憫ｸｹ犹霞ｸｭ犧ｳ犧吭ｸｧ犧｢犧≒ｸｲ犧｣犹もｸ｣犧�ｹ犧｣犧ｵ犧｢犧�"
+        "ปฏิบัติราชการแทนผู้อำนวยการโรงเรียน",
+        "• รักษาราชการแทนผู้อำนวยการโรงเรียน:",
+        "• รักษาการในตำแหน่งผู้อำนวยการโรงเรียน:"
       ].includes(loadedTitle)) {
         setActingDirectorTitleType(loadedTitle);
       } else {
@@ -157,9 +157,9 @@ export default function SettingsPage() {
         lastLeaveMode,
         quotaExceededAction
       });
-      alert("犧壟ｸｱ犧吭ｸ伶ｸｶ犧≒ｸ≒ｸｲ犧｣犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犧伶ｸｱ犹謂ｸｧ犹�ｸ巵ｸｪ犧ｳ犹犧｣犹�ｸ�");
+      alert("บันทึกการตั้งค่าทั่วไปสำเร็จ");
     } catch (error: any) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧扉ｹ�ｸ吭ｸ≒ｸｲ犧｣犧壟ｸｱ犧吭ｸ伶ｸｶ犧�: " + (error?.message || error));
+      alert("เกิดข้อผิดพลาดในการบันทึก:" + (error?.message || error));
     } finally {
       setIsSavingGeneral(false);
     }
@@ -169,10 +169,10 @@ export default function SettingsPage() {
     setIsImpersonating(true);
     try {
       await setImpersonationCookie(position, role);
-      alert("犧謂ｸｳ犧･犧ｭ犧�ｸ壟ｸ伶ｸ壟ｸｲ犧伶ｸｪ犧ｳ犹犧｣犹�ｸ� 犧≒ｸｳ犧･犧ｱ犧�ｸ｣犧ｵ犹もｸｫ犧･犧扉ｸｫ犧吭ｹ霞ｸｲ犹犧ｧ犹�ｸ�...");
+      alert("จำลองบทบาทสำเร็จ กำลังรีโหลดหน้าเว็บ...");
       window.location.href = "/";
     } catch (error: any) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧�: " + (error?.message || error));
+      alert("เกิดข้อผิดพลาด" + (error?.message || error));
       setIsImpersonating(false);
     }
   };
@@ -181,10 +181,10 @@ export default function SettingsPage() {
     setIsImpersonating(true);
     try {
       await clearImpersonation();
-      alert("犧�ｸｷ犧吭ｸｪ犧籾ｸｲ犧吭ｸｰ犹≒ｸｭ犧扉ｸ｡犧ｴ犧吭ｸｪ犧ｳ犹犧｣犹�ｸ� 犧≒ｸｳ犧･犧ｱ犧�ｸ｣犧ｵ犹もｸｫ犧･犧�...");
+      alert("คืนสถานะแอดมินสำเร็จ กำลังรีโหลด...");
       window.location.reload();
     } catch (error: any) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧�: " + (error?.message || error));
+      alert("เกิดข้อผิดพลาด" + (error?.message || error));
       setIsImpersonating(false);
     }
   };
@@ -194,10 +194,10 @@ export default function SettingsPage() {
     setIsSavingFooter(true);
     try {
       await updateFooter({ footerText, developerSecret });
-      alert("犧ｭ犧ｱ犧巵ｹ犧扉ｸ� Footer 犧ｪ犧ｳ犹犧｣犹�ｸ�");
+      alert("อัปเดต Footer สำเร็จ");
       setDeveloperSecret(""); // Clear secret after success
     } catch (error: any) {
-      alert(error.message === "Invalid Developer Secret" ? "犧｣犧ｫ犧ｱ犧ｪ犧･犧ｱ犧壟ｸ吭ｸｱ犧≒ｸ樅ｸｱ犧亭ｸ吭ｸｲ犹�ｸ｡犹謂ｸ籾ｸｹ犧≒ｸ歩ｹ霞ｸｭ犧�!" : "犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧�");
+      alert(error.message === "Invalid Developer Secret" ? "รหัสลับนักพัฒนาไม่ถูกต้อง!" : "เกิดข้อผิดพลาด");
     } finally {
       setIsSavingFooter(false);
     }
@@ -216,7 +216,7 @@ export default function SettingsPage() {
         setLogoUrl(res.url);
       }
     } catch (error) {
-      alert("犧ｭ犧ｱ犧巵ｹもｸｫ犧･犧扉ｹもｸ･犹もｸ≒ｹ霞ｹ�ｸ｡犹謂ｸｪ犧ｳ犹犧｣犹�ｸ�");
+      alert("อัปโหลดโลโก้ไม่สำเร็จ");
     } finally {
       setIsUploading(false);
     }
@@ -236,7 +236,7 @@ export default function SettingsPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧扉ｹ�ｸ吭ｸ≒ｸｲ犧｣犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･");
+      alert("เกิดข้อผิดพลาดในการสำรองข้อมูล");
     } finally {
       setIsBackingUp(false);
     }
@@ -246,9 +246,9 @@ export default function SettingsPage() {
     setIsSavingLeave(configId);
     try {
       await updateLeaveConfig(configId, { maxDaysPerYear, warningThreshold });
-      alert("犧壟ｸｱ犧吭ｸ伶ｸｶ犧≒ｸもｹ霞ｸｭ犧≒ｸｳ犧ｫ犧吭ｸ扉ｸ≒ｸｲ犧｣犧･犧ｲ犧ｪ犧ｳ犹犧｣犹�ｸ�");
+      alert("บันทึกข้อกำหนดการลาสำเร็จ");
     } catch (error) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧扉ｹ�ｸ吭ｸ≒ｸｲ犧｣犧壟ｸｱ犧吭ｸ伶ｸｶ犧≒ｸもｹ霞ｸｭ犧≒ｸｳ犧ｫ犧吭ｸ扉ｸ≒ｸｲ犧｣犧･犧ｲ");
+      alert("เกิดข้อผิดพลาดในการบันทึกข้อกำหนดการลา");
     } finally {
       setIsSavingLeave(null);
     }
@@ -258,7 +258,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setIsSavingRules(true);
     try {
-      const isHRHead = (session?.user as any)?.position === "犧ｫ犧ｱ犧ｧ犧ｫ犧吭ｹ霞ｸｲ犧�ｸｲ犧吭ｸ壟ｸｸ犧�ｸ�ｸ･" || (session?.user as any)?.position === "犹犧謂ｹ霞ｸｲ犧ｫ犧吭ｹ霞ｸｲ犧伶ｸｵ犹謂ｸ壟ｸｸ犧�ｸ�ｸ･";
+      const isHRHead = (session?.user as any)?.position === "หัวหน้างานบุคคล" || (session?.user as any)?.position === "เจ้าหน้าที่บุคคล";
       if (isHRHead) {
         await updateLeaveRules(leaveRules);
       } else {
@@ -272,9 +272,9 @@ export default function SettingsPage() {
           leaveRules 
         });
       }
-      alert("犧壟ｸｱ犧吭ｸ伶ｸｶ犧≒ｸもｹ霞ｸｭ犧�ｸｧ犧ｲ犧｡犹≒ｸｪ犧扉ｸ�ｸ憫ｸ･犧もｹ霞ｸｭ犧≒ｸｳ犧ｫ犧吭ｸ扉ｸ≒ｸｲ犧｣犧･犧ｲ犧ｪ犧ｳ犹犧｣犹�ｸ�");
+      alert("บันทึกข้อความแสดงผลข้อกำหนดการลาสำเร็จ");
     } catch (error: any) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧扉ｹ�ｸ吭ｸ≒ｸｲ犧｣犧壟ｸｱ犧吭ｸ伶ｸｶ犧�: " + (error?.message || error));
+      alert("เกิดข้อผิดพลาดในการบันทึก:" + (error?.message || error));
     } finally {
       setIsSavingRules(false);
     }
@@ -297,9 +297,9 @@ export default function SettingsPage() {
           })
          )
       );
-      alert("犧壟ｸｱ犧吭ｸ伶ｸｶ犧≒ｹもｸ�ｸｧ犧歩ｸｲ犧≒ｸｲ犧｣犧･犧ｲ犧伶ｸｱ犹霞ｸ�ｸｫ犧｡犧扉ｸｪ犧ｳ犹犧｣犹�ｸ�");
+      alert("บันทึกโควตาการลาทั้งหมดสำเร็จ");
     } catch (error) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧扉ｹ�ｸ吭ｸ≒ｸｲ犧｣犧壟ｸｱ犧吭ｸ伶ｸｶ犧≒ｹもｸ�ｸｧ犧歩ｸｲ犧≒ｸｲ犧｣犧･犧ｲ");
+      alert("เกิดข้อผิดพลาดในการบันทึกโควตาการลา");
     } finally {
       setIsSavingAllQuotas(false);
     }
@@ -310,7 +310,7 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!confirm("犧�ｸｳ犹犧歩ｸｷ犧ｭ犧�: 犧≒ｸｲ犧｣犧吭ｸｳ犹犧もｹ霞ｸｲ犧もｹ霞ｸｭ犧｡犧ｹ犧･犧ｪ犧ｳ犧｣犧ｭ犧�ｸ謂ｸｰ犧･犧壟ｸ≒ｸｲ犧｣犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犧巵ｸｱ犧謂ｸ謂ｸｸ犧壟ｸｱ犧吭ｹ≒ｸ･犧ｰ犹犧もｸｵ犧｢犧吭ｸ伶ｸｱ犧壟ｹ�ｸｫ犧｡犹謂ｸ伶ｸｱ犹霞ｸ�ｸｫ犧｡犧� 犧歩ｹ霞ｸｭ犧�ｸ≒ｸｲ犧｣犧扉ｸｳ犹犧吭ｸｴ犧吭ｸ≒ｸｲ犧｣犧歩ｹ謂ｸｭ犧ｫ犧｣犧ｷ犧ｭ犹�ｸ｡犹�?")) {
+    if (!confirm("คำเตือน: การนำเข้าข้อมูลสำรองจะลบการตั้งค่าปัจจุบันและเขียนทับใหม่ทั้งหมด ต้องการดำเนินการต่อหรือไม่?")) {
       e.target.value = "";
       return;
     }
@@ -322,38 +322,38 @@ export default function SettingsPage() {
         try {
           const jsonString = event.target?.result as string;
           await importBackupFromJson(jsonString);
-          alert("犧吭ｸｳ犹犧もｹ霞ｸｲ犧もｹ霞ｸｭ犧｡犧ｹ犧･犹≒ｸ･犧ｰ犧≒ｸｹ犹霞ｸ�ｸｷ犧吭ｸ｣犧ｰ犧壟ｸ壟ｸｪ犧ｳ犹犧｣犹�ｸ� 犧≒ｸ｣犧ｸ犧内ｸｲ犧｣犧ｵ犹犧游ｸ｣犧癌ｸｫ犧吭ｹ霞ｸｲ犹犧ｧ犹�ｸ�");
+          alert("นำเข้าข้อมูลและกู้คืนระบบสำเร็จ กรุณารีเฟรชหน้าเว็บ");
           window.location.reload();
         } catch (err: any) {
-          alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧扉ｹ�ｸ吭ｸ≒ｸｲ犧｣犧吭ｸｳ犹犧もｹ霞ｸｲ: " + err.message);
+          alert("เกิดข้อผิดพลาดในการนำเข้า:" + err.message);
         } finally {
           setIsImporting(false);
         }
       };
       reader.readAsText(file);
     } catch (error) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧扉ｹ�ｸ吭ｸ≒ｸｲ犧｣犧ｭ犹謂ｸｲ犧吭ｹ�ｸ游ｸ･犹�");
+      alert("เกิดข้อผิดพลาดในการอ่านไฟล์");
       setIsImporting(false);
     }
   };
 
   const handleClearData = async () => {
-    if (!confirm("笞��� 犧�ｸｳ犹犧歩ｸｷ犧ｭ犧吭ｸ｣犹霞ｸｲ犧｢犹≒ｸ｣犧�: 犧�ｸｸ犧内ｸ≒ｸｳ犧･犧ｱ犧�ｸ謂ｸｰ犧･犧� '犧もｹ霞ｸｭ犧｡犧ｹ犧･犧巵ｸ｣犧ｰ犧ｧ犧ｱ犧歩ｸｴ犧≒ｸｲ犧｣犧･犧ｲ犧伶ｸｱ犹霞ｸ�ｸｫ犧｡犧�' 犧ｭ犧ｭ犧≒ｸ謂ｸｲ犧≒ｸ｣犧ｰ犧壟ｸ�!\n犧もｹ霞ｸｭ犧｡犧ｹ犧･犧伶ｸｵ犹謂ｸ籾ｸｹ犧≒ｸ･犧壟ｸ謂ｸｰ犹�ｸ｡犹謂ｸｪ犧ｲ犧｡犧ｲ犧｣犧籾ｸ≒ｸｹ犹霞ｸ�ｸｷ犧吭ｹ�ｸ扉ｹ� (犧｢犧≒ｹ犧ｧ犹霞ｸ吭ｸ謂ｸｰ犧｡犧ｵ Backup)\n\n犧�ｸｸ犧内ｹ≒ｸ吭ｹ謂ｹ�ｸ謂ｸｫ犧｣犧ｷ犧ｭ犹�ｸ｡犹謂ｸｧ犹謂ｸｲ犧歩ｹ霞ｸｭ犧�ｸ≒ｸｲ犧｣犧扉ｸｳ犹犧吭ｸｴ犧吭ｸ≒ｸｲ犧｣犧歩ｹ謂ｸｭ?")) {
+    if (!confirm("⚠️ คำเตือนร้ายแรง: คุณกำลังจะลบ 'ข้อมูลประวัติการลาทั้งหมด' ออกจากระบบ!\nข้อมูลที่ถูกลบจะไม่สามารถกู้คืนได้ (ยกเว้นจะมี Backup)\n\nคุณแน่ใจหรือไม่ว่าต้องการดำเนินการต่อ?")) {
       return;
     }
-    const confirmText = prompt("犧樅ｸｴ犧｡犧樅ｹ呉ｸ�ｸｳ犧ｧ犹謂ｸｲ 'CONFIRM' 犹犧樅ｸｷ犹謂ｸｭ犧｢犧ｷ犧吭ｸ｢犧ｱ犧吭ｸ≒ｸｲ犧｣犧･犧壟ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ犧伶ｸｱ犹霞ｸ�ｸｫ犧｡犧�:");
+    const confirmText = prompt("พิมพ์คำว่า 'CONFIRM' เพื่อยืนยันการลบข้อมูลการลาทั้งหมด:");
     if (confirmText !== 'CONFIRM') {
-      alert("犧｢犧≒ｹ犧･犧ｴ犧≒ｸ≒ｸｲ犧｣犧･犧壟ｸもｹ霞ｸｭ犧｡犧ｹ犧･ (犧樅ｸｴ犧｡犧樅ｹ呉ｹ�ｸ｡犹謂ｸ籾ｸｹ犧≒ｸ歩ｹ霞ｸｭ犧�)");
+      alert("ยกเลิกการลบข้อมูล (พิมพ์ไม่ถูกต้อง)");
       return;
     }
 
     setIsClearing(true);
     try {
       await adminClearAllLeaveData();
-      alert("犧･犹霞ｸｲ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ犧伶ｸｱ犹霞ｸ�ｸｫ犧｡犧扉ｹ犧｣犧ｵ犧｢犧壟ｸ｣犹霞ｸｭ犧｢犹≒ｸ･犹霞ｸｧ");
+      alert("ล้างข้อมูลการลาทั้งหมดเรียบร้อยแล้ว");
       window.location.reload();
     } catch (error: any) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧�: " + (error.message || "犹�ｸ｡犹謂ｸｪ犧ｲ犧｡犧ｲ犧｣犧籾ｸ･犧壟ｸもｹ霞ｸｭ犧｡犧ｹ犧･犹�ｸ扉ｹ�"));
+      alert("เกิดข้อผิดพลาด" + (error.message || "ไม่สามารถลบข้อมูลได้"));
     } finally {
       setIsClearing(false);
     }
@@ -376,9 +376,9 @@ export default function SettingsPage() {
 
       // Parse and show summary
       const parsed = JSON.parse(backupString);
-      alert(`犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ犧ｪ犧ｳ犹犧｣犹�ｸ�!\n\n犧巵ｸｵ犧�ｸ壟ｸ巵ｸ｣犧ｰ犧｡犧ｲ犧�: ${parsed.fiscalYear}\n犧謂ｸｳ犧吭ｸｧ犧吭ｸ伶ｸｱ犹霞ｸ�ｸｫ犧｡犧�: ${parsed.summary.totalRequests} 犧｣犧ｲ犧｢犧≒ｸｲ犧｣\n犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ: ${parsed.summary.approved} | 犧巵ｸ鐘ｸｴ犹犧ｪ犧�: ${parsed.summary.rejected} | 犧｣犧ｭ犧扉ｸｳ犹犧吭ｸｴ犧吭ｸ≒ｸｲ犧｣: ${parsed.summary.pending}`);
+      alert(`สำรองข้อมูลการลาสำเร็จ!\n\nปีงบประมาณ: ${parsed.fiscalYear}\nจำนวนทั้งหมด: ${parsed.summary.totalRequests} รายการ\nอนุมัติ: ${parsed.summary.approved} | ปฏิเสธ: ${parsed.summary.rejected} | รอดำเนินการ: ${parsed.summary.pending}`);
     } catch (error: any) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧�: " + (error.message || "犹�ｸ｡犹謂ｸｪ犧ｲ犧｡犧ｲ犧｣犧籾ｸｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犹�ｸ扉ｹ�"));
+      alert("เกิดข้อผิดพลาด" + (error.message || "ไม่สามารถสำรองข้อมูลได้"));
     } finally {
       setIsExportingLeave(false);
     }
@@ -462,16 +462,16 @@ export default function SettingsPage() {
       });
 
       const rows = leaveRequests.map((r: any) => ({
-        "Email (犧ｭ犧ｵ犹犧｡犧･)": r.userEmail,
-        "User Name (犧癌ｸｷ犹謂ｸｭ-犧吭ｸｲ犧｡犧ｪ犧≒ｸｸ犧･)": r.userName,
-        "Position (犧歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�)": r.userPosition || "",
-        "Subject Group (犧≒ｸ･犧ｸ犹謂ｸ｡犧ｪ犧ｲ犧｣犧ｰ犧ｯ/犧杳ｹ謂ｸｲ犧｢)": r.userSubjectGroup || "",
-        "Leave Type (犧巵ｸ｣犧ｰ犹犧�犧伶ｸ≒ｸｲ犧｣犧･犧ｲ)": typeMap[r.type] || r.type,
-        "Start Date (犧ｧ犧ｱ犧吭ｸ伶ｸｵ犹謂ｹ犧｣犧ｴ犹謂ｸ｡ YYYY-MM-DD)": r.startDate ? r.startDate.split("T")[0] : "",
-        "End Date (犧ｧ犧ｱ犧吭ｸ伶ｸｵ犹謂ｸｪ犧ｴ犹霞ｸ吭ｸｪ犧ｸ犧� YYYY-MM-DD)": r.endDate ? r.endDate.split("T")[0] : "",
-        "Reason (犹犧ｫ犧歩ｸｸ犧憫ｸ･)": r.reason || "",
-        "Status (犧ｪ犧籾ｸｲ犧吭ｸｰ)": r.status || "",
-        "Attachment URL (犹犧ｭ犧≒ｸｪ犧ｲ犧｣犹≒ｸ吭ｸ�)": r.documentUrl || "",
+        "Email (อีเมล)": r.userEmail,
+        "User Name (ชื่อ-นามสกุล)": r.userName,
+        "Position (ตำแหน่ง)": r.userPosition || "",
+        "Subject Group (กลุ่มสาระฯ/ฝ่าย)": r.userSubjectGroup || "",
+        "Leave Type (ประเภทการลา)": typeMap[r.type] || r.type,
+        "Start Date (วันที่เริ่ม YYYY-MM-DD)": r.startDate ? r.startDate.split("T")[0] : "",
+        "End Date (วันที่สิ้นสุด YYYY-MM-DD)": r.endDate ? r.endDate.split("T")[0] : "",
+        "Reason (เหตุผล)": r.reason || "",
+        "Status (สถานะ)": r.status || "",
+        "Attachment URL (เอกสารแนบ)": r.documentUrl || "",
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -489,9 +489,9 @@ export default function SettingsPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      alert(`犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧≒ｸｲ犧｣犧･犧ｲ犹≒ｸ壟ｸ� CSV 犧ｪ犧ｳ犹犧｣犹�ｸ�!\n\n犧巵ｸｵ犧�ｸ壟ｸ巵ｸ｣犧ｰ犧｡犧ｲ犧�: ${parsed.fiscalYear}\n犧謂ｸｳ犧吭ｸｧ犧吭ｸ伶ｸｱ犹霞ｸ�ｸｫ犧｡犧�: ${parsed.summary.totalRequests} 犧｣犧ｲ犧｢犧≒ｸｲ犧｣`);
+      alert(`สำรองข้อมูลการลาแบบ CSV สำเร็จ!\n\nปีงบประมาณ: ${parsed.fiscalYear}\nจำนวนทั้งหมด: ${parsed.summary.totalRequests} รายการ`);
     } catch (error: any) {
-      alert("犹犧≒ｸｴ犧扉ｸもｹ霞ｸｭ犧憫ｸｴ犧扉ｸ樅ｸ･犧ｲ犧�: " + (error.message || "犹�ｸ｡犹謂ｸｪ犧ｲ犧｡犧ｲ犧｣犧籾ｸｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犹�ｸ扉ｹ�"));
+      alert("เกิดข้อผิดพลาด" + (error.message || "ไม่สามารถสำรองข้อมูลได้"));
     } finally {
       setIsExportingLeave(false);
     }
@@ -499,8 +499,8 @@ export default function SettingsPage() {
 
   const handleDownloadCSVTemplate = () => {
     const headers = "Username,StartDate,EndDate,LeaveType,LeaveStatus,FinalApproverUsername,HeadApproverUsername,Reason";
-    const sampleRow1 = "\n1002,2026-07-01,2026-07-03,SICK,APPROVED,1001,,犧･犧ｲ犧｣犧ｱ犧≒ｸｩ犧ｲ犧ｭ犧ｲ犧≒ｸｲ犧｣犹�ｸもｹ霞ｸｫ犧ｧ犧ｱ犧扉ｹ�ｸｫ犧財ｹ�";
-    const sampleRow2 = "\n1003,2026-07-10,2026-07-10,PERSONAL,APPROVED,1001,1005,犧伶ｸｳ犧倨ｸｸ犧｣犧ｰ犧歩ｸｴ犧扉ｸ歩ｹ謂ｸｭ犧｣犧ｲ犧癌ｸ≒ｸｲ犧｣犹犧｣犧ｷ犹謂ｸｭ犧�ｸ壟ｹ霞ｸｲ犧�";
+  const sampleRow1 = "\n1002,2026-07-01,2026-07-03,SICK,APPROVED,1001,,ลารักษาอาการไข้หวัดใหญ่";
+  const sampleRow2 = "\n1003,2026-07-10,2026-07-10,PERSONAL,APPROVED,1001,1005,ทำธุระติดต่อราชการเรื่องบ้าน";
     const csvContent = "\uFEFF" + headers + sampleRow1 + sampleRow2;
     
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -738,16 +738,16 @@ export default function SettingsPage() {
   if (!settings) return <div className="animate-pulse space-y-4"><div className="h-8 bg-gray-200 rounded w-1/4"></div><div className="h-40 bg-gray-200 rounded"></div></div>;
 
   const user = session?.user as any;
-  const isAdmin = user?.role === "ADMIN" || user?.position === "犹≒ｸｭ犧扉ｸ｡犧ｴ犧�";
-  const isHRHead = user?.position === "犧ｫ犧ｱ犧ｧ犧ｫ犧吭ｹ霞ｸｲ犧�ｸｲ犧吭ｸ壟ｸｸ犧�ｸ�ｸ･" || user?.position === "犹犧謂ｹ霞ｸｲ犧ｫ犧吭ｹ霞ｸｲ犧伶ｸｵ犹謂ｸ壟ｸｸ犧�ｸ�ｸ･";
-  const isInspector = user?.position === "犧憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧�";
+  const isAdmin = user?.role === "ADMIN" || user?.position === "แอดมิน";
+  const isHRHead = user?.position === "หัวหน้างานบุคคล" || user?.position === "เจ้าหน้าที่บุคคล";
+  const isInspector = user?.position === "ผู้ตรวจสอบ";
 
   if (!isAdmin && !isHRHead && !isInspector) {
     return (
       <div className="max-w-md mx-auto mt-20 p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-red-100 dark:border-red-900/30 text-center">
         <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">犹犧もｹ霞ｸｲ犧籾ｸｶ犧�ｹ�ｸ｡犹謂ｹ�ｸ扉ｹ�</h2>
-        <p className="text-sm text-gray-500">犧�ｸｸ犧内ｹ�ｸ｡犹謂ｸ｡犧ｵ犧ｪ犧ｴ犧伶ｸ倨ｸｴ犹呉ｹ�ｸ吭ｸ≒ｸｲ犧｣犹犧もｹ霞ｸｲ犧籾ｸｶ犧�ｸ≒ｸｲ犧｣犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犧｣犧ｰ犧壟ｸ�</p>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">เข้าถึงไม่ได้</h2>
+        <p className="text-sm text-gray-500">คุณไม่มีสิทธิ์ในการเข้าถึงการตั้งค่าระบบ</p>
       </div>
     );
   }
@@ -761,44 +761,44 @@ export default function SettingsPage() {
   };
 
   const systemSettingsItems: MenuItem[] = [
-    { id: "school", icon: <BookOpen className="w-5 h-5 text-blue-500" />, title: lang === "en" ? "School Info" : "犧もｹ霞ｸｭ犧｡犧ｹ犧･犹もｸ｣犧�ｹ犧｣犧ｵ犧｢犧�", description: lang === "en" ? "School name, affiliation, logo" : "犧癌ｸｷ犹謂ｸｭ犹もｸ｣犧�ｹ犧｣犧ｵ犧｢犧�, 犧ｪ犧ｱ犧�ｸ≒ｸｱ犧�, 犹もｸ･犹もｸ≒ｹ�" },
-    { id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "Approval Chain" : "犧ｪ犧ｲ犧｢犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ", description: lang === "en" ? "Inspector, approver, acting director" : "犧憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧�, 犧憫ｸｹ犹霞ｸｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ, 犧歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�ｸ｣犧ｱ犧≒ｸｩ犧ｲ犧≒ｸｲ犧｣" },
-    { id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "犧｣犧ｰ犹犧壟ｸｵ犧｢犧壟ｸ≒ｸｲ犧｣犧･犧ｲ & 犹もｸ�ｸｧ犧歩ｸｲ", description: lang === "en" ? "Rules, quotas, restrictions" : "犧≒ｸ錫ｸ｣犧ｰ犹犧壟ｸｵ犧｢犧�, 犹もｸ�ｸｧ犧歩ｸｲ犧ｧ犧ｱ犧吭ｸ･犧ｲ, 犧もｹ霞ｸｭ犧謂ｸｳ犧≒ｸｱ犧�" },
-    { id: "line", icon: <Bell className="w-5 h-5 text-green-500" />, title: lang === "en" ? "LINE Notification" : "犹≒ｸ謂ｹ霞ｸ�ｹ犧歩ｸｷ犧ｭ犧� LINE", description: lang === "en" ? "Enable/disable, Token, Group ID" : "犹犧巵ｸｴ犧�/犧巵ｸｴ犧扉ｸ≒ｸｲ犧｣犹≒ｸ謂ｹ霞ｸ�ｹ犧歩ｸｷ犧ｭ犧�, Token, Group ID" },
-    { id: "font", icon: <Type className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Font & File Format" : "犧游ｸｭ犧吭ｸ歩ｹ� & 犧｣犧ｹ犧巵ｹ≒ｸ壟ｸ壟ｹ�ｸ游ｸ･犹�", description: lang === "en" ? "Leave form font, Google Drive format" : "犧游ｸｭ犧吭ｸ歩ｹ呉ｹ�ｸ壟ｸ･犧ｲ, 犧｣犧ｹ犧巵ｹ≒ｸ壟ｸ壟ｸｭ犧ｱ犧巵ｹもｸｫ犧･犧� Google Drive" },
+    { id: "school", icon: <BookOpen className="w-5 h-5 text-blue-500" />, title: lang === "en" ? "School Info" : "ข้อมูลโรงเรียน", description: lang === "en" ? "School name, affiliation, logo" : "ชื่อโรงเรียน, สังกัด, โลโก้" },
+    { id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "Approval Chain" : "สายอนุมัติ", description: lang === "en" ? "Inspector, approver, acting director" : "ผู้ตรวจสอบ, ผู้อนุมัติ, ตำแหน่งรักษาการ" },
+    { id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "ระเบียบการลา & โควตา", description: lang === "en" ? "Rules, quotas, restrictions" : "กฎระเบียบ, โควตาวันลา, ข้อจำกัด" },
+    { id: "line", icon: <Bell className="w-5 h-5 text-green-500" />, title: lang === "en" ? "LINE Notification" : "แจ้งเตือน LINE", description: lang === "en" ? "Enable/disable, Token, Group ID" : "เปิด/ปิดการแจ้งเตือน, Token, Group ID" },
+    { id: "font", icon: <Type className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Font & File Format" : "ฟอนต์ & รูปแบบไฟล์", description: lang === "en" ? "Leave form font, Google Drive format" : "ฟอนต์ใบลา, รูปแบบอัปโหลด Google Drive" },
   ];
 
   const dataManagementItems: MenuItem[] = [
-    { id: "backup", icon: <HardDrive className="w-5 h-5 text-teal-500" />, title: lang === "en" ? "Backup & Data" : "犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･", description: lang === "en" ? "Export/Import, clear data" : "Export/Import, 犧巵ｸｴ犧扉ｸ｣犧ｭ犧�, 犧･犹霞ｸｲ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･" },
+    { id: "backup", icon: <HardDrive className="w-5 h-5 text-teal-500" />, title: lang === "en" ? "Backup & Data" : "สำรองข้อมูล", description: lang === "en" ? "Export/Import, clear data" : "Export/Import, ปิดรอบ, ล้างข้อมูล" },
     ...((session?.user as any)?.isActualAdmin === true ? [
-      { id: "impersonate", icon: <UserCog className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Role Impersonation" : "犧謂ｸｳ犧･犧ｭ犧�ｸ壟ｸ伶ｸ壟ｸｲ犧�", description: lang === "en" ? "Simulate roles for testing" : "犧謂ｸｳ犧･犧ｭ犧�ｸ歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�ｹ犧樅ｸｷ犹謂ｸｭ犧伶ｸ扉ｸｪ犧ｭ犧壟ｸ｣犧ｰ犧壟ｸ�" },
+      { id: "impersonate", icon: <UserCog className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Role Impersonation" : "จำลองบทบาท", description: lang === "en" ? "Simulate roles for testing" : "จำลองตำแหน่งเพื่อทดสอบระบบ" },
     ] : []),
-    { id: "footer", icon: <Settings2 className="w-5 h-5 text-rose-500" />, title: lang === "en" ? "Footer Settings" : "犧伶ｹ霞ｸｲ犧｢犧≒ｸ｣犧ｰ犧扉ｸｲ犧ｩ", description: lang === "en" ? "Website footer text" : "犧もｹ霞ｸｭ犧�ｸｧ犧ｲ犧｡犧伶ｹ霞ｸｲ犧｢犧ｫ犧吭ｹ霞ｸｲ犹犧ｧ犹�ｸ�" },
+    { id: "footer", icon: <Settings2 className="w-5 h-5 text-rose-500" />, title: lang === "en" ? "Footer Settings" : "ท้ายกระดาษ", description: lang === "en" ? "Website footer text" : "ข้อความท้ายหน้าเว็บ" },
   ];
 
   // HR Head sees only approval + leave-rules
   const hrHeadItems: MenuItem[] = [
-    { id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "System & Approver Settings" : "犧ｪ犧ｲ犧｢犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ", description: lang === "en" ? "Inspector, approver, acting director" : "犧憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧�, 犧憫ｸｹ犹霞ｸｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ, 犧歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�ｸ｣犧ｱ犧≒ｸｩ犧ｲ犧≒ｸｲ犧｣" },
-    { id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "犧｣犧ｰ犹犧壟ｸｵ犧｢犧壟ｸ≒ｸｲ犧｣犧･犧ｲ & 犹もｸ�ｸｧ犧歩ｸｲ", description: lang === "en" ? "Rules, quotas, restrictions" : "犧≒ｸ錫ｸ｣犧ｰ犹犧壟ｸｵ犧｢犧�, 犹もｸ�ｸｧ犧歩ｸｲ犧ｧ犧ｱ犧吭ｸ･犧ｲ, 犧もｹ霞ｸｭ犧謂ｸｳ犧≒ｸｱ犧�" },
+    { id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "System & Approver Settings" : "สายอนุมัติ", description: lang === "en" ? "Inspector, approver, acting director" : "ผู้ตรวจสอบ, ผู้อนุมัติ, ตำแหน่งรักษาการ" },
+    { id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "ระเบียบการลา & โควตา", description: lang === "en" ? "Rules, quotas, restrictions" : "กฎระเบียบ, โควตาวันลา, ข้อจำกัด" },
   ];
 
   // Inspector sees approval + leave-rules + backup
   const inspectorItems: MenuItem[] = [
-    { id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "System & Approver Settings" : "犧ｪ犧ｲ犧｢犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ", description: lang === "en" ? "Inspector, approver, acting director" : "犧憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧�, 犧憫ｸｹ犹霞ｸｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ, 犧歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�ｸ｣犧ｱ犧≒ｸｩ犧ｲ犧≒ｸｲ犧｣" },
-    { id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "犧｣犧ｰ犹犧壟ｸｵ犧｢犧壟ｸ≒ｸｲ犧｣犧･犧ｲ & 犹もｸ�ｸｧ犧歩ｸｲ", description: lang === "en" ? "Rules, quotas, restrictions" : "犧≒ｸ錫ｸ｣犧ｰ犹犧壟ｸｵ犧｢犧�, 犹もｸ�ｸｧ犧歩ｸｲ犧ｧ犧ｱ犧吭ｸ･犧ｲ, 犧もｹ霞ｸｭ犧謂ｸｳ犧≒ｸｱ犧�" },
-    { id: "backup", icon: <HardDrive className="w-5 h-5 text-teal-500" />, title: lang === "en" ? "Backup & Data" : "犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･", description: lang === "en" ? "Export/Import, clear data" : "Export/Import, 犧巵ｸｴ犧扉ｸ｣犧ｭ犧�, 犧･犹霞ｸｲ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･" },
+    { id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "System & Approver Settings" : "สายอนุมัติ", description: lang === "en" ? "Inspector, approver, acting director" : "ผู้ตรวจสอบ, ผู้อนุมัติ, ตำแหน่งรักษาการ" },
+    { id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "ระเบียบการลา & โควตา", description: lang === "en" ? "Rules, quotas, restrictions" : "กฎระเบียบ, โควตาวันลา, ข้อจำกัด" },
+    { id: "backup", icon: <HardDrive className="w-5 h-5 text-teal-500" />, title: lang === "en" ? "Backup & Data" : "สำรองข้อมูล", description: lang === "en" ? "Export/Import, clear data" : "Export/Import, ปิดรอบ, ล้างข้อมูล" },
   ];
 
   // --- Section title lookup ---
   const sectionTitles: Record<string, string> = {
-    school: lang === "en" ? "School Info" : "犧もｹ霞ｸｭ犧｡犧ｹ犧･犹もｸ｣犧�ｹ犧｣犧ｵ犧｢犧�",
-    approval: lang === "en" ? ((isHRHead || isInspector) ? "System & Approver Settings" : "Approval Chain") : ((isHRHead || isInspector) ? "犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犧憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧壟ｹ≒ｸ･犧ｰ犧憫ｸｹ犹霞ｸｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ犧｣犧ｰ犧壟ｸ�" : "犧ｪ犧ｲ犧｢犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ"),
-    "leave-rules": lang === "en" ? "Leave Rules & Quotas" : "犧｣犧ｰ犹犧壟ｸｵ犧｢犧壟ｸ≒ｸｲ犧｣犧･犧ｲ & 犹もｸ�ｸｧ犧歩ｸｲ",
-    line: lang === "en" ? "LINE Notification" : "犹≒ｸ謂ｹ霞ｸ�ｹ犧歩ｸｷ犧ｭ犧� LINE",
-    font: lang === "en" ? "Font & File Format" : "犧游ｸｭ犧吭ｸ歩ｹ� & 犧｣犧ｹ犧巵ｹ≒ｸ壟ｸ壟ｹ�ｸ游ｸ･犹�",
-    backup: lang === "en" ? "Backup & Data" : "犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･",
-    impersonate: lang === "en" ? "Role Impersonation" : "犧謂ｸｳ犧･犧ｭ犧�ｸ壟ｸ伶ｸ壟ｸｲ犧�",
-    footer: lang === "en" ? "Footer Settings" : "犧伶ｹ霞ｸｲ犧｢犧≒ｸ｣犧ｰ犧扉ｸｲ犧ｩ",
+    school: lang === "en" ? "School Info" : "ข้อมูลโรงเรียน",
+    approval: lang === "en" ? ((isHRHead || isInspector) ? "System & Approver Settings" : "Approval Chain") : ((isHRHead || isInspector) ? "ตั้งค่าผู้ตรวจสอบและผู้อนุมัติระบบ" : "สายอนุมัติ"),
+    "leave-rules": lang === "en" ? "Leave Rules & Quotas" : "ระเบียบการลา & โควตา",
+    line: lang === "en" ? "LINE Notification" : "แจ้งเตือน LINE",
+    font: lang === "en" ? "Font & File Format" : "ฟอนต์ & รูปแบบไฟล์",
+    backup: lang === "en" ? "Backup & Data" : "สำรองข้อมูล",
+    impersonate: lang === "en" ? "Role Impersonation" : "จำลองบทบาท",
+    footer: lang === "en" ? "Footer Settings" : "ท้ายกระดาษ",
   };
 
   // --- Menu Item Component ---
@@ -918,7 +918,7 @@ export default function SettingsPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">犧ｪ犧ｱ犧�ｸ≒ｸｱ犧�</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สังกัด</label>
           <input
             type="text"
             required
@@ -1911,7 +1911,7 @@ export default function SettingsPage() {
       <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-bl-[100px] -z-10" />
       <SectionHeader title={sectionTitles.impersonate} />
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-        犧ｪ犧ｳ犧ｫ犧｣犧ｱ犧壟ｹ≒ｸｭ犧扉ｸ｡犧ｴ犧吭ｹ犧伶ｹ謂ｸｲ犧吭ｸｱ犹霞ｸ�: 犧ｪ犧･犧ｱ犧壟ｹ�ｸ巵ｸ扉ｸｹ犧｣犧ｰ犧壟ｸ壟ｹ�ｸ吭ｸ｡犧ｸ犧｡犧｡犧ｭ犧�ｸもｸｭ犧�ｸ壟ｸ伶ｸ壟ｸｲ犧伶ｸ歩ｹ謂ｸｲ犧� 犹� 犹犧樅ｸｷ犹謂ｸｭ犧≒ｸｲ犧｣犧巵ｸ｣犧ｱ犧壟ｸ巵ｸ｣犧ｸ犧�ｸ｣犧ｰ犧壟ｸ壟ｹ≒ｸ･犧ｰ犧癌ｹ謂ｸｧ犧｢犹犧ｫ犧･犧ｷ犧ｭ犧憫ｸｹ犹霞ｹ�ｸ癌ｹ�
+        <p className="text-xs text-slate-500 mb-6 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">สำหรับแอดมินเท่านั้น: สลับไปยังมุมมองของตำแหน่งต่าง ๆ เพื่อรับการช่วยเหลือและทดสอบระบบ</p>
       </p>
 
       <div className="space-y-2">
@@ -1921,49 +1921,49 @@ export default function SettingsPage() {
           disabled={isImpersonating}
           className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-all border border-slate-100 dark:border-slate-800"
         >
-          <span>犧�ｸ｣犧ｹ (TEACHER)</span>
-          <span className="text-xs font-normal text-slate-400">犧ｪ犧ｴ犧伶ｸ倨ｸｴ犹呉ｸ伶ｸｱ犹謂ｸｧ犹�ｸ�</span>
+          <span>ครู (TEACHER)</span>
+          <span className="text-xs font-normal text-slate-400">สิทธิ์ทั่วไป</span>
         </button>
 
         <button
           type="button"
-          onClick={() => handleImpersonate("犧ｫ犧ｱ犧ｧ犧ｫ犧吭ｹ霞ｸｲ犧�ｸｲ犧吭ｸ壟ｸｸ犧�ｸ�ｸ･", "TEACHER")}
+          onClick={() => handleImpersonate("หัวหน้างานบุคคล", "TEACHER")}
           disabled={isImpersonating}
           className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-semibold text-sm transition-all border border-purple-100/55 dark:border-purple-900/30"
         >
-          <span>犧ｫ犧ｱ犧ｧ犧ｫ犧吭ｹ霞ｸｲ犧�ｸｲ犧吭ｸ壟ｸｸ犧�ｸ�ｸ･ (HR Head)</span>
-          <span className="text-xs font-normal text-purple-400">犧≒ｸｳ犧ｫ犧吭ｸ扉ｹもｸ�ｸｧ犧歩ｸｲ/犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ犹�ｸ壟ｸ･犧ｲ</span>
+          <span>หัวหน้างานบุคคล (HR Head)</span>
+          <span className="text-xs font-normal text-purple-400">กำหนดโควตา/อนุมัติใบลา</span>
         </button>
 
         <button
           type="button"
-          onClick={() => handleImpersonate("犹犧謂ｹ霞ｸｲ犧ｫ犧吭ｹ霞ｸｲ犧伶ｸｵ犹謂ｸ壟ｸｸ犧�ｸ�ｸ･", "TEACHER")}
+          onClick={() => handleImpersonate("เจ้าหน้าที่บุคคล", "TEACHER")}
           disabled={isImpersonating}
           className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-semibold text-sm transition-all border border-purple-100/55 dark:border-purple-900/30"
         >
-          <span>犹犧謂ｹ霞ｸｲ犧ｫ犧吭ｹ霞ｸｲ犧伶ｸｵ犹謂ｸ壟ｸｸ犧�ｸ�ｸ･ (HR Officer)</span>
-          <span className="text-xs font-normal text-purple-400">犧≒ｸｳ犧ｫ犧吭ｸ扉ｹもｸ�ｸｧ犧歩ｸｲ/犧樅ｸｴ犧｡犧樅ｹ呉ｸ｣犧ｲ犧｢犧�ｸｲ犧�</span>
+          <span>เจ้าหน้าที่บุคคล (HR Officer)</span>
+          <span className="text-xs font-normal text-purple-400">กำหนดโควตา/พิมพ์รายงาน</span>
         </button>
 
         <button
           type="button"
-          onClick={() => handleImpersonate("犧憫ｸｹ犹霞ｸｭ犧ｳ犧吭ｸｧ犧｢犧≒ｸｲ犧｣", "TEACHER")}
+          onClick={() => handleImpersonate("ผู้อำนวยการ", "TEACHER")}
           disabled={isImpersonating}
           className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-semibold text-sm transition-all border border-indigo-100/55 dark:border-indigo-900/30"
         >
-          <span>犧憫ｸｹ犹霞ｸｭ犧ｳ犧吭ｸｧ犧｢犧≒ｸｲ犧｣ (EXEC)</span>
-          <span className="text-xs font-normal text-indigo-400">犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ犧もｸｱ犹霞ｸ吭ｸｪ犧ｸ犧扉ｸ伶ｹ霞ｸｲ犧｢</span>
+          <span>ผู้อำนวยการ (EXEC)</span>
+          <span className="text-xs font-normal text-indigo-400">อนุมัติขั้นสุดท้าย</span>
         </button>
 
         {/* Show Cancel Impersonation button if they are currently impersonating */}
-        {((session?.user as any)?.role !== "ADMIN" && (session?.user as any)?.position !== "犹≒ｸｭ犧扉ｸ｡犧ｴ犧�") && (
+        {((session?.user as any)?.role !== "ADMIN" && (session?.user as any)?.position !== "แอดมิน") && (
           <button
             type="button"
             onClick={handleClearImpersonation}
             disabled={isImpersonating}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 mt-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm transition-all shadow-md shadow-rose-500/10"
           >
-            <span>犧｢犧≒ｹ犧･犧ｴ犧≒ｸ≒ｸｲ犧｣犧謂ｸｳ犧･犧ｭ犧�ｸｪ犧ｴ犧伶ｸ倨ｸｴ犹� (犧≒ｸ･犧ｱ犧壟ｹ犧巵ｹ�ｸ吭ｹ≒ｸｭ犧扉ｸ｡犧ｴ犧�)</span>
+            <span>ยกเลิกการจำลองสิทธิ์ (กลับเป็นแอดมิน)</span>
           </button>
         )}
       </div>
@@ -2048,7 +2048,7 @@ export default function SettingsPage() {
       <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-bl-[100px] -z-10" />
       <SectionHeader title={sectionTitles.footer} />
       <p className="text-xs text-gray-500 mb-4">
-        犧ｪ犹謂ｸｧ犧吭ｸ吭ｸｵ犹霞ｸ歩ｹ霞ｸｭ犧�ｸ≒ｸｲ犧｣ <span className="font-semibold text-rose-600">犧｣犧ｫ犧ｱ犧ｪ犧･犧ｱ犧壟ｸ吭ｸｱ犧≒ｸ樅ｸｱ犧亭ｸ吭ｸｲ</span> 犹�ｸ吭ｸ≒ｸｲ犧｣犹≒ｸ≒ｹ霞ｹ�ｸ�
+        <p className="text-sm text-gray-500 mb-6">ส่วนนี้ต้องการ <span className="font-semibold text-rose-600">รหัสลับนักพัฒนา</span> ในการแก้ไข</p>
       </p>
 
       <form onSubmit={handleFooterSubmit} className="space-y-4">
@@ -2071,7 +2071,7 @@ export default function SettingsPage() {
             required
             value={developerSecret}
             onChange={(e) => setDeveloperSecret(e.target.value)}
-            placeholder="犹�ｸｪ犹謂ｸ｣犧ｫ犧ｱ犧ｪ犧･犧ｱ犧壟ｸ伶ｸｵ犹謂ｸ吭ｸｵ犹�"
+            placeholder="ใส่รหัสลับที่นี่"
             className="w-full h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-mono"
           />
         </div>
@@ -2128,7 +2128,7 @@ export default function SettingsPage() {
         {/* Group: System Settings */}
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 pl-2 mb-3">
-            {lang === "en" ? "System Settings" : "犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犧｣犧ｰ犧壟ｸ�"}
+            {lang === "en" ? "System Settings" : "ตั้งค่าระบบ"}
           </p>
           <div className="space-y-2">
             {systemSettingsItems.map((item) => (
@@ -2140,7 +2140,7 @@ export default function SettingsPage() {
         {/* Group: Data Management */}
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 pl-2 mb-3">
-            {lang === "en" ? "Data Management" : "犧謂ｸｱ犧扉ｸ≒ｸｲ犧｣犧もｹ霞ｸｭ犧｡犧ｹ犧･"}
+            {lang === "en" ? "Data Management" : "จัดการข้อมูล"}
           </p>
           <div className="space-y-2">
             {dataManagementItems.map((item) => (
@@ -2164,11 +2164,11 @@ export default function SettingsPage() {
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200/40 dark:border-blue-900/40 rounded-2xl text-sm text-blue-700 dark:text-blue-300 flex items-start gap-3 shadow-sm">
           <ShieldAlert className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold">{lang === "en" ? "Restricted Access Mode" : "犹もｸｫ犧｡犧扉ｸｪ犧ｴ犧伶ｸ倨ｸｴ犹呉ｸ≒ｸｲ犧｣犹犧もｹ霞ｸｲ犧籾ｸｶ犧�ｹ≒ｸ壟ｸ壟ｸ謂ｸｳ犧≒ｸｱ犧�"}</p>
+            <p className="font-bold">{lang === "en" ? "Restricted Access Mode" : "โหมดสิทธิ์การเข้าถึงแบบจำกัด"}</p>
             <p className="text-xs text-blue-600/90 dark:text-blue-400 mt-1">
               {lang === "en" 
                 ? "As HR role, you have access to view/edit leave quotas, leave rules, final approver settings, and general restrictions. Basic school details, LINE notify settings, developer configurations, backups, and system clear actions are restricted."
-                : "犹犧吭ｸｷ犹謂ｸｭ犧�ｸ謂ｸｲ犧≒ｸ壟ｸ伶ｸ壟ｸｲ犧伶ｸもｸｭ犧�ｸ�ｸｸ犧内ｹ犧巵ｹ�ｸ吭ｹ犧謂ｹ霞ｸｲ犧ｫ犧吭ｹ霞ｸｲ犧伶ｸｵ犹謂ｸ�ｸｲ犧吭ｸ壟ｸｸ犧�ｸ�ｸ･ 犧�ｸｸ犧内ｸ謂ｸｰ犧｡犧ｵ犧ｪ犧ｴ犧伶ｸ倨ｸｴ犹呉ｹ犧もｹ霞ｸｲ犧籾ｸｶ犧�ｹ犧霞ｸ樅ｸｲ犧ｰ犧≒ｸｲ犧｣犧巵ｸ｣犧ｱ犧壟ｹ≒ｸ歩ｹ謂ｸ�ｹもｸ�ｸｧ犧歩ｸｲ犧≒ｸｲ犧｣犧･犧ｲ 犹≒ｸ≒ｹ霞ｹ�ｸもｸ≒ｸ錫ｹ犧≒ｸ内ｸ隊ｹ呉ｸ≒ｸｲ犧｣犧･犧ｲ 犧≒ｸｲ犧｣犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犧憫ｸｹ犹霞ｸｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ犧もｸｱ犹霞ｸ吭ｸｪ犧ｸ犧扉ｸ伶ｹ霞ｸｲ犧｢ 犹≒ｸ･犧ｰ犧もｹ霞ｸｭ犧謂ｸｳ犧≒ｸｱ犧扉ｸ伶ｸｱ犹謂ｸｧ犹�ｸ� 犧ｪ犹謂ｸｧ犧吭ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧樅ｸｷ犹霞ｸ吭ｸ説ｸｲ犧吭ｹもｸ｣犧�ｹ犧｣犧ｵ犧｢犧� 犧≒ｸｲ犧｣犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犹≒ｸ謂ｹ霞ｸ�ｹ犧歩ｸｷ犧ｭ犧� LINE 犧もｹ霞ｸｭ犧｡犧ｹ犧･犧吭ｸｱ犧≒ｸ樅ｸｱ犧亭ｸ吭ｸｲ 犧≒ｸｲ犧｣犧ｪ犧ｳ犧｣犧ｭ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･ 犹≒ｸ･犧ｰ犧≒ｸｲ犧｣犧･犹霞ｸｲ犧�ｸもｹ霞ｸｭ犧｡犧ｹ犧･犧謂ｸｰ犧籾ｸｹ犧≒ｸ謂ｸｳ犧≒ｸｱ犧扉ｸｪ犧ｴ犧伶ｸ倨ｸｴ犹�"}
+                : "เนื่องจากบทบาทของคุณเป็นเจ้าหน้าที่งานบุคคล คุณจะมีสิทธิ์เข้าถึงเฉพาะการปรับแต่งโควตาการลา แก้ไขกฎเกณฑ์การลา การตั้งค่าผู้อนุมัติขั้นสุดท้าย และข้อจำกัดทั่วไป ส่วนข้อมูลพื้นฐานโรงเรียน การตั้งค่าแจ้งเตือน LINE ข้อมูลนักพัฒนา การสำรองข้อมูล และการล้างข้อมูลจะถูกจำกัดสิทธิ์"}
             </p>
           </div>
         </div>
@@ -2179,11 +2179,11 @@ export default function SettingsPage() {
         <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-900/40 rounded-2xl text-sm text-amber-700 dark:text-amber-300 flex items-start gap-3 shadow-sm">
           <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold">{lang === "en" ? "Inspector View Mode" : "犹もｸｫ犧｡犧扉ｸ扉ｸｹ犧もｹ霞ｸｭ犧｡犧ｹ犧･犧憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧�"}</p>
+            <p className="font-bold">{lang === "en" ? "Inspector View Mode" : "โหมดดูข้อมูลผู้ตรวจสอบ"}</p>
             <p className="text-xs text-amber-600/90 dark:text-amber-400 mt-1">
               {lang === "en" 
                 ? "As an Inspector, you have read-only access to view leave configs, leave rules, final approvers, and settings. You can export leave data backups, but modifications, settings saving, data imports, and system clear actions are restricted."
-                : "犹犧吭ｸｷ犹謂ｸｭ犧�ｸ謂ｸｲ犧≒ｸ壟ｸ伶ｸ壟ｸｲ犧伶ｸもｸｭ犧�ｸ�ｸｸ犧内ｹ犧巵ｹ�ｸ吭ｸ憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧� 犧�ｸｸ犧内ｸｪ犧ｲ犧｡犧ｲ犧｣犧籾ｹ犧もｹ霞ｸｲ犧扉ｸｹ犧≒ｸｲ犧｣犧歩ｸｱ犹霞ｸ�ｸ�ｹ謂ｸｲ犧ｪ犧ｲ犧｢犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ 犧≒ｸ錫ｸ｣犧ｰ犹犧壟ｸｵ犧｢犧壟ｸｧ犧ｱ犧吭ｸ･犧ｲ 犹≒ｸ･犧ｰ犹もｸ�ｸｧ犧歩ｸｲ犧ｧ犧ｱ犧吭ｸ･犧ｲ犧ｪ犧ｰ犧ｪ犧｡犧もｸｭ犧�ｸ壟ｸｸ犧�ｸ･犧ｲ犧≒ｸ｣犧伶ｸｸ犧≒ｸ�ｸ吭ｹ�ｸ扉ｹ霞ｹ≒ｸ壟ｸ壟ｸｭ犹謂ｸｲ犧吭ｸｭ犧｢犹謂ｸｲ犧�ｹ犧扉ｸｵ犧｢犧ｧ (Read-only) 犹もｸ扉ｸ｢犧謂ｸｰ犹�ｸ｡犹謂ｸ｡犧ｵ犧ｪ犧ｴ犧伶ｸ倨ｸｴ犹呉ｸ壟ｸｱ犧吭ｸ伶ｸｶ犧≒ｹ≒ｸ≒ｹ霞ｹ�ｸもｸもｹ霞ｸｭ犧｡犧ｹ犧･ 犧吭ｸｳ犹犧もｹ霞ｸｲ犧もｹ霞ｸｭ犧｡犧ｹ犧･ 犧ｫ犧｣犧ｷ犧ｭ犧･犹霞ｸｲ犧�ｸ｣犧ｰ犧壟ｸ壟ｹ犧樅ｸｷ犹謂ｸｭ犧�ｸｧ犧ｲ犧｡犧巵ｸ･犧ｭ犧扉ｸ�犧ｱ犧｢"}
+                : "เนื่องจากบทบาทของคุณเป็นผู้ตรวจสอบ คุณสามารถเข้าดูการตั้งค่าสายอนุมัติ กฎระเบียบวันลา และโควตาวันลาสะสมของบุคลากรทุกคนได้แบบอ่านอย่างเดียว (Read-only) โดยจะไม่มีสิทธิ์บันทึกแก้ไขข้อมูล นำเข้าข้อมูล หรือล้างระบบเพื่อความปลอดภัย"}
             </p>
           </div>
         </div>
@@ -2222,12 +2222,12 @@ export default function SettingsPage() {
             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {lang === "en" ? "Import Reference Codes" : "犧｣犧ｫ犧ｱ犧ｪ犧ｭ犹霞ｸｲ犧�ｸｭ犧ｴ犧�ｸｪ犧ｳ犧ｫ犧｣犧ｱ犧壟ｸ≒ｸｲ犧｣犧吭ｸｳ犹犧もｹ霞ｸｲ犧もｹ霞ｸｭ犧｡犧ｹ犧･"}
+                  {lang === "en" ? "Import Reference Codes" : "รหัสอ้างอิงสำหรับนำเข้าข้อมูล"}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {lang === "en"
                     ? "Use these exact codes in your CSV/Excel template columns."
-                    : "犹�ｸ癌ｹ霞ｸ｣犧ｫ犧ｱ犧ｪ犹犧ｫ犧･犹謂ｸｲ犧吭ｸｵ犹霞ｹ�ｸ吭ｸｫ犧ｱ犧ｧ犧歩ｸｲ犧｣犧ｲ犧�ｸｫ犧｣犧ｷ犧ｭ犧もｹ霞ｸｭ犧｡犧ｹ犧･犹�ｸ吭ｹ犧伶ｸ｡犹犧樅ｸ･犧� CSV/Excel 犹犧樅ｸｷ犹謂ｸｭ犧≒ｸｲ犧｣犧吭ｸｳ犹犧もｹ霞ｸｲ犧伶ｸｵ犹謂ｸ籾ｸｹ犧≒ｸ歩ｹ霞ｸｭ犧�"}
+                  : "ใช้รหัสเหล่านี้เป็นหัวตารางในไฟล์ CSV/Excel เพื่อให้นำเข้าข้อมูลได้ถูกต้อง"}
                 </p>
               </div>
               <button
@@ -2248,7 +2248,7 @@ export default function SettingsPage() {
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
-                {lang === "en" ? "Users (IDs)" : "犧｣犧ｲ犧｢犧癌ｸｷ犹謂ｸｭ犧壟ｸｸ犧�ｸ･犧ｲ犧≒ｸ｣ (ID)"}
+                {lang === "en" ? "Users (IDs)" : "รายชื่อบุคลากร (ID)"}
               </button>
               <button
                 onClick={() => setRefModalTab("types")}
@@ -2258,7 +2258,7 @@ export default function SettingsPage() {
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
-                {lang === "en" ? "Leave Types" : "犧巵ｸ｣犧ｰ犹犧�犧伶ｸ≒ｸｲ犧｣犧･犧ｲ"}
+                {lang === "en" ? "Leave Types" : "ประเภทการลา"}
               </button>
               <button
                 onClick={() => setRefModalTab("statuses")}
@@ -2268,7 +2268,7 @@ export default function SettingsPage() {
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
-                {lang === "en" ? "Leave Statuses" : "犧ｪ犧籾ｸｲ犧吭ｸｰ犧≒ｸｲ犧｣犧･犧ｲ"}
+                {lang === "en" ? "Leave Statuses" : "สถานะการลา"}
               </button>
             </div>
 
@@ -2277,7 +2277,7 @@ export default function SettingsPage() {
               <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                 <input
                   type="text"
-                  placeholder={lang === "en" ? "Search by Name, Username or Position..." : "犧�ｹ霞ｸ吭ｸｫ犧ｲ犧癌ｸｷ犹謂ｸｭ, 犹�ｸｭ犧扉ｸｵ犧憫ｸｹ犹霞ｹ�ｸ癌ｹ� (Username) 犧ｫ犧｣犧ｷ犧ｭ犧歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�..."}
+                  placeholder={lang === "en" ? "Search by Name, Username or Position..." : "ค้นหาชื่อ, Username หรือตำแหน่ง..."}
                   value={userSearchQuery}
                   onChange={(e) => setUserSearchQuery(e.target.value)}
                   className="w-full h-9 px-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
@@ -2291,7 +2291,7 @@ export default function SettingsPage() {
                 <div className="space-y-3">
                   {userList.length === 0 ? (
                     <div className="text-center py-8 text-xs text-gray-400 animate-pulse">
-                      {lang === "en" ? "Loading users..." : "犧≒ｸｳ犧･犧ｱ犧�ｹもｸｫ犧･犧扉ｸ｣犧ｲ犧｢犧癌ｸｷ犹謂ｸｭ..."}
+                      {lang === "en" ? "Loading users..." : "กำลังโหลดรายชื่อ..."}
                     </div>
                   ) : (
                     (() => {
@@ -2303,7 +2303,7 @@ export default function SettingsPage() {
                       if (filtered.length === 0) {
                         return (
                           <div className="text-center py-8 text-xs text-gray-400">
-                            {lang === "en" ? "No users match your search." : "犹�ｸ｡犹謂ｸ樅ｸ壟ｸ憫ｸｹ犹霞ｹ�ｸ癌ｹ霞ｸ伶ｸｵ犹謂ｸ�ｹ霞ｸ吭ｸｫ犧ｲ"}
+                            {lang === "en" ? "No users match your search." : "ไม่พบผู้ใช้งานที่คุณค้นหา"}
                           </div>
                         );
                       }
@@ -2313,7 +2313,7 @@ export default function SettingsPage() {
                             <div key={idx} className="p-3 flex items-center justify-between text-xs hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all">
                               <div>
                                 <span className="font-bold text-gray-900 dark:text-white">{u.name}</span>
-                                <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{u.position || "犹�ｸ｡犹謂ｸ｣犧ｰ犧壟ｸｸ犧歩ｸｳ犹≒ｸｫ犧吭ｹ謂ｸ�"}</span>
+                                <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Position (ตำแหน่ง)</span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500">ID:</span>
@@ -2322,11 +2322,11 @@ export default function SettingsPage() {
                                     navigator.clipboard.writeText(u.username);
                                     const target = e.target as HTMLElement;
                                     const origText = target.innerText;
-                                    target.innerText = lang === "en" ? "Copied!" : "犧�ｸｱ犧扉ｸ･犧ｭ犧≒ｹ≒ｸ･犹霞ｸｧ!";
+                                    target.innerText = lang === "en" ? "Copied!" : "คัดลอกแล้ว!";
                                     setTimeout(() => { target.innerText = origText; }, 1000);
                                   }}
                                   className="font-mono bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 px-2 py-1 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30 cursor-pointer select-all select-none active:scale-95 transition-all"
-                                  title="犧�ｸ･犧ｴ犧≒ｹ犧樅ｸｷ犹謂ｸｭ犧�ｸｱ犧扉ｸ･犧ｭ犧�"
+                                  title="คลิกเพื่อคัดลอก"
                                 >
                                   {u.username}
                                 </span>
@@ -2347,7 +2347,7 @@ export default function SettingsPage() {
                       <div key={idx} className="p-3 flex items-center justify-between text-xs hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all">
                         <div>
                           <span className="font-bold text-gray-900 dark:text-white">{c.name}</span>
-                          <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">犹もｸ�ｸｧ犧歩ｸｲ: {c.maxDaysPerYear} 犧ｧ犧ｱ犧�/犧巵ｸｵ</span>
+                          <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">โควตา: {c.maxDaysPerYear} วัน/ปี</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] text-gray-400 dark:text-gray-500">Code:</span>
@@ -2356,11 +2356,11 @@ export default function SettingsPage() {
                               navigator.clipboard.writeText(c.type);
                               const target = e.target as HTMLElement;
                               const origText = target.innerText;
-                              target.innerText = lang === "en" ? "Copied!" : "犧�ｸｱ犧扉ｸ･犧ｭ犧≒ｹ≒ｸ･犹霞ｸｧ!";
+                              target.innerText = lang === "en" ? "Copied!" : "คัดลอกแล้ว!";
                               setTimeout(() => { target.innerText = origText; }, 1000);
                             }}
                             className="font-mono bg-purple-50 hover:bg-purple-100 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 px-2 py-1 rounded-lg border border-purple-100/50 dark:border-purple-900/30 cursor-pointer select-none active:scale-95 transition-all"
-                            title="犧�ｸ･犧ｴ犧≒ｹ犧樅ｸｷ犹謂ｸｭ犧�ｸｱ犧扉ｸ･犧ｭ犧�"
+                            title="คลิกเพื่อคัดลอก"
                           >
                             {c.type}
                           </span>
@@ -2375,11 +2375,11 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
                     {[
-                      { code: "APPROVED", labelTh: "犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ犹犧｣犧ｵ犧｢犧壟ｸ｣犹霞ｸｭ犧｢", labelEn: "Approved (Completed)" },
-                      { code: "PENDING_HEAD", labelTh: "犧｣犧ｭ犧ｫ犧ｱ犧ｧ犧ｫ犧吭ｹ霞ｸｲ犧≒ｸ･犧ｸ犹謂ｸ｡犧ｪ犧ｲ犧｣犧ｰ/犧憫ｸｹ犹霞ｸ歩ｸ｣犧ｧ犧謂ｸｪ犧ｭ犧�", labelEn: "Pending Inspector Approval" },
-                      { code: "PENDING_EXEC", labelTh: "犧｣犧ｭ犧憫ｸｹ犹霞ｸｭ犧ｳ犧吭ｸｧ犧｢犧≒ｸｲ犧｣/犧憫ｸｹ犹霞ｸ壟ｸ｣犧ｴ犧ｫ犧ｲ犧｣犧ｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ", labelEn: "Pending Final Executive Approval" },
-                      { code: "REJECTED", labelTh: "犹�ｸ｡犹謂ｸｭ犧吭ｸｸ犧｡犧ｱ犧歩ｸｴ/犧巵ｸ鐘ｸｴ犹犧ｪ犧�", labelEn: "Rejected" },
-                      { code: "CANCELLED", labelTh: "犧｢犧≒ｹ犧･犧ｴ犧≒ｹ�ｸ壟ｸ･犧ｲ", labelEn: "Cancelled" },
+                      { code: "APPROVED", labelTh: "อนุมัติเรียบร้อย", labelEn: "Approved (Completed)" },
+                      { code: "PENDING_HEAD", labelTh: "รอหัวหน้ากลุ่มสาระ/ผู้ตรวจสอบ", labelEn: "Pending Inspector Approval" },
+                      { code: "PENDING_EXEC", labelTh: "รอผู้อนุมัติ", labelEn: "Pending Final Executive Approval" },
+                      { code: "REJECTED", labelTh: "ไม่อนุมัติ/ปฏิเสธ", labelEn: "Rejected" },
+                      { code: "CANCELLED", labelTh: "ยกลิกใบลา", labelEn: "Cancelled" },
                     ].map((item: any, idx: number) => (
                       <div key={idx} className="p-3 flex items-center justify-between text-xs hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all">
                         <div>
@@ -2394,11 +2394,11 @@ export default function SettingsPage() {
                               navigator.clipboard.writeText(item.code);
                               const target = e.target as HTMLElement;
                               const origText = target.innerText;
-                              target.innerText = lang === "en" ? "Copied!" : "犧�ｸｱ犧扉ｸ･犧ｭ犧≒ｹ≒ｸ･犹霞ｸｧ!";
+                              target.innerText = lang === "en" ? "Copied!" : "คัดลอกแล้ว!";
                               setTimeout(() => { target.innerText = origText; }, 1000);
                             }}
                             className="font-mono bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 px-2 py-1 rounded-lg border border-blue-100/50 dark:border-blue-900/30 cursor-pointer select-none active:scale-95 transition-all"
-                            title="犧�ｸ･犧ｴ犧≒ｹ犧樅ｸｷ犹謂ｸｭ犧�ｸｱ犧扉ｸ･犧ｭ犧�"
+                            title="คลิกเพื่อคัดลอก"
                           >
                             {item.code}
                           </span>
@@ -2416,7 +2416,7 @@ export default function SettingsPage() {
                 onClick={() => setIsRefModalOpen(false)}
                 className="px-6 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 text-white dark:text-white font-bold text-xs transition-all shadow-md"
               >
-                {lang === "en" ? "Close" : "犧巵ｸｴ犧扉ｸｫ犧吭ｹ霞ｸｲ犧歩ｹ謂ｸｲ犧�"}
+                {lang === "en" ? "Close" : "ปิดหน้าต่าง"}
               </button>
             </div>
           </div>

@@ -425,18 +425,9 @@ export async function getDashboardStats(
   }
 
   // Get pending count
-  const isDirector = user.position === "ผู้อำนวยการ";
-
   let pendingWhere: any = { status: { in: ["PENDING_HEAD", "PENDING_EXEC"] } };
   if (!canViewOverview) {
     pendingWhere = { userId: session.user.id, status: { in: ["PENDING_HEAD", "PENDING_EXEC"] } };
-  } else if (user.position === "หัวหน้างานบุคคล") {
-    pendingWhere = { status: "PENDING_HEAD" };
-  } else if (isDirector || isFinalApprover) {
-    pendingWhere = { status: "PENDING_EXEC" };
-  } else {
-    // Other overview roles (รองผู้อำนวยการ, เจ้าหน้าที่บุคคล, ผู้ตรวจสอบ)
-    pendingWhere = { status: { in: ["PENDING_HEAD", "PENDING_EXEC"] } };
   }
 
   const pendingCount = await prisma.leaveRequest.count({ where: pendingWhere });
