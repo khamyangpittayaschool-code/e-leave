@@ -5,7 +5,7 @@ import { archiveCurrentCycle, importBackupFromJson, exportLeaveBackup, importLea
 import { adminClearAllLeaveData } from "@/app/actions/leave";
 import { uploadLogo } from "@/app/actions/upload";
 import { useSession } from "@/lib/auth-client";
-import { Save, Image as ImageIcon, ShieldAlert, DownloadCloud, Code, Settings2, Archive, UploadCloud, Database, FileJson, AlertTriangle, CheckCircle2, ChevronRight, ArrowLeft, Bell, Type, Users, BookOpen, HardDrive, UserCog, FileSpreadsheet, X, CalendarDays, FileX } from "lucide-react";
+import { Save, Image as ImageIcon, ShieldAlert, DownloadCloud, Code, Settings2, Archive, UploadCloud, Database, FileJson, AlertTriangle, CheckCircle2, ChevronRight, ArrowLeft, Bell, Type, Users, BookOpen, HardDrive, UserCog, FileSpreadsheet, X, CalendarDays, FileX, Plus } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 import { useI18n } from "@/lib/i18n";
 import * as XLSX from "xlsx";
