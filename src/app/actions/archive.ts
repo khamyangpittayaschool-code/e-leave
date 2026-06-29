@@ -597,6 +597,7 @@ export async function importLeaveSimple(records: any[], mode: "merge" | "replace
       });
       if (existing) {
         skipped++;
+        errors.push(`พบข้อมูลการลาซ้ำซ้อนในระบบอยู่แล้ว (ผู้ใช้: ${matchedUser.name}, วันที่: ${record.startDate.split('T')[0]}, ประเภท: ${mappedType})`);
         continue;
       }
     }

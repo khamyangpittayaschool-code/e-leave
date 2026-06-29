@@ -51,6 +51,7 @@ export default function SettingsPage() {
   const [isSavingRules, setIsSavingRules] = useState(false);
   const [isSavingAllQuotas, setIsSavingAllQuotas] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [dataWizardTab, setDataWizardTab] = useState<"import" | "export">("import");
   const [isImporting, setIsImporting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isExportingLeave, setIsExportingLeave] = useState(false);
@@ -556,7 +557,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleAddManualLeave = () => {
+  const handleAddManualLeave = (closeModal: boolean = true) => {
     if (!manualSelectedTeacher) {
       showToast("error", lang === "en" ? "Please select a teacher" : "กรุณาเลือกครู/บุคลากร");
       return;
@@ -574,11 +575,18 @@ export default function SettingsPage() {
     const finalApprover = eligibleInspectors.find(u => u.id === manualFinalApproverId);
     const headApprover = eligibleInspectors.find(u => u.id === manualHeadApproverId);
 
+    // Parse dates to local midnight to ensure timezone alignment
+    const startParts = manualStartDate.split("-");
+    const localStart = new Date(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]));
+    
+    const endParts = manualEndDate.split("-");
+    const localEnd = new Date(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2]));
+
     const newRecord: any = {
       rowNum: validRecords.length + invalidRecords.length + 2,
       username: manualSelectedTeacher.username,
-      startDate: new Date(manualStartDate).toISOString(),
-      endDate: new Date(manualEndDate).toISOString(),
+      startDate: localStart.toISOString(),
+      endDate: localEnd.toISOString(),
       type: manualLeaveType,
       status: manualLeaveStatus,
       finalApproverUsername: finalApprover?.username || "",
@@ -587,7 +595,7 @@ export default function SettingsPage() {
     };
 
     const errorList: string[] = [];
-    if (new Date(manualStartDate) > new Date(manualEndDate)) {
+    if (localStart > localEnd) {
       errorList.push("วันที่เริ่มต้นมากกว่าวันที่สิ้นสุด");
     }
 
@@ -611,9 +619,12 @@ export default function SettingsPage() {
 
     setParsedRecords(prev => [...prev, newRecord]);
     setImportStage("preview");
-    setIsManualFillModalOpen(false);
+    
+    if (closeModal) {
+      setIsManualFillModalOpen(false);
+    }
 
-    // Clear form
+    // Clear form inputs
     setManualTeacherSearch("");
     setManualSelectedTeacher(null);
     setManualStartDate("");
@@ -693,9 +704,20 @@ export default function SettingsPage() {
             const str = String(val).trim();
             const dmy = str.split(/[\\/\\-\\.]/);
             if (dmy.length === 3) {
-              let d = parseInt(dmy[0]);
-              let m = parseInt(dmy[1]) - 1;
-              let y = parseInt(dmy[2]);
+              let y = 0;
+              let m = 0;
+              let d = 0;
+              if (dmy[0].length === 4) {
+                // YYYY-MM-DD
+                y = parseInt(dmy[0]);
+                m = parseInt(dmy[1]) - 1;
+                d = parseInt(dmy[2]);
+              } else {
+                // DD-MM-YYYY
+                d = parseInt(dmy[0]);
+                m = parseInt(dmy[1]) - 1;
+                y = parseInt(dmy[2]);
+              }
               if (y > 2500) y -= 543;
               return new Date(y, m, d);
             }
@@ -1612,7 +1634,7 @@ export default function SettingsPage() {
             {t("systemBackupDesc") || "สำรองข้อมูลการตั้งค่าและประวัติทั้งหมด"}
           </p>
           
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               onClick={handleBackup}
               disabled={isBackingUp}
@@ -1648,9 +1670,37 @@ export default function SettingsPage() {
             : "นำออกข้อมูลการลาเป็นไฟล์รูปแบบต่างๆ หรือลากไฟล์มาวางเพื่อจำลองตรวจสอบข้อมูล (Preview) ก่อนยืนยันนำเข้าเข้าระบบจริง"}
         </p>
         
+        {/* Segmented Control for Wizard Tabs (Export vs Import) */}
+        {importStage === "idle" && (
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl max-w-[280px] mb-6 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setDataWizardTab("import")}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                dataWizardTab === "import"
+                  ? "bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm"
+                  : "text-slate-500 hover:text-slate-850 dark:hover:text-slate-200"
+              }`}
+            >
+              {lang === "en" ? "Import Data" : "นำเข้าข้อมูล"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDataWizardTab("export")}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                dataWizardTab === "export"
+                  ? "bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm"
+                  : "text-slate-500 hover:text-slate-850 dark:hover:text-slate-200"
+              }`}
+            >
+              {lang === "en" ? "Export Data" : "ส่งออกข้อมูล"}
+            </button>
+          </div>
+        )}
+
         <div className="space-y-4">
           {/* Export Buttons */}
-          {importStage === "idle" && (
+          {importStage === "idle" && dataWizardTab === "export" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <button
                 onClick={handleExportLeave}
@@ -1686,7 +1736,7 @@ export default function SettingsPage() {
           )}
 
           {/* Premium Wizard Stages */}
-          {importStage === "idle" && (
+          {importStage === "idle" && dataWizardTab === "import" && (
             <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800/80 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
@@ -2868,20 +2918,27 @@ export default function SettingsPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-gray-50 dark:bg-gray-950/40 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 gap-3 shrink-0">
+            <div className="p-4 bg-gray-50 dark:bg-gray-950/40 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-2 justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setIsManualFillModalOpen(false)}
-                className="h-11 rounded-xl bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80 text-gray-600 dark:text-gray-300 font-semibold text-sm transition-all border border-gray-100 dark:border-gray-850"
+                className="h-11 px-4 rounded-xl bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80 text-gray-600 dark:text-gray-300 font-semibold text-sm transition-all border border-gray-150 dark:border-gray-850"
               >
-                {lang === "en" ? "Cancel" : "ยกเลิก"}
+                {lang === "en" ? "Close" : "ปิดหน้าต่าง"}
               </button>
               <button
                 type="button"
-                onClick={handleAddManualLeave}
-                className="h-11 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm transition-all shadow-md shadow-teal-500/10"
+                onClick={() => handleAddManualLeave(false)}
+                className="h-11 px-5 rounded-xl bg-teal-50 hover:bg-teal-100 dark:bg-teal-500/10 dark:hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-900/50 font-bold text-sm transition-all"
               >
-                {lang === "en" ? "Add to Queue" : "เพิ่มลงในคิวนำเข้า"}
+                {lang === "en" ? "Add & Continue" : "เพิ่มและทำต่อ"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddManualLeave(true)}
+                className="h-11 px-5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm transition-all shadow-md shadow-teal-500/10"
+              >
+                {lang === "en" ? "Add & Close" : "เพิ่มและปิด"}
               </button>
             </div>
           </div>
