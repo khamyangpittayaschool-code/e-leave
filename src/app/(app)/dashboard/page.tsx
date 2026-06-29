@@ -45,6 +45,17 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const { t, lang, tPosition, tLeaveType } = useI18n();
 
+  const monthNamesTh = [
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+  ];
+  const monthNamesEn = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const weekDaysTh = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+  const weekDaysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   const getCurrentFiscalYear = () => {
     const now = new Date();
     const month = now.getMonth();
@@ -751,10 +762,6 @@ export default function DashboardPage() {
             {Array.from({ length: 12 }, (_, monthIdx) => {
               const miniMonthDate = new Date(calendarDate.getFullYear(), monthIdx, 1);
               const days = getDaysInMonth(miniMonthDate);
-              const monthNamesTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-              const monthNamesEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-              const weekDaysTh = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
-              const weekDaysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
               return (
                 <div key={monthIdx} className="p-3 bg-slate-50/50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl flex flex-col gap-2">
                   <h4 className="text-xs font-bold text-center text-slate-800 dark:text-slate-200">
