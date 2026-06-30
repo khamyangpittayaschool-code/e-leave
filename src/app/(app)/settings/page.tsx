@@ -71,6 +71,8 @@ export default function SettingsPage() {
   const [isImportingLeave, setIsImportingLeave] = useState(false);
   const [importLeaveMode, setImportLeaveMode] = useState<"merge" | "replace">("merge");
   const [importLeaveResult, setImportLeaveResult] = useState<any>(null);
+  const [backupCycleFilter, setBackupCycleFilter] = useState<string>("year");
+  const [backupTargetYear, setBackupTargetYear] = useState<number>(new Date().getFullYear() + 543);
   const [isRefModalOpen, setIsRefModalOpen] = useState(false);
   const [userList, setUserList] = useState<any[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -436,7 +438,7 @@ export default function SettingsPage() {
   const handleExportLeave = async () => {
     setIsExportingLeave(true);
     try {
-      const backupString = await exportLeaveBackup();
+      const backupString = await exportLeaveBackup(backupCycleFilter as any, backupTargetYear);
       const blob = new Blob([backupString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -461,7 +463,7 @@ export default function SettingsPage() {
   const handleExportLeaveExcel = async () => {
     setIsExportingLeave(true);
     try {
-      const backupString = await exportLeaveBackup();
+      const backupString = await exportLeaveBackup(backupCycleFilter as any, backupTargetYear);
       const parsed = JSON.parse(backupString);
       const leaveRequests = parsed.leaveRequests || [];
       const configs = parsed.leaveConfigs || [];
@@ -525,7 +527,7 @@ export default function SettingsPage() {
   const handleExportLeaveCSV = async () => {
     setIsExportingLeave(true);
     try {
-      const backupString = await exportLeaveBackup();
+      const backupString = await exportLeaveBackup(backupCycleFilter as any, backupTargetYear);
       const parsed = JSON.parse(backupString);
       const leaveRequests = parsed.leaveRequests || [];
       const configs = parsed.leaveConfigs || [];
@@ -1656,7 +1658,7 @@ export default function SettingsPage() {
   const executeFinalImport = async () => {
     setIsImportingLeave(true);
     try {
-      const result = await importLeaveSimple(validRecords, importLeaveMode);
+      const result = await importLeaveSimple(validRecords, importLeaveMode, backupCycleFilter as any, backupTargetYear);
       if (result.success) {
         setImportLeaveResult(result);
         setLastImportedIds(result.createdIds || []);
@@ -1761,6 +1763,48 @@ export default function SettingsPage() {
             : "นำออกข้อมูลการลาเป็นไฟล์รูปแบบต่างๆ หรือลากไฟล์มาวางเพื่อจำลองตรวจสอบข้อมูล (Preview) ก่อนยืนยันนำเข้าเข้าระบบจริง"}
         </p>
         
+        {/* Time range and Fiscal Year selection */}
+        {importStage === "idle" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-slate-100 dark:border-slate-800/80">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                {lang === "en" ? "Time Range / Cycle Filter" : "กำหนดช่วงเวลาการจัดการข้อมูล"}
+              </label>
+              <select
+                value={backupCycleFilter}
+                onChange={(e) => setBackupCycleFilter(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer text-gray-900 dark:text-white"
+              >
+                <option value="current">{lang === "en" ? "Current Cycle" : "รอบปัจจุบัน"}</option>
+                <option value="cycle1">{lang === "en" ? "Cycle 1 (Oct - Mar)" : "รอบที่ 1 (ต.ค. - มี.ค.)"}</option>
+                <option value="cycle2">{lang === "en" ? "Cycle 2 (Apr - Sep)" : "รอบที่ 2 (เม.ย. - ก.ย.)"}</option>
+                <option value="year">{lang === "en" ? "Fiscal Year" : "ปีงบประมาณ"}</option>
+                <option value="all">{lang === "en" ? "All History" : "ทั้งหมด (ไม่จำกัดช่วงเวลา)"}</option>
+              </select>
+            </div>
+            {backupCycleFilter !== "all" && backupCycleFilter !== "current" && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  {lang === "en" ? "Select Fiscal Year" : "ระบุปีงบประมาณ"}
+                </label>
+                <select
+                  value={backupTargetYear}
+                  onChange={(e) => setBackupTargetYear(parseInt(e.target.value))}
+                  className="w-full h-10 px-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer text-gray-900 dark:text-white"
+                >
+                  {(() => {
+                    const currentBE = new Date().getFullYear() + 543;
+                    const years = [currentBE - 3, currentBE - 2, currentBE - 1, currentBE, currentBE + 1];
+                    return years.map(y => (
+                      <option key={y} value={y}>{lang === "en" ? `FY ${y}` : `ปีงบประมาณ ${y}`}</option>
+                    ));
+                  })()}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Segmented Control for Wizard Tabs (Export vs Import) */}
         {importStage === "idle" && (
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl max-w-[280px] mb-6 shadow-sm">

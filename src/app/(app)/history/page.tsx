@@ -5,6 +5,7 @@ import { getMyLeaveHistory, cancelLeaveRequest, getStaffList, adminDeleteLeaveRe
 import { getLeaveConfigs } from "@/app/actions/settings";
 import { useSession } from "@/lib/auth-client";
 import { format } from "date-fns";
+import { formatLeaveDate } from "@/lib/date-format";
 import { CalendarDays, Clock, FileX, CheckCircle2, XCircle, Download, Printer, FileSpreadsheet, Paperclip, X, ChevronRight, Users } from "lucide-react";
 import * as XLSX from "xlsx";
 import { CycleSelect } from "@/components/cycle-select";
@@ -259,8 +260,8 @@ export default function HistoryPage() {
           </td>
           ${showUserColumn ? `<td style="border:1px solid #ddd;padding:8px;font-weight:bold;">${item.userName}</td>` : ''}
           <td style="border:1px solid #ddd;padding:8px;">${leaveTh}</td>
-          <td style="border:1px solid #ddd;padding:8px;text-align:center;">${format(new Date(item.startDate), "dd/MM/yyyy")}</td>
-          <td style="border:1px solid #ddd;padding:8px;text-align:center;">${format(new Date(item.endDate), "dd/MM/yyyy")}</td>
+          <td style="border:1px solid #ddd;padding:8px;text-align:center;">${formatLeaveDate(item.startDate, lang)}</td>
+          <td style="border:1px solid #ddd;padding:8px;text-align:center;">${formatLeaveDate(item.endDate, lang)}</td>
           <td style="border:1px solid #ddd;padding:8px;text-align:center;">${Math.ceil((new Date(item.endDate).getTime() - new Date(item.startDate).getTime()) / (1000*60*60*24)) + 1}</td>
           <td style="border:1px solid #ddd;padding:8px;">${item.reason}</td>
           <td style="border:1px solid #ddd;padding:8px;text-align:center;">${getStatusTextTh(item.status)}</td>
@@ -603,7 +604,7 @@ export default function HistoryPage() {
                           </div>
                         </td>
                         <td className="px-3 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                          {format(new Date(item.startDate), "dd MMM yyyy")} - {format(new Date(item.endDate), "dd MMM yyyy")}
+                          {formatLeaveDate(item.startDate, lang)} - {formatLeaveDate(item.endDate, lang)}
                         </td>
                         <td className="px-3 py-3 text-center text-slate-600 dark:text-slate-300 font-semibold">
                           {calculateDays(item.startDate, item.endDate, item.type) === 0 && item.type !== "MATERNITY" ? (
@@ -712,7 +713,7 @@ export default function HistoryPage() {
                     <div className="text-xs">
                       <span className="text-slate-400 dark:text-slate-500 block">{t("date")}:</span>
                       <span className="font-medium text-slate-700 dark:text-slate-300">
-                        {format(new Date(item.startDate), "dd MMM yyyy")} - {format(new Date(item.endDate), "dd MMM yyyy")}
+                        {formatLeaveDate(item.startDate, lang)} - {formatLeaveDate(item.endDate, lang)}
                       </span>
                     </div>
 
@@ -871,7 +872,7 @@ export default function HistoryPage() {
                 <div>
                   <span className="text-xs text-slate-400 block mb-0.5">ช่วงเวลา</span>
                   <span className="font-medium text-slate-700 dark:text-slate-350">
-                    {format(new Date(item.startDate), "dd MMM yyyy")} - {format(new Date(item.endDate), "dd MMM yyyy")}
+                    {formatLeaveDate(item.startDate, lang)} - {formatLeaveDate(item.endDate, lang)}
                   </span>
                 </div>
 

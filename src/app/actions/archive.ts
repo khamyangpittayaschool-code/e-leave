@@ -267,12 +267,16 @@ export async function importBackupFromJson(jsonString: string) {
  * Export leave data for the current fiscal year as a JSON backup.
  * Includes: all leave requests (with user name/email), leave configs, and metadata.
  */
-export async function exportLeaveBackup() {
+export async function exportLeaveBackup(
+  cycleFilter: "current" | "cycle1" | "cycle2" | "year" | "all" = "year",
+  targetYear?: number | null
+) {
   const session = await requirePrivilegedLeaveBackup();
   const { getLeaveCycleFilter } = await import("@/lib/cycle");
-  const cycle = getLeaveCycleFilter(new Date(), "year");
+  const refDate = targetYear ? new Date(targetYear - 543, 5, 1) : new Date();
+  const cycle = getLeaveCycleFilter(refDate, cycleFilter);
 
-  // Fetch leave requests within the fiscal year
+  // Fetch leave requests within the selected cycle/time-range
   const whereClause: any = {};
   if (cycle) {
     whereClause.startDate = { gte: cycle.start, lte: cycle.end };
@@ -467,7 +471,12 @@ function getFiscalYear(date: Date): number {
   return (month >= 9 ? year + 1 : year) + 543;
 }
 
-export async function importLeaveSimple(records: any[], mode: "merge" | "replace" = "merge") {
+export async function importLeaveSimple(
+  records: any[],
+  mode: "merge" | "replace" = "merge",
+  cycleFilter: "current" | "cycle1" | "cycle2" | "year" | "all" = "current",
+  targetYear?: number | null
+) {
   const session = await requirePrivilegedLeaveBackup();
   
   // Load all active users to create lookups
@@ -475,11 +484,12 @@ export async function importLeaveSimple(records: any[], mode: "merge" | "replace
     select: { id: true, email: true, name: true, username: true }
   });
 
-  const { getCurrentLeaveCycle } = await import("@/lib/cycle");
-  const cycle = getCurrentLeaveCycle();
+  const { getLeaveCycleFilter } = await import("@/lib/cycle");
+  const refDate = targetYear ? new Date(targetYear - 543, 5, 1) : new Date();
+  const cycle = getLeaveCycleFilter(refDate, cycleFilter) || getLeaveCycleFilter(refDate, "current")!;
 
   // If replace mode, delete existing requests in this cycle
-  if (mode === "replace") {
+  if (mode === "replace" && cycle) {
     await prisma.leaveRequest.deleteMany({
       where: {
         startDate: { gte: cycle.start, lte: cycle.end }
