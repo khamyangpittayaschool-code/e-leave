@@ -1,28 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { cache } from "react";
+
+const getAllHolidaysMemo = cache(async () => {
+  return prisma.holiday.findMany();
+});
 
 // Local helper: Calculate leave days excluding weekends (except maternity)
-function calculateLeaveDays(startDate: Date, endDate: Date, type: string): number {
+function toUtcDateString(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+async function calculateLeaveDays(startDate: Date, endDate: Date, type: string): Promise<number> {
   const start = new Date(startDate);
   const end = new Date(endDate);
   
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
+  const startUTC = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  const endUTC = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
 
-  if (end < start) return 0;
+  if (endUTC < startUTC) return 0;
 
   if (type === "MATERNITY") {
-    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return Math.ceil((endUTC.getTime() - startUTC.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   }
 
+  const holidays = await getAllHolidaysMemo();
+  const holidayDates = new Set(
+    holidays
+      .filter(h => !h.isWorkday)
+      .map(h => toUtcDateString(new Date(h.date)))
+  );
+  const specialWorkdayDates = new Set(
+    holidays
+      .filter(h => h.isWorkday)
+      .map(h => toUtcDateString(new Date(h.date)))
+  );
+
   let count = 0;
-  const current = new Date(start);
-  while (current <= end) {
-    const day = current.getDay();
-    if (day !== 0 && day !== 6) { // 0 = Sunday, 6 = Saturday
+  const current = new Date(startUTC);
+  while (current <= endUTC) {
+    const dayStr = toUtcDateString(current);
+    const dayOfWeek = current.getUTCDay();
+
+    if (specialWorkdayDates.has(dayStr)) {
       count++;
+    } else if (holidayDates.has(dayStr)) {
+      // holiday, do not count
+    } else {
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        count++;
+      }
     }
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   return count;
 }
@@ -273,12 +305,12 @@ export async function GET(
     };
   }
 
-  const currentDays = calculateLeaveDays(request.startDate, request.endDate, request.type);
+  const currentDays = await calculateLeaveDays(request.startDate, request.endDate, request.type);
   stats[request.type].current = currentDays;
 
   for (const r of approvedInYear) {
     if (r.id === request.id) continue;
-    const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+    const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
     if (r.startDate < request.startDate) {
       if (stats[r.type]) {
         stats[r.type].prev += days;
@@ -312,7 +344,7 @@ export async function GET(
     lastLeaveInfo = {
       startDate: lastRequest.startDate,
       endDate: lastRequest.endDate,
-      days: calculateLeaveDays(lastRequest.startDate, lastRequest.endDate, lastRequest.type),
+      days: await calculateLeaveDays(lastRequest.startDate, lastRequest.endDate, lastRequest.type),
       type: lastRequest.type,
     };
   }

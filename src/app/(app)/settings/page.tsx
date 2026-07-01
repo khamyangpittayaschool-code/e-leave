@@ -5,6 +5,7 @@ import { getSystemSettings, updateSystemSettings, updateFooter, generateBackup, 
 import { archiveCurrentCycle, importBackupFromJson, exportLeaveBackup, importLeaveBackup, importLeaveSimple, getImportHistory, undoImportLeave } from "@/app/actions/archive";
 import { adminClearAllLeaveData } from "@/app/actions/leave";
 import { uploadLogo } from "@/app/actions/upload";
+import { getHolidays, createHoliday, updateHoliday, deleteHoliday, fetchAndSaveInternetHolidays } from "@/app/actions/holiday";
 import { useSession } from "@/lib/auth-client";
 import { Save, Image as ImageIcon, ShieldAlert, DownloadCloud, Lock, Code, Settings2, Archive, UploadCloud, Database, FileJson, AlertTriangle, CheckCircle2, ChevronRight, ArrowLeft, Bell, Type, Users, BookOpen, HardDrive, UserCog, FileSpreadsheet, X, CalendarDays, FileX, Plus } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
@@ -86,6 +87,17 @@ export default function SettingsPage() {
 
   // Logo Action Sheet
   const [logoActionSheetOpen, setLogoActionSheetOpen] = useState(false);
+
+  // Holiday states
+  const [holidaysList, setHolidaysList] = useState<any[]>([]);
+  const [holidaysYear, setHolidaysYear] = useState<number>(new Date().getFullYear() + 543);
+  const [isFetchingHolidays, setIsFetchingHolidays] = useState(false);
+  const [isSavingHoliday, setIsSavingHoliday] = useState(false);
+  const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+  const [editingHoliday, setEditingHoliday] = useState<any>(null);
+  const [holidayDateInput, setHolidayDateInput] = useState("");
+  const [holidayNameInput, setHolidayNameInput] = useState("");
+  const [holidayIsWorkdayInput, setHolidayIsWorkdayInput] = useState(false);
 
   // Premium Import Wizard states
   const [importStage, setImportStage] = useState<"idle" | "preview" | "importing" | "summary">("idle");
@@ -207,7 +219,10 @@ export default function SettingsPage() {
     if (activeSection === "backup") {
       getImportHistory().then(setImportHistory);
     }
-  }, [activeSection]);
+    if (activeSection === "holidays") {
+      getHolidays(holidaysYear).then(setHolidaysList).catch(console.error);
+    }
+  }, [activeSection, holidaysYear]);
 
   const handleGeneralSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -958,6 +973,14 @@ export default function SettingsPage() {
   if (canManualImport) {
     dataManagementItems.push({ id: "manual-import", icon: <Plus className="w-5 h-5 text-purple-500" />, title: lang === "en" ? "Manual Leave Entry" : "กรอกข้อมูลใบลาด้วยตนเอง", description: lang === "en" ? "Manually record leave history" : "บันทึกประวัติการลาของบุคลากรย้อนหลังด้วยตนเอง" });
   }
+  if (isAdmin || isHRHead || isInspector) {
+    dataManagementItems.push({
+      id: "holidays",
+      icon: <CalendarDays className="w-5 h-5 text-indigo-500" />,
+      title: lang === "en" ? "Public Holidays" : "วันหยุดราชการ",
+      description: lang === "en" ? "Manage and fetch public holidays" : "จัดการและดึงวันหยุดราชการ/วันชดเชย"
+    });
+  }
   if (isAdmin || isInspector) {
     dataManagementItems.push({ id: "backup", icon: <HardDrive className="w-5 h-5 text-teal-500" />, title: lang === "en" ? "Backup & Data" : "สำรองข้อมูล", description: lang === "en" ? "Export/Import, clear data" : "Export/Import, ปิดรอบ, ล้างข้อมูล" });
   }
@@ -973,6 +996,12 @@ export default function SettingsPage() {
   if (isAdmin || isHRHead) {
     hrHeadItems.push({ id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "System & Approver Settings" : "สายอนุมัติ", description: lang === "en" ? "Inspector, approver, acting director" : "ผู้ตรวจสอบ, ผู้อนุมัติ, ตำแหน่งรักษาการ" });
     hrHeadItems.push({ id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "ระเบียบการลา & โควตา", description: lang === "en" ? "Rules, quotas, restrictions" : "กฎระเบียบ, โควตาวันลา, ข้อจำกัด" });
+    hrHeadItems.push({
+      id: "holidays",
+      icon: <CalendarDays className="w-5 h-5 text-indigo-500" />,
+      title: lang === "en" ? "Public Holidays" : "วันหยุดราชการ",
+      description: lang === "en" ? "Manage and fetch public holidays" : "จัดการและดึงวันหยุดราชการ/วันชดเชย"
+    });
     if (canManualImport) {
       hrHeadItems.push({ id: "manual-import", icon: <Plus className="w-5 h-5 text-purple-500" />, title: lang === "en" ? "Manual Leave Entry" : "กรอกข้อมูลใบลาด้วยตนเอง", description: lang === "en" ? "Manually record leave history" : "บันทึกประวัติการลาของบุคลากรย้อนหลังด้วยตนเอง" });
     }
@@ -984,6 +1013,12 @@ export default function SettingsPage() {
     inspectorItems.push({ id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "System & Approver Settings" : "สายอนุมัติ", description: lang === "en" ? "Inspector, approver, acting director" : "ผู้ตรวจสอบ, ผู้อนุมัติ, ตำแหน่งรักษาการ" });
     inspectorItems.push({ id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "ระเบียบการลา & โควตา", description: lang === "en" ? "Rules, quotas, restrictions" : "กฎระเบียบ, โควตาวันลา, ข้อจำกัด" });
     inspectorItems.push({ id: "backup", icon: <HardDrive className="w-5 h-5 text-teal-500" />, title: lang === "en" ? "Backup & Data" : "สำรองข้อมูล", description: lang === "en" ? "Export/Import, clear data" : "Export/Import, ปิดรอบ, ล้างข้อมูล" });
+    inspectorItems.push({
+      id: "holidays",
+      icon: <CalendarDays className="w-5 h-5 text-indigo-500" />,
+      title: lang === "en" ? "Public Holidays" : "วันหยุดราชการ",
+      description: lang === "en" ? "Manage and fetch public holidays" : "จัดการและดึงวันหยุดราชการ/วันชดเชย"
+    });
     if (canManualImport) {
       inspectorItems.push({ id: "manual-import", icon: <Plus className="w-5 h-5 text-purple-500" />, title: lang === "en" ? "Manual Leave Entry" : "กรอกข้อมูลใบลาด้วยตนเอง", description: lang === "en" ? "Manually record leave history" : "บันทึกประวัติการลาของบุคลากรย้อนหลังด้วยตนเอง" });
     }
@@ -1001,6 +1036,7 @@ export default function SettingsPage() {
     "manual-import": lang === "en" ? "Manual Leave Entry" : "กรอกข้อมูลใบลาด้วยตนเอง",
     impersonate: lang === "en" ? "Role Impersonation" : "จำลองบทบาท",
     footer: lang === "en" ? "Footer Settings" : "ท้ายกระดาษ",
+    holidays: lang === "en" ? "Public Holidays" : "วันหยุดราชการ",
   };
 
   // --- Menu Item Component ---
@@ -2478,6 +2514,304 @@ export default function SettingsPage() {
     );
   };
 
+  const renderHolidaysSection = () => {
+    const handleFetchHolidays = async () => {
+      setIsFetchingHolidays(true);
+      try {
+        const res = await fetchAndSaveInternetHolidays(holidaysYear);
+        if (res.success) {
+          showToast("success", lang === "en" ? `Fetched ${res.count} holidays successfully` : `ดึงข้อมูลวันหยุดสำเร็จ ${res.count} วัน`);
+          const list = await getHolidays(holidaysYear);
+          setHolidaysList(list);
+        } else {
+          showToast("error", res.error || "Failed to fetch holidays");
+        }
+      } catch (e: any) {
+        showToast("error", e.message || "Failed to fetch holidays");
+      } finally {
+        setIsFetchingHolidays(false);
+      }
+    };
+
+    const handleOpenCreateModal = () => {
+      setEditingHoliday(null);
+      setHolidayDateInput("");
+      setHolidayNameInput("");
+      setHolidayIsWorkdayInput(false);
+      setIsHolidayModalOpen(true);
+    };
+
+    const handleOpenEditModal = (h: any) => {
+      setEditingHoliday(h);
+      const d = new Date(h.date);
+      const yStr = d.getUTCFullYear();
+      const mStr = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const dStr = String(d.getUTCDate()).padStart(2, "0");
+      setHolidayDateInput(`${yStr}-${mStr}-${dStr}`);
+      setHolidayNameInput(h.name);
+      setHolidayIsWorkdayInput(h.isWorkday);
+      setIsHolidayModalOpen(true);
+    };
+
+    const handleSaveHoliday = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!holidayDateInput || !holidayNameInput.trim()) {
+        showToast("error", lang === "en" ? "Please fill all fields" : "กรุณากรอกข้อมูลให้ครบถ้วน");
+        return;
+      }
+      setIsSavingHoliday(true);
+      try {
+        if (editingHoliday) {
+          await updateHoliday(editingHoliday.id, holidayDateInput, holidayNameInput.trim(), holidayIsWorkdayInput, true);
+          showToast("success", lang === "en" ? "Holiday updated" : "แก้ไขวันหยุดสำเร็จ");
+        } else {
+          await createHoliday(holidayDateInput, holidayNameInput.trim(), holidayIsWorkdayInput);
+          showToast("success", lang === "en" ? "Holiday created" : "เพิ่มวันหยุดสำเร็จ");
+        }
+        setIsHolidayModalOpen(false);
+        const list = await getHolidays(holidaysYear);
+        setHolidaysList(list);
+      } catch (e: any) {
+        showToast("error", e.message || "Failed to save holiday");
+      } finally {
+        setIsSavingHoliday(false);
+      }
+    };
+
+    const handleDeleteHoliday = async (id: string) => {
+      if (!confirm(lang === "en" ? "Are you sure you want to delete this holiday?" : "คุณแน่ใจหรือไม่ว่าต้องการลบวันหยุดนี้?")) return;
+      try {
+        await deleteHoliday(id);
+        showToast("success", lang === "en" ? "Holiday deleted" : "ลบวันหยุดสำเร็จ");
+        const list = await getHolidays(holidaysYear);
+        setHolidaysList(list);
+      } catch (e: any) {
+        showToast("error", e.message || "Failed to delete holiday");
+      }
+    };
+
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-150 dark:border-gray-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div>
+            <SectionHeader title={sectionTitles.holidays} />
+            <p className="text-xs text-gray-505 dark:text-gray-400 mt-1 leading-relaxed">
+              {lang === "en"
+                ? "Manage school holidays and special workdays. Holidays are excluded from leave calculations, while special workdays count as leave days."
+                : "จัดการวันหยุดและวันทำงานกรณีพิเศษ (วันชดเชย) วันหยุดจะไม่ถูกนับเป็นวันลา ส่วนวันทำงานพิเศษจะนับเป็นวันลาปกติ"}
+            </p>
+          </div>
+          
+          <button
+            type="button"
+            onClick={handleOpenCreateModal}
+            className="h-10 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-all shadow-md shadow-purple-500/10 flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            {lang === "en" ? "Add Custom Holiday" : "เพิ่มวันหยุดด้วยตนเอง"}
+          </button>
+        </div>
+
+        <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+              {lang === "en" ? "Select Year (BE):" : "เลือกปี พ.ศ.:"}
+            </label>
+            <select
+              value={holidaysYear}
+              onChange={(e) => setHolidaysYear(Number(e.target.value))}
+              className="h-9 px-3 rounded-lg border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold outline-none text-gray-850 dark:text-white"
+            >
+              {Array.from({ length: 5 }).map((_, i) => {
+                const year = new Date().getFullYear() + 543 - 2 + i;
+                return (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            disabled={isFetchingHolidays}
+            onClick={handleFetchHolidays}
+            className={`h-9 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+              isFetchingHolidays
+                ? "bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
+                : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40"
+            }`}
+          >
+            <DownloadCloud className={`w-4 h-4 ${isFetchingHolidays ? "animate-bounce" : ""}`} />
+            {isFetchingHolidays
+              ? (lang === "en" ? "Fetching..." : "กำลังดึงข้อมูล...")
+              : (lang === "en" ? "Fetch from Internet" : "ดึงข้อมูลวันหยุดจากอินเทอร์เน็ต")}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          {holidaysList.length === 0 ? (
+            <div className="text-center py-12 border border-dashed border-gray-200 dark:border-gray-850 rounded-2xl">
+              <CalendarDays className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+              <p className="text-xs text-gray-500 font-medium">
+                {lang === "en" ? "No holidays found for this year." : "ไม่พบข้อมูลวันหยุดสำหรับปีนี้"}
+              </p>
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse min-w-[600px]">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{lang === "en" ? "Date" : "วันที่"}</th>
+                  <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{lang === "en" ? "Holiday Name" : "ชื่อวันหยุด"}</th>
+                  <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{lang === "en" ? "Type" : "ประเภท"}</th>
+                  <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">{lang === "en" ? "Actions" : "จัดการ"}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-850">
+                {holidaysList.map((h) => {
+                  const d = new Date(h.date);
+                  const formattedDate = d.toLocaleDateString(lang === "en" ? "en-US" : "th-TH", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                  });
+
+                  return (
+                    <tr key={h.id} className="hover:bg-slate-55 dark:hover:bg-slate-800/10 transition-colors">
+                      <td className="py-3.5 text-xs text-gray-900 dark:text-white font-medium">{formattedDate}</td>
+                      <td className="py-3.5 text-xs text-gray-900 dark:text-white font-semibold">{h.name}</td>
+                      <td className="py-3.5 text-xs">
+                        {h.isWorkday ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
+                            {lang === "en" ? "Special Workday" : "วันทำงานกรณีพิเศษ"}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
+                            {lang === "en" ? "Public Holiday" : "วันหยุดราชการ"}
+                          </span>
+                        )}
+                        {h.isCustom && (
+                          <span className="ml-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
+                            {lang === "en" ? "Custom" : "กำหนดเอง"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 text-right space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(h)}
+                          className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        >
+                          {lang === "en" ? "Edit" : "แก้ไข"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteHoliday(h.id)}
+                          className="px-2.5 py-1 text-[11px] font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-lg transition-colors border border-rose-100 dark:border-rose-900/30"
+                        >
+                          {lang === "en" ? "Delete" : "ลบ"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {isHolidayModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-3xl shadow-xl border border-gray-150 dark:border-gray-800 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-855 flex items-center justify-between">
+                <h3 className="font-bold text-gray-950 dark:text-white">
+                  {editingHoliday
+                    ? (lang === "en" ? "Edit Holiday" : "แก้ไขวันหยุด/วันทำงานชดเชย")
+                    : (lang === "en" ? "Add Custom Holiday" : "เพิ่มวันหยุดด้วยตนเอง")}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsHolidayModalOpen(false)}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveHoliday} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    {lang === "en" ? "Select Date *" : "เลือกวันที่ *"}
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={holidayDateInput}
+                    onChange={(e) => setHolidayDateInput(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    {lang === "en" ? "Holiday Name *" : "ชื่อเรียกวันหยุด *"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={lang === "en" ? "e.g. Songkran Festival" : "เช่น วันสงกรานต์"}
+                    value={holidayNameInput}
+                    onChange={(e) => setHolidayNameInput(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-850 dark:text-white">
+                      {lang === "en" ? "Set as Special Workday" : "ตั้งค่าเป็นวันทำงานชดเชย/กรณีพิเศษ"}
+                    </label>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block mt-0.5 leading-tight">
+                      {lang === "en"
+                        ? "If enabled, this day acts as a normal working day (even if on a weekend)."
+                        : "หากเปิดใช้งาน วันนี้จะถือเป็นวันทำการปกติ (แม้ว่าจะเป็นวันเสาร์-อาทิตย์ก็ตาม) และถ้าลาจะหักโควตา"}
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={holidayIsWorkdayInput}
+                    onChange={(e) => setHolidayIsWorkdayInput(e.target.checked)}
+                    className="w-4 h-4 rounded text-purple-600 border-gray-305 focus:ring-purple-500 accent-purple-600 cursor-pointer"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsHolidayModalOpen(false)}
+                    className="h-10 px-4 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {lang === "en" ? "Cancel" : "ยกเลิก"}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingHoliday}
+                    className="h-10 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-md shadow-purple-500/10 flex items-center gap-1.5"
+                  >
+                    {isSavingHoliday && <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                    {lang === "en" ? "Save Changes" : "บันทึกข้อมูล"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderManualImportSection = () => {
     return (
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-150 dark:border-gray-800">
@@ -2715,6 +3049,7 @@ export default function SettingsPage() {
       case "font": return renderFontSection();
       case "permissions": return renderPermissionsSection();
       case "backup": return renderBackupSection();
+      case "holidays": return renderHolidaysSection();
       case "manual-import": return renderManualImportSection();
       case "impersonate": return renderImpersonateSection();
       case "footer": return renderFooterSection();

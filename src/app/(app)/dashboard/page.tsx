@@ -10,6 +10,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, RadialBarChart, RadialBar
 } from "recharts";
 import { getDashboardStats, getCalendarLeaves } from "@/app/actions/leave";
+import { getHolidays } from "@/app/actions/holiday";
 import { getSystemSettings } from "@/app/actions/settings";
 import { 
   CheckCircle2, AlertCircle, Briefcase, 
@@ -80,6 +81,7 @@ export default function DashboardPage() {
   const [isDayDetailModalOpen, setIsDayDetailModalOpen] = useState(false);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
   const [hasCalendarPermission, setHasCalendarPermission] = useState(true);
+  const [holidays, setHolidays] = useState<any[]>([]);
 
   useEffect(() => {
     getSystemSettings().then((s) => {
@@ -111,6 +113,11 @@ export default function DashboardPage() {
     if (mounted && hasCalendarPermission) {
       getCalendarLeaves(dashboardYear)
         .then(setCalendarLeaves)
+        .catch(console.error);
+    }
+    if (mounted) {
+      getHolidays(dashboardYear)
+        .then(setHolidays)
         .catch(console.error);
     }
   }, [dashboardYear, mounted]);
@@ -171,6 +178,14 @@ export default function DashboardPage() {
       text: "text-blue-600 dark:text-blue-400 font-bold", 
       bg: "bg-blue-50 dark:bg-blue-950/20 border border-blue-150 dark:border-blue-900/30 hover:bg-blue-100/70" 
     };
+  };
+
+  const getHolidayForDay = (day: Date) => {
+    const dStr = day.toISOString().split('T')[0];
+    return holidays.find(h => {
+      const hDate = new Date(h.date);
+      return hDate.toISOString().split('T')[0] === dStr;
+    });
   };
 
   const getLeavesForDay = (day: Date) => {
@@ -718,21 +733,46 @@ export default function DashboardPage() {
                 {getDaysInMonth(calendarDate).map((cell, idx) => {
                   const leaves = getLeavesForDay(cell.date);
                   const isToday = cell.date.toDateString() === new Date().toDateString();
+                  const holiday = getHolidayForDay(cell.date);
+                  const isHoliday = holiday && !holiday.isWorkday;
+
+                  let cellBgStyle = cell.isCurrentMonth 
+                    ? 'bg-slate-50/50 hover:bg-slate-100/50 dark:bg-slate-900/40 dark:hover:bg-slate-800/40 border-slate-100 dark:border-slate-800/80' 
+                    : 'bg-white/10 dark:bg-slate-950/5 opacity-40 border-transparent pointer-events-none';
+                  
+                  if (cell.isCurrentMonth && isHoliday) {
+                    cellBgStyle = 'bg-rose-50/40 hover:bg-rose-100/40 dark:bg-rose-950/10 dark:hover:bg-rose-900/20 border-rose-100 dark:border-rose-900/30';
+                  }
+
                   return (
                     <div 
                       key={idx}
                       onClick={() => handleDayClick(cell.date)}
-                      className={`min-h-[90px] p-1.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
-                        cell.isCurrentMonth 
-                          ? 'bg-slate-50/50 hover:bg-slate-100/50 dark:bg-slate-900/40 dark:hover:bg-slate-800/40 border-slate-100 dark:border-slate-800/80' 
-                          : 'bg-white/10 dark:bg-slate-950/5 opacity-40 border-transparent pointer-events-none'
-                      } ${isToday ? 'ring-2 ring-purple-500 dark:ring-purple-400 ring-offset-2 dark:ring-offset-slate-950 bg-purple-50/20 dark:bg-purple-950/10' : ''}`}
+                      className={`min-h-[90px] p-1.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${cellBgStyle} ${isToday ? 'ring-2 ring-purple-500 dark:ring-purple-400 ring-offset-2 dark:ring-offset-slate-950 bg-purple-50/20 dark:bg-purple-950/10' : ''}`}
                     >
-                      <span className={`text-[11px] font-bold self-start ${isToday ? 'text-purple-600 dark:text-purple-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                      <span className={`text-[11px] font-bold self-start ${isToday ? 'text-purple-600 dark:text-purple-400' : isHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'}`}>
                         {cell.date.getDate()}
                       </span>
                       <div className="flex-1 w-full space-y-1 mt-1">
-                        {leaves.slice(0, 3).map((l, i) => {
+                        {isHoliday && (
+                          <div 
+                            className="px-1.5 py-0.5 rounded-lg border text-[9px] truncate flex items-center gap-1 bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 font-bold"
+                            title={holiday.name}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-rose-500" />
+                            <span>{holiday.name}</span>
+                          </div>
+                        )}
+                        {holiday && holiday.isWorkday && (
+                          <div 
+                            className="px-1.5 py-0.5 rounded-lg border text-[9px] truncate flex items-center gap-1 bg-amber-50/70 dark:bg-amber-950/40 border-amber-250 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 font-bold"
+                            title={holiday.name}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-500" />
+                            <span>{holiday.name}</span>
+                          </div>
+                        )}
+                        {leaves.slice(0, holiday ? 2 : 3).map((l, i) => {
                           const style = getLeaveColorClass(l.type);
                           return (
                             <div 
@@ -745,9 +785,9 @@ export default function DashboardPage() {
                             </div>
                           );
                         })}
-                        {leaves.length > 3 && (
+                        {leaves.length > (holiday ? 2 : 3) && (
                           <div className="text-[8px] text-slate-400 font-semibold pl-1.5">
-                            + {leaves.length - 3} {lang === "en" ? "more" : "คน"}
+                            + {leaves.length - (holiday ? 2 : 3)} {lang === "en" ? "more" : "คน"}
                           </div>
                         )}
                       </div>
@@ -860,11 +900,16 @@ export default function DashboardPage() {
                           const leaves = getLeavesForDay(cell.date);
                           const isToday = cell.date.toDateString() === new Date().toDateString();
                           
-                          // Style based on leaves
+                          const holiday = getHolidayForDay(cell.date);
+                          const isHoliday = holiday && !holiday.isWorkday;
+
                           let cellBgClass = "bg-transparent text-slate-350 dark:text-slate-600 pointer-events-none opacity-20";
                           let cellBorderClass = "border-transparent";
                           if (cell.isCurrentMonth) {
-                            if (leaves.length > 0) {
+                            if (isHoliday) {
+                              cellBgClass = "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 font-bold hover:bg-rose-100 dark:hover:bg-rose-900/40 cursor-pointer";
+                              cellBorderClass = "border-rose-100 dark:border-rose-900/30";
+                            } else if (leaves.length > 0) {
                               const firstType = leaves[0].type;
                               const style = getLeaveColorClass(firstType);
                               cellBgClass = `${style.bg} cursor-pointer`;
@@ -883,7 +928,11 @@ export default function DashboardPage() {
                               key={dIdx}
                               onClick={() => cell.isCurrentMonth && handleDayClick(cell.date)}
                               className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-semibold border transition-all ${cellBgClass} ${cellBorderClass}`}
-                              title={cell.isCurrentMonth ? `${cell.date.getDate()} ${lang === "en" ? monthsEn[mIdx] : monthsTh[mIdx]} (${leaves.length} ${lang === "en" ? "on leave" : "คนลา"})` : ""}
+                              title={cell.isCurrentMonth 
+                                ? isHoliday 
+                                  ? `${cell.date.getDate()} ${lang === "en" ? monthsEn[mIdx] : monthsTh[mIdx]} (${lang === "en" ? "Holiday" : "วันหยุด"}: ${holiday.name})`
+                                  : `${cell.date.getDate()} ${lang === "en" ? monthsEn[mIdx] : monthsTh[mIdx]} (${leaves.length} ${lang === "en" ? "on leave" : "คนลา"})` 
+                                : ""}
                             >
                               {cell.isCurrentMonth ? cell.date.getDate() : ""}
                             </div>

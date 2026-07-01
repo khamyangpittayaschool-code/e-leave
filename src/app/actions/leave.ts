@@ -7,29 +7,61 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { sendLineNotify, formatLeaveMessage } from "@/lib/line-notify";
 import { getCurrentLeaveCycle, getLeaveCycleFilter } from "@/lib/cycle";
+import { cache } from "react";
+
+const getAllHolidaysMemo = cache(async () => {
+  return prisma.holiday.findMany();
+});
 
 // ========= Helper: Calculate leave days excluding weekends (except maternity) =========
-function calculateLeaveDays(startDate: Date, endDate: Date, type: string): number {
+function toUtcDateString(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+async function calculateLeaveDays(startDate: Date, endDate: Date, type: string): Promise<number> {
   const start = new Date(startDate);
   const end = new Date(endDate);
   
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
+  const startUTC = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  const endUTC = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
 
-  if (end < start) return 0;
+  if (endUTC < startUTC) return 0;
 
   if (type === "MATERNITY") {
-    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return Math.ceil((endUTC.getTime() - startUTC.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   }
 
+  const holidays = await getAllHolidaysMemo();
+  const holidayDates = new Set(
+    holidays
+      .filter(h => !h.isWorkday)
+      .map(h => toUtcDateString(new Date(h.date)))
+  );
+  const specialWorkdayDates = new Set(
+    holidays
+      .filter(h => h.isWorkday)
+      .map(h => toUtcDateString(new Date(h.date)))
+  );
+
   let count = 0;
-  const current = new Date(start);
-  while (current <= end) {
-    const day = current.getDay();
-    if (day !== 0 && day !== 6) { // 0 = Sunday, 6 = Saturday
+  const current = new Date(startUTC);
+  while (current <= endUTC) {
+    const dayStr = toUtcDateString(current);
+    const dayOfWeek = current.getUTCDay();
+
+    if (specialWorkdayDates.has(dayStr)) {
       count++;
+    } else if (holidayDates.has(dayStr)) {
+      // holiday, do not count
+    } else {
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        count++;
+      }
     }
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   return count;
 }
@@ -123,7 +155,7 @@ export async function submitLeaveRequest(data: {
   }
 
   // Calculate requested days
-  const requestedDays = calculateLeaveDays(start, end, data.type);
+  const requestedDays = await calculateLeaveDays(start, end, data.type);
 
   // 1. Check if leave config exists and is active
   const config = await prisma.leaveConfig.findUnique({
@@ -165,7 +197,7 @@ export async function submitLeaveRequest(data: {
     let totalTimes = pastRequests.length;
     let totalDays = 0;
     for (const r of pastRequests) {
-      const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+      const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
       totalDays += days;
     }
 
@@ -203,7 +235,7 @@ export async function submitLeaveRequest(data: {
 
     let usedDays = 0;
     for (const r of pastRequests) {
-      const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+      const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
       usedDays += days;
     }
 
@@ -416,7 +448,7 @@ export async function getDashboardStats(
   }
 
   for (const r of requests) {
-    const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+    const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
     if (usedDaysMap[r.type] !== undefined) {
       usedDaysMap[r.type] += days;
     } else {
@@ -457,7 +489,7 @@ export async function getDashboardStats(
   const monthlyData = months.map(name => ({ name, value: 0 }));
   for (const r of requests) {
     const mIndex = r.startDate.getMonth();
-    const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+    const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
     monthlyData[mIndex].value += days;
   }
 
@@ -505,7 +537,7 @@ export async function getDashboardStats(
 
   for (const r of ownRequests) {
     if (r.type === "SICK" || r.type === "PERSONAL") {
-      const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+      const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
       userWatchlistStats.totalDays += days;
       userWatchlistStats.totalTimes += 1;
     }
@@ -521,7 +553,7 @@ export async function getDashboardStats(
         userStatsMap[uid] = { userId: uid, name: r.user.name, totalDays: 0, totalTimes: 0, position: (r.user as any).position || "-" };
       }
       if (r.type === "SICK" || r.type === "PERSONAL") {
-        const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+        const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
         userStatsMap[uid].totalDays += days;
         userStatsMap[uid].totalTimes += 1;
       }
@@ -1118,7 +1150,7 @@ export async function getMyLeaveUsageForCurrentCycle() {
   const typeUsage: Record<string, number> = {};
 
   for (const r of requests) {
-    const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+    const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
     typeUsage[r.type] = (typeUsage[r.type] || 0) + days;
 
     if (r.type === "SICK" || r.type === "PERSONAL") {
@@ -1339,13 +1371,13 @@ export async function getLeaveRequestForPrint(id: string) {
   }
 
   // Set current request days
-  const currentDays = calculateLeaveDays(request.startDate, request.endDate, request.type);
+  const currentDays = await calculateLeaveDays(request.startDate, request.endDate, request.type);
   stats[request.type].current = currentDays;
 
   // Calculate previously taken days in the fiscal year
   for (const r of approvedInYear) {
     if (r.id === request.id) continue; // skip current
-    const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+    const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
     
     // If approved request started BEFORE current request
     if (r.startDate < request.startDate) {
@@ -1386,7 +1418,7 @@ export async function getLeaveRequestForPrint(id: string) {
     lastLeaveInfo = {
       startDate: lastRequest.startDate.toISOString(),
       endDate: lastRequest.endDate.toISOString(),
-      days: calculateLeaveDays(lastRequest.startDate, lastRequest.endDate, lastRequest.type),
+      days: await calculateLeaveDays(lastRequest.startDate, lastRequest.endDate, lastRequest.type),
       type: lastRequest.type,
     };
   }
@@ -1633,12 +1665,12 @@ export async function getBatchLeaveRequestsForPrint(
       };
     }
 
-    const currentDays = calculateLeaveDays(request.startDate, request.endDate, request.type);
+    const currentDays = await calculateLeaveDays(request.startDate, request.endDate, request.type);
     stats[request.type].current = currentDays;
 
     for (const r of approvedInYear) {
       if (r.id === request.id) continue;
-      const days = calculateLeaveDays(r.startDate, r.endDate, r.type);
+      const days = await calculateLeaveDays(r.startDate, r.endDate, r.type);
       if (r.startDate < request.startDate) {
         if (stats[r.type]) {
           stats[r.type].prev += days;
@@ -1669,7 +1701,7 @@ export async function getBatchLeaveRequestsForPrint(
       lastLeaveInfo = {
         startDate: lastRequest.startDate.toISOString(),
         endDate: lastRequest.endDate.toISOString(),
-        days: calculateLeaveDays(lastRequest.startDate, lastRequest.endDate, lastRequest.type),
+        days: await calculateLeaveDays(lastRequest.startDate, lastRequest.endDate, lastRequest.type),
         type: lastRequest.type,
       };
     }

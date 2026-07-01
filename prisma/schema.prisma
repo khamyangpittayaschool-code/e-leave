@@ -29,6 +29,20 @@ model User {
   leaveRequests LeaveRequest[]
   documentRecords  DocumentRecord[]
   templates        DocumentTemplate[]
+
+  // Attendance & Face Scan Additions
+  faceProfileUrl   String?
+  faceDescriptor   Json?
+  faceConsent      Boolean        @default(false)
+  faceConsentAt    DateTime?
+  bypassAttendance Boolean        @default(false)
+  workShiftId      String?
+
+  // Attendance Relations
+  workShift          WorkShift?        @relation(fields: [workShiftId], references: [id], onDelete: SetNull)
+  attendances        Attendance[]      @relation("UserAttendances")
+  createdAttendances Attendance[]      @relation("AttendanceCreatedBy")
+  nonces             AttendanceNonce[]
 }
 
 model Session {
@@ -107,6 +121,19 @@ model SystemSettings {
   lastLeaveMode          String   @default("SAME")
   quotaExceededAction    String   @default("ALLOW_WITH_MEMO")
   rolePermissions        String   @default("{\"calendar\":[\"ADMIN\",\"DIRECTOR\",\"HR\",\"INSPECTOR\",\"TEACHER\"],\"reports\":[\"ADMIN\",\"DIRECTOR\",\"HR\",\"INSPECTOR\"],\"approvals\":[\"ADMIN\",\"DIRECTOR\",\"HR\",\"INSPECTOR\"],\"logs\":[\"ADMIN\"],\"backups\":[\"ADMIN\"],\"users\":[\"ADMIN\"],\"settings\":[\"ADMIN\"]}")
+  
+  // Attendance & Face Scan settings
+  enableAttendance     Boolean  @default(false)
+  attendanceLatitude   Float?
+  attendanceLongitude  Float?
+  attendanceRadius     Float?
+  requireFaceScan      Boolean  @default(false)
+  requireGeofence      Boolean  @default(false)
+  requireLivenessCheck Boolean  @default(false)
+  photoRetentionDays   Int?
+  faceMatchThreshold   Float    @default(0.65)
+  enableAdvancedKPI    Boolean  @default(true)
+
   updatedAt              DateTime @updatedAt
 }
 
@@ -246,4 +273,114 @@ model DocumentRelation {
 
   @@unique([fromId, toId])
 }
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  EARLY_OUT
+  ABSENT
+  LEAVE
+  HOLIDAY
+  OFFICIAL_DUTY
+}
+
+model WorkShift {
+  id                String       @id @default(cuid())
+  name              String
+  startTime         String       // e.g. "08:30"
+  endTime           String       // e.g. "16:30"
+  lateThreshold     Int          // minutes
+  earlyOutThreshold Int          // minutes
+  isOvernight       Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  users             User[]
+  attendances       Attendance[]
+}
+
+model Attendance {
+  id             String           @id @default(cuid())
+  userId         String
+  attendanceDate DateTime         // normalized to midnight UTC
+  checkInTime    DateTime?
+  checkOutTime   DateTime?
+  status         AttendanceStatus
+  workShiftId    String?
+  createdById    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Relations
+  user           User             @relation("UserAttendances", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy      User?            @relation("AttendanceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  workShift      WorkShift?       @relation(fields: [workShiftId], references: [id], onDelete: SetNull)
+  photos         AttendancePhoto[]
+  logs           AttendanceLog[]
+
+  // Indexes
+  @@index([userId])
+  @@index([attendanceDate])
+  @@index([status])
+  @@unique([userId, attendanceDate])
+}
+
+model AttendancePhoto {
+  id               String      @id @default(cuid())
+  attendanceId     String
+  photoUrl         String
+  faceMatchScore   Float?
+  isLivenessPassed Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+
+  // Relations
+  attendance       Attendance  @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([attendanceId])
+}
+
+model AttendanceLog {
+  id               String      @id @default(cuid())
+  attendanceId     String
+  action           String      // e.g., "CHECK_IN", "CHECK_OUT"
+  timestamp        DateTime    @default(now())
+  latitude         Float?
+  longitude        Float?
+  deviceInfo       String?
+  verificationHash String?     // Hash fields to verify log integrity
+  createdAt        DateTime    @default(now())
+
+  // Relations
+  attendance       Attendance  @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([attendanceId])
+}
+
+model AttendanceNonce {
+  id        String   @id @default(cuid())
+  userId    String
+  nonce     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  name      String
+  isCustom  Boolean  @default(false)
+  isWorkday Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 
