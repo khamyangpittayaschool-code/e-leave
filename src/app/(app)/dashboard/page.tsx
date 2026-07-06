@@ -242,7 +242,14 @@ export default function DashboardPage() {
           alert(res.error || "Failed to clock in");
         }
       } else {
+        const nonceRes = await generateAttendanceNonce();
+        if (!nonceRes || !nonceRes.nonce) {
+          alert("Failed to generate nonce. Please reload.");
+          return;
+        }
+
         const res = await clockOut({
+          nonce: nonceRes.nonce,
           browserFingerprint: typeof window !== "undefined" ? window.navigator.userAgent : "dashboard"
         });
         
