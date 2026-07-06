@@ -178,8 +178,14 @@ export default function DashboardPage() {
           if (res) {
             setPersonalAttendanceToday({
               ...(res.attendance || {}),
-              workShift: res.user?.workShift || res.attendance?.workShift || null,
-              user: res.user
+              workShift: res.userSettings?.shiftName ? {
+                name: res.userSettings.shiftName,
+                startTime: res.userSettings.shiftStart,
+                endTime: res.userSettings.shiftEnd,
+              } : null,
+              user: {
+                bypassAttendance: res.userSettings?.bypassAttendance ?? false
+              }
             });
           } else {
             setPersonalAttendanceToday(null);
@@ -222,8 +228,14 @@ export default function DashboardPage() {
           const todayRes = await getMyAttendanceToday();
           setPersonalAttendanceToday({
             ...(todayRes.attendance || {}),
-            workShift: todayRes.user?.workShift || todayRes.attendance?.workShift || null,
-            user: todayRes.user
+            workShift: todayRes.userSettings?.shiftName ? {
+              name: todayRes.userSettings.shiftName,
+              startTime: todayRes.userSettings.shiftStart,
+              endTime: todayRes.userSettings.shiftEnd,
+            } : null,
+            user: {
+              bypassAttendance: todayRes.userSettings?.bypassAttendance ?? false
+            }
           });
           alert(lang === "en" ? "Clocked in successfully!" : "ลงเวลาเข้างานสำเร็จ!");
         } else {
@@ -238,8 +250,14 @@ export default function DashboardPage() {
           const todayRes = await getMyAttendanceToday();
           setPersonalAttendanceToday({
             ...(todayRes.attendance || {}),
-            workShift: todayRes.user?.workShift || todayRes.attendance?.workShift || null,
-            user: todayRes.user
+            workShift: todayRes.userSettings?.shiftName ? {
+              name: todayRes.userSettings.shiftName,
+              startTime: todayRes.userSettings.shiftStart,
+              endTime: todayRes.userSettings.shiftEnd,
+            } : null,
+            user: {
+              bypassAttendance: todayRes.userSettings?.bypassAttendance ?? false
+            }
           });
           alert(lang === "en" ? "Clocked out successfully!" : "ลงเวลาออกงานสำเร็จ!");
         } else {
