@@ -464,9 +464,9 @@ export default function SettingsPage() {
         attendanceRadius: attendanceGeofenceRadius ? parseFloat(attendanceGeofenceRadius) : null,
         requireGeofence: attendanceGeofenceEnabled
       });
-      showToast(lang === "en" ? "Attendance settings saved successfully" : "บันทึกการตั้งค่าระบบลงเวลาปฏิบัติงานสำเร็จ", "success");
+      showToast("success", lang === "en" ? "Attendance settings saved successfully" : "บันทึกการตั้งค่าระบบลงเวลาปฏิบัติงานสำเร็จ");
     } catch (error: any) {
-      showToast(error?.message || "เกิดข้อผิดพลาดในการบันทึก", "error");
+      showToast("error", error?.message || "เกิดข้อผิดพลาดในการบันทึก");
     } finally {
       setIsSavingAttendance(false);
     }
@@ -474,19 +474,19 @@ export default function SettingsPage() {
 
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
-      showToast(lang === "en" ? "Geolocation is not supported by your browser" : "เบราว์เซอร์ของคุณไม่รองรับการดึงพิกัด GPS", "error");
+      showToast("error", lang === "en" ? "Geolocation is not supported by your browser" : "เบราว์เซอร์ของคุณไม่รองรับการดึงพิกัด GPS");
       return;
     }
-    showToast(lang === "en" ? "Fetching current location..." : "กำลังดึงพิกัดปัจจุบัน...", "info");
+    showToast("info", lang === "en" ? "Fetching current location..." : "กำลังดึงพิกัดปัจจุบัน...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setAttendanceGeofenceLat(position.coords.latitude.toFixed(7));
         setAttendanceGeofenceLng(position.coords.longitude.toFixed(7));
-        showToast(lang === "en" ? "Location retrieved successfully" : "ดึงพิกัดปัจจุบันสำเร็จ", "success");
+        showToast("success", lang === "en" ? "Location retrieved successfully" : "ดึงพิกัดปัจจุบันสำเร็จ");
       },
       (error) => {
         console.error("Geolocation error:", error);
-        showToast(lang === "en" ? `Error: ${error.message}` : `ดึงพิกัดไม่สำเร็จ: ${error.message}`, "error");
+        showToast("error", lang === "en" ? `Error: ${error.message}` : `ดึงพิกัดไม่สำเร็จ: ${error.message}`);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
