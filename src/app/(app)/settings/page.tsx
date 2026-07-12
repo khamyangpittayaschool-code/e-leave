@@ -2029,9 +2029,9 @@ export default function SettingsPage() {
                     setEnableDocument(nextVal);
                     try {
                       await updateSystemSettings({ schoolName, subheader, enableDocument: nextVal });
-                      showToast(lang === "en" ? "Document system settings updated" : "อัปเดตสถานะระบบงานเอกสารสำเร็จ", "success");
+                      showToast("success", lang === "en" ? "Document system settings updated" : "อัปเดตสถานะระบบงานเอกสารสำเร็จ");
                     } catch (e: any) {
-                      showToast(e.message || "เกิดข้อผิดพลาด", "error");
+                      showToast("error", e.message || "เกิดข้อผิดพลาด");
                     }
                   }}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
