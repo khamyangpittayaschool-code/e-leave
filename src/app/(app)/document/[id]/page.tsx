@@ -78,14 +78,14 @@ export default function DocumentDetailPage() {
     getDocumentDetails(docId)
       .then((d) => {
         if (!d) {
-          showToast("ไม่พบเอกสาร", "err");
+          showToast("error", "ไม่พบเอกสาร");
           router.push("/document");
           return;
         }
         setDoc(d);
       })
       .catch((err) => {
-        showToast(err.message || "โหลดไม่สำเร็จ", "err");
+        showToast("error", err.message || "โหลดไม่สำเร็จ");
       })
       .finally(() => setLoading(false));
   }, [docId, router, showToast]);
@@ -93,20 +93,20 @@ export default function DocumentDetailPage() {
   // ── Cancel handler ────────────────────────────────────────────────
   const handleCancel = async () => {
     if (!cancelReason.trim()) {
-      showToast("กรุณาระบุเหตุผลการยกเลิก", "err");
+      showToast("error", "กรุณาระบุเหตุผลการยกเลิก");
       return;
     }
     setCancelling(true);
     try {
       await cancelDoc(docId, cancelReason.trim());
-      showToast("ยกเลิกเอกสารสำเร็จ");
+      showToast("success", "ยกเลิกเอกสารสำเร็จ");
       setCancelModal(false);
       setCancelReason("");
       // Reload
       const d = await getDocumentDetails(docId);
       setDoc(d);
     } catch (err: any) {
-      showToast(err.message || "ยกเลิกไม่สำเร็จ", "err");
+      showToast("error", err.message || "ยกเลิกไม่สำเร็จ");
     } finally {
       setCancelling(false);
     }
@@ -135,7 +135,7 @@ export default function DocumentDetailPage() {
         .save();
     } catch {
       // Fallback: print
-      showToast("ไม่สามารถสร้าง PDF ได้ กรุณาใช้ปุ่มพิมพ์แทน", "err");
+      showToast("error", "ไม่สามารถสร้าง PDF ได้ กรุณาใช้ปุ่มพิมพ์แทน");
     }
   };
 

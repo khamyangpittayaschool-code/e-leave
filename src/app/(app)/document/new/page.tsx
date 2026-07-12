@@ -123,7 +123,7 @@ function DocumentNewPageInner() {
         setSections((s as MemoSection[]).filter((x) => x.isActive));
         setSignees(p as SigneePreset[]);
       })
-      .catch((err) => showToast("โหลดข้อมูลไม่สำเร็จ", "err"))
+      .catch((err) => showToast("error", "โหลดข้อมูลไม่สำเร็จ"))
       .finally(() => setLoading(false));
   }, [showToast]);
 
@@ -168,16 +168,16 @@ function DocumentNewPageInner() {
   // ── Save Draft manually ───────────────────────────────────────────
   const handleSaveDraft = async () => {
     if (!formData.title.trim()) {
-      showToast("กรุณาระบุเรื่อง", "err");
+      showToast("error", "กรุณาระบุเรื่อง");
       return;
     }
     setSaving(true);
     try {
       const res = await saveDocDraft({ ...formData });
       updateField("id", res.id);
-      showToast("บันทึกฉบับร่างสำเร็จ");
+      showToast("success", "บันทึกฉบับร่างสำเร็จ");
     } catch (err: any) {
-      showToast(err.message || "บันทึกไม่สำเร็จ", "err");
+      showToast("error", err.message || "บันทึกไม่สำเร็จ");
     } finally {
       setSaving(false);
     }
@@ -194,9 +194,9 @@ function DocumentNewPageInner() {
       // Issue number
       const issued = await issueDocNumber(draft.id, formData.date);
       setIssuedDocNo(issued.docNo);
-      showToast("ออกเลขเอกสารสำเร็จ!");
+      showToast("success", "ออกเลขเอกสารสำเร็จ!");
     } catch (err: any) {
-      showToast(err.message || "ออกเลขไม่สำเร็จ", "err");
+      showToast("error", err.message || "ออกเลขไม่สำเร็จ");
     } finally {
       setIssuing(false);
     }

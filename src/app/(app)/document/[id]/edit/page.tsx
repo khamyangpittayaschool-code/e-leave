@@ -78,7 +78,7 @@ export default function DocumentEditPage() {
       ]);
 
       if (!doc) {
-        showToast("ไม่พบเอกสารที่ระบุ", "err");
+        showToast("error", "ไม่พบเอกสารที่ระบุ");
         router.push("/document");
         return;
       }
@@ -101,7 +101,7 @@ export default function DocumentEditPage() {
         docNo: doc.docNo || ""
       });
     } catch (err: any) {
-      showToast(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล", "err");
+      showToast("error", err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
     } finally {
       setLoading(false);
     }
@@ -129,10 +129,10 @@ export default function DocumentEditPage() {
         enclosures: form.enclosures.trim() || undefined,
         references: form.references.trim() || undefined
       });
-      showToast("บันทึกการแก้ไขสำเร็จ!");
+      showToast("success", "บันทึกการแก้ไขสำเร็จ!");
       router.push(`/document/${id}`);
     } catch (err: any) {
-      showToast(err.message || "บันทึกข้อมูลล้มเหลว", "err");
+      showToast("error", err.message || "บันทึกข้อมูลล้มเหลว");
     } finally {
       setSaving(false);
     }

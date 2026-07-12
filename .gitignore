@@ -47,3 +47,5 @@ node_modules_old/
 .superpowers/
 tests/
 pnpm-workspace.yaml.bak
+
+deep-research-report.md
