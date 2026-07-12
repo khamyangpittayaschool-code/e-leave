@@ -7571,11 +7571,11 @@ function DocMemoSectionsTab({
         form.icon,
         Number(form.sortOrder)
       );
-      showToast(editId ? "แก้ไขสำเร็จ" : "เพิ่มสำเร็จ", "success");
+      showToast("success", editId ? "แก้ไขสำเร็จ" : "เพิ่มสำเร็จ");
       resetForm();
       await onRefresh();
     } catch (err: any) {
-      showToast(err.message || "เกิดข้อผิดพลาด", "error");
+      showToast("error", err.message || "เกิดข้อผิดพลาด");
     } finally {
       setSaving(false);
     }
@@ -7588,7 +7588,7 @@ function DocMemoSectionsTab({
       showToast("success", "ลบสำเร็จ");
       await onRefresh();
     } catch (err: any) {
-      showToast(err.message || "ลบไม่สำเร็จ", "error");
+      showToast("error", err.message || "ลบไม่สำเร็จ");
     }
   };
 
@@ -7938,7 +7938,7 @@ function DocPatternBuilderTab({
       cancelEdit();
       await onRefresh();
     } catch (err: any) {
-      showToast(err.message || "บันทึกไม่สำเร็จ", "error");
+      showToast("error", err.message || "บันทึกไม่สำเร็จ");
     } finally {
       setSaving(false);
     }
@@ -8242,11 +8242,11 @@ function DocSigneesTab({
         form.position.trim(),
         form.isCommon
       );
-      showToast(editId ? "แก้ไขสำเร็จ" : "เพิ่มสำเร็จ", "success");
+      showToast("success", editId ? "แก้ไขสำเร็จ" : "เพิ่มสำเร็จ");
       resetForm();
       await onRefresh();
     } catch (err: any) {
-      showToast(err.message || "เกิดข้อผิดพลาด", "error");
+      showToast("error", err.message || "เกิดข้อผิดพลาด");
     } finally {
       setSaving(false);
     }
@@ -8259,7 +8259,7 @@ function DocSigneesTab({
       showToast("success", "ลบสำเร็จ");
       await onRefresh();
     } catch (err: any) {
-      showToast(err.message || "ลบไม่สำเร็จ", "error");
+      showToast("error", err.message || "ลบไม่สำเร็จ");
     }
   };
 
