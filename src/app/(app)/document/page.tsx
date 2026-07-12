@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -192,7 +192,7 @@ export default function DocumentPage() {
         setIssueForm(prev => ({ ...prev, memoSectionId: secs[0].id }));
       }
     } catch (err: any) {
-      showToast("error", err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
+      showToast(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล", "error");
     } finally {
       setLoading(false);
     }
@@ -216,7 +216,7 @@ export default function DocumentPage() {
   // Scrape AMSS++ link
   const handleScrapeAMSS = async () => {
     if (!receiveForm.amssLink.trim()) {
-      showToast("error", "กรุณากรอกลิงก์ AMSS++ ก่อนดึงข้อมูล");
+      showToast("กรุณากรอกลิงก์ AMSS++ ก่อนดึงข้อมูล", "error");
       return;
     }
     setScraping(true);
@@ -228,9 +228,9 @@ export default function DocumentPage() {
         docRefNo: details.bookNo || prev.docRefNo,
         senderOrg: details.from || prev.senderOrg,
       }));
-      showToast("success", "ดึงข้อมูลหนังสือจาก AMSS++ สำเร็จ!");
+      showToast("ดึงข้อมูลหนังสือจาก AMSS++ สำเร็จ!", "success");
     } catch (err: any) {
-      showToast("error", err.message || "ดึงข้อมูลล้มเหลว กรุณากรอกเอง");
+      showToast(err.message || "ดึงข้อมูลล้มเหลว กรุณากรอกเอง", "error");
     } finally {
       setScraping(false);
     }
@@ -240,7 +240,7 @@ export default function DocumentPage() {
   const handleQuickIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!issueForm.title.trim() || !issueForm.to.trim() || !issueForm.origin.trim()) {
-      showToast("error", "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
+      showToast("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", "error");
       return;
     }
     setIssuing(true);
@@ -255,14 +255,14 @@ export default function DocumentPage() {
         department: issueForm.department.trim(),
         date: issueForm.date
       });
-      showToast("success", `ออกเลขเอกสารสำเร็จ: ${issued.docNo}`);
+      showToast(`ออกเลขเอกสารสำเร็จ: ${issued.docNo}`, "success");
       setShowIssueModal(false);
       // Reset title and focus
       setIssueForm(prev => ({ ...prev, title: "", to: "", origin: "" }));
       loadData();
       router.push(`/document/${issued.id}`);
     } catch (err: any) {
-      showToast("error", err.message || "ออกเลขเอกสารล้มเหลว");
+      showToast(err.message || "ออกเลขเอกสารล้มเหลว", "error");
     } finally {
       setIssuing(false);
     }
@@ -272,7 +272,7 @@ export default function DocumentPage() {
   const handleRegisterReceive = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!receiveForm.title.trim() || !receiveForm.senderOrg.trim()) {
-      showToast("error", "กรุณากรอกเรื่องและหน่วยงานผู้ส่ง");
+      showToast("กรุณากรอกเรื่องและหน่วยงานผู้ส่ง", "error");
       return;
     }
     setSavingReceive(true);
@@ -288,7 +288,7 @@ export default function DocumentPage() {
         note: receiveForm.note.trim() || undefined,
         firstAssigneeId: receiveForm.firstAssigneeId || undefined
       });
-      showToast("success", `ลงทะเบียนรับหนังสือสำเร็จ: ${doc.receiveNo}`);
+      showToast(`ลงทะเบียนรับหนังสือสำเร็จ: ${doc.receiveNo}`, "success");
       setShowReceiveModal(false);
       setReceiveForm({
         senderOrg: "",
@@ -303,7 +303,7 @@ export default function DocumentPage() {
       });
       loadData();
     } catch (err: any) {
-      showToast("error", err.message || "ลงทะเบียนไม่สำเร็จ");
+      showToast(err.message || "ลงทะเบียนไม่สำเร็จ", "error");
     } finally {
       setSavingReceive(false);
     }
@@ -314,13 +314,13 @@ export default function DocumentPage() {
     if (!docToCancel || !cancelReason.trim()) return;
     try {
       await cancelDoc(docToCancel, cancelReason.trim());
-      showToast("success", "ยกเลิกเลขเอกสารเรียบร้อยแล้ว");
+      showToast("ยกเลิกเลขเอกสารเรียบร้อยแล้ว", "success");
       setShowCancelModal(false);
       setDocToCancel(null);
       setCancelReason("");
       loadData();
     } catch (err: any) {
-      showToast("error", err.message || "ยกเลิกไม่สำเร็จ");
+      showToast(err.message || "ยกเลิกไม่สำเร็จ", "error");
     }
   };
 

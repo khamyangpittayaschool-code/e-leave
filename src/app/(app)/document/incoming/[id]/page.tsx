@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -101,14 +101,14 @@ export default function IncomingDocDetailPage() {
         getSimpleUsersList()
       ]);
       if (!details) {
-        showToast("error", "ไม่พบเอกสารทะเบียนรับที่ระบุ");
+        showToast("ไม่พบเอกสารทะเบียนรับที่ระบุ", "error");
         router.push("/document");
         return;
       }
       setDoc(details as any);
       setUsers(staff);
     } catch (err: any) {
-      showToast("error", err.message || "โหลดข้อมูลล้มเหลว");
+      showToast(err.message || "โหลดข้อมูลล้มเหลว", "error");
     } finally {
       setLoading(false);
     }
@@ -134,7 +134,7 @@ export default function IncomingDocDetailPage() {
     try {
       const finalResolution = resolution === "custom" ? customResolution.trim() : resolution;
       if (!finalResolution) {
-        showToast("error", "กรุณาระบุคำเกษียนสั่งการ");
+        showToast("กรุณาระบุคำเกษียนสั่งการ", "error");
         setResolving(false);
         return;
       }
@@ -147,7 +147,7 @@ export default function IncomingDocDetailPage() {
         deadline: deadline || undefined
       });
 
-      showToast("success", "เกษียนสั่งการสำเร็จเรียบร้อย!");
+      showToast("เกษียนสั่งการสำเร็จเรียบร้อย!", "success");
       loadData();
       
       // Reset form
@@ -157,7 +157,7 @@ export default function IncomingDocDetailPage() {
       setNextAssigneeId("");
       setDeadline("");
     } catch (err: any) {
-      showToast("error", err.message || "เกิดข้อผิดพลาดในการเกษียน");
+      showToast(err.message || "เกิดข้อผิดพลาดในการเกษียน", "error");
     } finally {
       setResolving(false);
     }
@@ -166,7 +166,7 @@ export default function IncomingDocDetailPage() {
   const handleAddStep = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStepAssigneeId) {
-      showToast("error", "กรุณาเลือกผู้รับมอบหมาย");
+      showToast("กรุณาเลือกผู้รับมอบหมาย", "error");
       return;
     }
     setAddingStep(true);
@@ -176,13 +176,13 @@ export default function IncomingDocDetailPage() {
         assigneeId: newStepAssigneeId,
         deadline: newStepDeadline || undefined
       });
-      showToast("success", "เพิ่มลำดับขั้นการเกษียนสำเร็จ");
+      showToast("เพิ่มลำดับขั้นการเกษียนสำเร็จ", "success");
       setShowAddStepModal(false);
       setNewStepAssigneeId("");
       setNewStepDeadline("");
       loadData();
     } catch (err: any) {
-      showToast("error", err.message || "เพิ่มขั้นตอนล้มเหลว");
+      showToast(err.message || "เพิ่มขั้นตอนล้มเหลว", "error");
     } finally {
       setAddingStep(false);
     }
@@ -192,10 +192,10 @@ export default function IncomingDocDetailPage() {
     if (!confirm("คุณต้องการข้าม/ยกเลิกขั้นตอนเกษียนนี้หรือไม่?")) return;
     try {
       await skipRoutingStep(stepId);
-      showToast("success", "ข้ามขั้นตอนเรียบร้อย");
+      showToast("ข้ามขั้นตอนเรียบร้อย", "success");
       loadData();
     } catch (err: any) {
-      showToast("error", err.message || "ไม่สามารถข้ามขั้นตอนได้");
+      showToast(err.message || "ไม่สามารถข้ามขั้นตอนได้", "error");
     }
   };
 
