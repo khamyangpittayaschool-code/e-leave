@@ -70,10 +70,6 @@ interface DocSigneePreset {
 export default function SettingsPage() {
 
   // Attendance settings states
-  const [attendanceWorkStartTime, setAttendanceWorkStartTime] = useState("08:30");
-  const [attendanceLateThresholdTime, setAttendanceLateThresholdTime] = useState("08:40");
-  const [attendanceHalfDayThresholdTime, setAttendanceHalfDayThresholdTime] = useState("12:00");
-  const [attendanceWorkEndTime, setAttendanceWorkEndTime] = useState("16:30");
   const [attendanceGeofenceLat, setAttendanceGeofenceLat] = useState("");
   const [attendanceGeofenceLng, setAttendanceGeofenceLng] = useState("");
   const [attendanceGeofenceRadius, setAttendanceGeofenceRadius] = useState("100");
@@ -406,14 +402,10 @@ export default function SettingsPage() {
       setIappApiKey(data.iappApiKey || "");
       setEnableAttendance(data.enableAttendance === true);
       setEnableDocument(data.enableDocument === true);
-      setAttendanceWorkStartTime(data.attendanceWorkStartTime || "08:30");
-      setAttendanceLateThresholdTime(data.attendanceLateThresholdTime || "08:40");
-      setAttendanceHalfDayThresholdTime(data.attendanceHalfDayThresholdTime || "12:00");
-      setAttendanceWorkEndTime(data.attendanceWorkEndTime || "16:30");
-      setAttendanceGeofenceLat(data.attendanceGeofenceLat ? String(data.attendanceGeofenceLat) : "");
-      setAttendanceGeofenceLng(data.attendanceGeofenceLng ? String(data.attendanceGeofenceLng) : "");
-      setAttendanceGeofenceRadius(data.attendanceGeofenceRadius ? String(data.attendanceGeofenceRadius) : "100");
-      setAttendanceGeofenceEnabled(data.attendanceGeofenceEnabled === true);
+      setAttendanceGeofenceLat(data.attendanceLatitude ? String(data.attendanceLatitude) : "");
+      setAttendanceGeofenceLng(data.attendanceLongitude ? String(data.attendanceLongitude) : "");
+      setAttendanceGeofenceRadius(data.attendanceRadius ? String(data.attendanceRadius) : "100");
+      setAttendanceGeofenceEnabled(data.requireGeofence === true);
 
       if (data.rolePermissions) {
 
@@ -466,14 +458,11 @@ export default function SettingsPage() {
     setIsSavingAttendance(true);
     try {
       await updateAttendanceSettings({
-        workStartTime: attendanceWorkStartTime,
-        lateThresholdTime: attendanceLateThresholdTime,
-        halfDayThresholdTime: attendanceHalfDayThresholdTime,
-        workEndTime: attendanceWorkEndTime,
-        geofenceLat: attendanceGeofenceLat ? parseFloat(attendanceGeofenceLat) : null,
-        geofenceLng: attendanceGeofenceLng ? parseFloat(attendanceGeofenceLng) : null,
-        geofenceRadius: attendanceGeofenceRadius ? parseFloat(attendanceGeofenceRadius) : null,
-        geofenceEnabled: attendanceGeofenceEnabled
+        enableAttendance,
+        attendanceLatitude: attendanceGeofenceLat ? parseFloat(attendanceGeofenceLat) : null,
+        attendanceLongitude: attendanceGeofenceLng ? parseFloat(attendanceGeofenceLng) : null,
+        attendanceRadius: attendanceGeofenceRadius ? parseFloat(attendanceGeofenceRadius) : null,
+        requireGeofence: attendanceGeofenceEnabled
       });
       showToast(lang === "en" ? "Attendance settings saved successfully" : "บันทึกการตั้งค่าระบบลงเวลาปฏิบัติงานสำเร็จ", "success");
     } catch (error: any) {
@@ -8209,62 +8198,6 @@ function DocSigneesTab({
         {enableAttendance && (
           <div className="space-y-6 animate-fadeIn">
             {/* Shift hours card */}
-            <div className="bg-slate-50 dark:bg-slate-900/40 border border-gray-150 dark:border-gray-800 rounded-2xl p-5 space-y-4">
-              <h3 className="text-sm font-semibold text-gray-950 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
-                <span className="w-1.5 h-3 bg-indigo-500 rounded-full" />
-                {lang === "en" ? "Duty Hours & Grace Period" : "ตั้งค่าเวลาการปฏิบัติงาน"}
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Work Start Time" : "เวลาเข้างานปกติ"}
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={attendanceWorkStartTime}
-                    onChange={(e) => setAttendanceWorkStartTime(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Late Threshold Time" : "เวลาเริ่มนับสาย"}
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={attendanceLateThresholdTime}
-                    onChange={(e) => setAttendanceLateThresholdTime(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Half Day Late Threshold" : "สายครึ่งวัน (บ่าย)"}
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={attendanceHalfDayThresholdTime}
-                    onChange={(e) => setAttendanceHalfDayThresholdTime(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Work End Time" : "เวลาเลิกงานปกติ"}
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={attendanceWorkEndTime}
-                    onChange={(e) => setAttendanceWorkEndTime(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Geofence Check-in card */}
             <div className="bg-slate-50 dark:bg-slate-900/40 border border-gray-150 dark:border-gray-800 rounded-2xl p-5 space-y-4">
