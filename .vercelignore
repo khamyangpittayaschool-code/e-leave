@@ -1,0 +1,14 @@
+node_modules_old
+temp_prisma_install
+temp_prisma_install_2
+node_modules
+.next
+.vercel
+scratch
+tests
+deep-research-report.md
+docs/superpowers/specs/2026-06-30-time-attendance-design.md
+pnpm-workspace.yaml.bak
+temp_prisma_install/
+temp_prisma_install_2/
+tests/
