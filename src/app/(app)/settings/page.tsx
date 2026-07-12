@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { useSearchParams } from "next/navigation";
 
@@ -1859,6 +1860,283 @@ export default function SettingsPage() {
   const isHRHead = user?.position === "หัวหน้างานบุคคล" || user?.position === "เจ้าหน้าที่บุคคล";
 
   const isInspector = user?.position === "ผู้ตรวจสอบ";
+
+// ──────────────────────────────────────────────────────────────────────
+// SECTIONS: ATTENDANCE & DOCUMENT RENDERERS
+// ──────────────────────────────────────────────────────────────────────
+  const renderAttendanceSettingsSection = () => (
+    <form onSubmit={handleAttendanceSubmit} className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">
+      <SectionHeader title={sectionTitles["attendance-settings"]} />
+
+      <div className="space-y-6">
+        {/* Toggle system active */}
+        <div className={`flex items-center gap-4 p-5 rounded-2xl border ${enableAttendance ? "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800" : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"} transition-all`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${enableAttendance ? "bg-indigo-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+            <Clock className="w-6 h-6" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-gray-900 dark:text-white text-sm">
+              {lang === "en" ? "Attendance Management System" : "ระบบลงเวลาปฏิบัติงาน"}
+            </p>
+            <p className="text-xs text-gray-550 text-gray-500 dark:text-gray-400 mt-0.5">
+              {lang === "en"
+                ? "Allow personnel to sign-in and sign-out of work using GPS location verification."
+                : "เปิดการใช้งานระบบการลงเวลาปฏิบัติงานเข้า-ออก สำหรับครูและบุคลากร"}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setEnableAttendance(!enableAttendance)}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                enableAttendance ? "bg-indigo-650" : "bg-gray-200 dark:bg-gray-700"
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                  enableAttendance ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+            <span className={`text-xs font-semibold ${enableAttendance ? "text-indigo-650 dark:text-indigo-400" : "text-gray-400"}`}>
+              {enableAttendance ? (lang === "en" ? "Active" : "เปิดใช้งาน") : (lang === "en" ? "Inactive" : "ปิดใช้งาน")}
+            </span>
+          </div>
+        </div>
+
+        {enableAttendance && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Shift hours card */}
+
+            {/* Geofence Check-in card */}
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-gray-150 dark:border-gray-800 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                <h3 className="text-sm font-semibold text-gray-950 dark:text-white flex items-center gap-2">
+                  <span className="w-1.5 h-3 bg-indigo-500 rounded-full" />
+                  {lang === "en" ? "GPS Geofence Location Verification" : "ตั้งค่าการตรวจสอบพิกัด (GPS/Geofence)"}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAttendanceGeofenceEnabled(!attendanceGeofenceEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                      attendanceGeofenceEnabled ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        attendanceGeofenceEnabled ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs text-gray-550 text-gray-500 dark:text-gray-400">
+                    {attendanceGeofenceEnabled ? (lang === "en" ? "Verified" : "เปิดตรวจสอบพิกัด") : (lang === "en" ? "Disabled" : "ปิดตรวจสอบพิกัด")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    {lang === "en" ? "Latitude" : "ละติจูด (Latitude)"}
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="เช่น 17.412345"
+                    value={attendanceGeofenceLat}
+                    onChange={(e) => setAttendanceGeofenceLat(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    {lang === "en" ? "Longitude" : "ลองจิจูด (Longitude)"}
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="เช่น 102.789123"
+                    value={attendanceGeofenceLng}
+                    onChange={(e) => setAttendanceGeofenceLng(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    {lang === "en" ? "Geofence Radius (meters)" : "รัศมีขอบเขตการลงเวลา (เมตร)"}
+                  </label>
+                  <input
+                    type="number"
+                    value={attendanceGeofenceRadius}
+                    onChange={(e) => setAttendanceGeofenceRadius(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Get current coords button */}
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleGetCurrentLocation}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-105 dark:hover:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm"
+                >
+                  <MapPin className="w-4 h-4" />
+                  {lang === "en" ? "Get Current GPS Coordinates" : "📍 ดึงพิกัดปัจจุบัน"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <StickySaveBar isSaving={isSavingAttendance} label={isSavingAttendance ? t("saving") : t("saveSettings")} color="indigo" />
+    </form>
+  );
+
+  const renderDocumentSettingsSection = () => {
+    const handleShowToast = (msg: string, type?: "success" | "error") => {
+      showToast(type === "error" ? "error" : "success", msg);
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Toggle system active */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">
+          <SectionHeader title={sectionTitles["document-settings"]} />
+
+          <div className="space-y-6">
+            <div className={`flex items-center gap-4 p-5 rounded-2xl border ${enableDocument ? "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800" : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"} transition-all`}>
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${enableDocument ? "bg-orange-500 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                <ClipboardList className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                  {lang === "en" ? "Document Management System" : "ระบบเอกสารรับ-ส่ง"}
+                </p>
+                <p className="text-xs text-gray-550 text-gray-500 dark:text-gray-400 mt-0.5">
+                  {lang === "en"
+                    ? "Enable the incoming/outgoing document tracking and routing module."
+                    : "เปิดให้ใช้งานระบบบริหารจัดการหนังสือราชการรับ-ส่งภายในโรงเรียน"}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const nextVal = !enableDocument;
+                    setEnableDocument(nextVal);
+                    try {
+                      await updateSystemSettings({ schoolName, subheader, enableDocument: nextVal });
+                      showToast(lang === "en" ? "Document system settings updated" : "อัปเดตสถานะระบบงานเอกสารสำเร็จ", "success");
+                    } catch (e: any) {
+                      showToast(e.message || "เกิดข้อผิดพลาด", "error");
+                    }
+                  }}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                    enableDocument ? "bg-orange-650" : "bg-gray-200 dark:bg-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      enableDocument ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className={`text-xs font-semibold ${enableDocument ? "text-orange-600 dark:text-orange-400" : "text-gray-400"}`}>
+                  {enableDocument ? (lang === "en" ? "Active" : "เปิดใช้งาน") : (lang === "en" ? "Inactive" : "ปิดใช้งาน")}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                {lang === "en"
+                  ? "When enabled, the 'Documents' menu item will appear in the sidebar. Users can create, send, receive, and track official documents within the system."
+                  : "เมื่อเปิดใช้งาน เมนู 'เอกสาร' จะปรากฏในแถบด้านข้าง ผู้ใช้สามารถสร้าง ส่ง รับ และติดตามหนังสือราชการภายในระบบได้"}
+              </p>
+            </div>
+
+            {enableDocument && (
+              <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800 animate-fadeIn">
+                {/* Tabs list */}
+                <div className="flex gap-2 flex-wrap bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                  {[
+                    { key: "sections", label: "งานย่อยบันทึกข้อความ", icon: FolderOpen },
+                    { key: "patterns", label: "ตั้งค่ารูปแบบเลข", icon: Hash },
+                    { key: "signees", label: "ผู้ลงนามใช้บ่อย", icon: UserCheck }
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    const active = docActiveTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setDocActiveTab(tab.key as DocTab)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                          active
+                            ? "text-orange-600 dark:text-orange-400 bg-white dark:bg-gray-800 shadow-sm"
+                            : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Tab contents */}
+                {loadingDocData ? (
+                  <div className="py-12 flex justify-center">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-8 h-8 border-4 border-orange-100 border-t-orange-500 rounded-full"
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <AnimatePresence mode="wait">
+                      {docActiveTab === "sections" && (
+                        <DocMemoSectionsTab
+                          key="sections"
+                          sections={docMemoSections}
+                          onRefresh={loadDocData}
+                          showToast={handleShowToast}
+                          lang={lang}
+                        />
+                      )}
+                      {docActiveTab === "patterns" && (
+                        <DocPatternBuilderTab
+                          key="patterns"
+                          configs={docConfigs}
+                          onRefresh={loadDocData}
+                          showToast={handleShowToast}
+                          lang={lang}
+                        />
+                      )}
+                      {docActiveTab === "signees" && (
+                        <DocSigneesTab
+                          key="signees"
+                          signees={docSignees}
+                          onRefresh={loadDocData}
+                          showToast={handleShowToast}
+                          lang={lang}
+                        />
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   if (!isAdmin && !isHRHead && !isInspector && !canManualImport) {
 
@@ -7279,7 +7557,7 @@ function DocMemoSectionsTab({
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.code.trim()) {
-      showToast("กรุณากรอกชื่อและรหัส", "error");
+      showToast("error", "กรุณากรอกชื่อและรหัส");
       return;
     }
     setSaving(true);
@@ -7307,7 +7585,7 @@ function DocMemoSectionsTab({
     if (!confirm("ต้องการลบงานย่อยนี้หรือไม่? (DocumentConfig ที่เชื่อมอยู่จะถูกลบด้วย)")) return;
     try {
       await deleteMemoSection(id);
-      showToast("ลบสำเร็จ", "success");
+      showToast("success", "ลบสำเร็จ");
       await onRefresh();
     } catch (err: any) {
       showToast(err.message || "ลบไม่สำเร็จ", "error");
@@ -7656,7 +7934,7 @@ function DocPatternBuilderTab({
         localPadding,
         localYearFormat
       );
-      showToast("บันทึกรูปแบบเลขสำเร็จ", "success");
+      showToast("success", "บันทึกรูปแบบเลขสำเร็จ");
       cancelEdit();
       await onRefresh();
     } catch (err: any) {
@@ -7953,7 +8231,7 @@ function DocSigneesTab({
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.position.trim()) {
-      showToast("กรุณากรอกชื่อและตำแหน่ง", "error");
+      showToast("error", "กรุณากรอกชื่อและตำแหน่ง");
       return;
     }
     setSaving(true);
@@ -7978,7 +8256,7 @@ function DocSigneesTab({
     if (!confirm("ต้องการลบผู้ลงนามนี้หรือไม่?")) return;
     try {
       await deleteSigneePreset(id);
-      showToast("ลบสำเร็จ", "success");
+      showToast("success", "ลบสำเร็จ");
       await onRefresh();
     } catch (err: any) {
       showToast(err.message || "ลบไม่สำเร็จ", "error");
@@ -8152,278 +8430,3 @@ function DocSigneesTab({
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────
-// SECTIONS: ATTENDANCE & DOCUMENT RENDERERS
-// ──────────────────────────────────────────────────────────────────────
-  const renderAttendanceSettingsSection = () => (
-    <form onSubmit={handleAttendanceSubmit} className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">
-      <SectionHeader title={sectionTitles["attendance-settings"]} />
-
-      <div className="space-y-6">
-        {/* Toggle system active */}
-        <div className={`flex items-center gap-4 p-5 rounded-2xl border ${enableAttendance ? "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800" : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"} transition-all`}>
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${enableAttendance ? "bg-indigo-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
-            <Clock className="w-6 h-6" />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-gray-900 dark:text-white text-sm">
-              {lang === "en" ? "Attendance Management System" : "ระบบลงเวลาปฏิบัติงาน"}
-            </p>
-            <p className="text-xs text-gray-550 text-gray-500 dark:text-gray-400 mt-0.5">
-              {lang === "en"
-                ? "Allow personnel to sign-in and sign-out of work using GPS location verification."
-                : "เปิดการใช้งานระบบการลงเวลาปฏิบัติงานเข้า-ออก สำหรับครูและบุคลากร"}
-            </p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => setEnableAttendance(!enableAttendance)}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                enableAttendance ? "bg-indigo-650" : "bg-gray-200 dark:bg-gray-700"
-              }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                  enableAttendance ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-            <span className={`text-xs font-semibold ${enableAttendance ? "text-indigo-650 dark:text-indigo-400" : "text-gray-400"}`}>
-              {enableAttendance ? (lang === "en" ? "Active" : "เปิดใช้งาน") : (lang === "en" ? "Inactive" : "ปิดใช้งาน")}
-            </span>
-          </div>
-        </div>
-
-        {enableAttendance && (
-          <div className="space-y-6 animate-fadeIn">
-            {/* Shift hours card */}
-
-            {/* Geofence Check-in card */}
-            <div className="bg-slate-50 dark:bg-slate-900/40 border border-gray-150 dark:border-gray-800 rounded-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-                <h3 className="text-sm font-semibold text-gray-950 dark:text-white flex items-center gap-2">
-                  <span className="w-1.5 h-3 bg-indigo-500 rounded-full" />
-                  {lang === "en" ? "GPS Geofence Location Verification" : "ตั้งค่าการตรวจสอบพิกัด (GPS/Geofence)"}
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAttendanceGeofenceEnabled(!attendanceGeofenceEnabled)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                      attendanceGeofenceEnabled ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        attendanceGeofenceEnabled ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                  <span className="text-xs text-gray-550 text-gray-500 dark:text-gray-400">
-                    {attendanceGeofenceEnabled ? (lang === "en" ? "Verified" : "เปิดตรวจสอบพิกัด") : (lang === "en" ? "Disabled" : "ปิดตรวจสอบพิกัด")}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Latitude" : "ละติจูด (Latitude)"}
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    placeholder="เช่น 17.412345"
-                    value={attendanceGeofenceLat}
-                    onChange={(e) => setAttendanceGeofenceLat(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Longitude" : "ลองจิจูด (Longitude)"}
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    placeholder="เช่น 102.789123"
-                    value={attendanceGeofenceLng}
-                    onChange={(e) => setAttendanceGeofenceLng(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Geofence Radius (meters)" : "รัศมีขอบเขตการลงเวลา (เมตร)"}
-                  </label>
-                  <input
-                    type="number"
-                    value={attendanceGeofenceRadius}
-                    onChange={(e) => setAttendanceGeofenceRadius(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Get current coords button */}
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={handleGetCurrentLocation}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-105 dark:hover:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm"
-                >
-                  <MapPin className="w-4 h-4" />
-                  {lang === "en" ? "Get Current GPS Coordinates" : "📍 ดึงพิกัดปัจจุบัน"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <StickySaveBar isSaving={isSavingAttendance} label={isSavingAttendance ? t("saving") : t("saveSettings")} color="indigo" />
-    </form>
-  );
-
-  const renderDocumentSettingsSection = () => {
-    const handleShowToast = (msg: string, type?: "success" | "error") => {
-      showToast(msg, type === "error" ? "error" : "success");
-    };
-
-    return (
-      <div className="space-y-6">
-        {/* Toggle system active */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">
-          <SectionHeader title={sectionTitles["document-settings"]} />
-
-          <div className="space-y-6">
-            <div className={`flex items-center gap-4 p-5 rounded-2xl border ${enableDocument ? "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800" : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"} transition-all`}>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${enableDocument ? "bg-orange-500 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
-                <ClipboardList className="w-6 h-6" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                  {lang === "en" ? "Document Management System" : "ระบบเอกสารรับ-ส่ง"}
-                </p>
-                <p className="text-xs text-gray-550 text-gray-500 dark:text-gray-400 mt-0.5">
-                  {lang === "en"
-                    ? "Enable the incoming/outgoing document tracking and routing module."
-                    : "เปิดให้ใช้งานระบบบริหารจัดการหนังสือราชการรับ-ส่งภายในโรงเรียน"}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const nextVal = !enableDocument;
-                    setEnableDocument(nextVal);
-                    try {
-                      await updateSystemSettings({ enableDocument: nextVal });
-                      showToast(lang === "en" ? "Document system settings updated" : "อัปเดตสถานะระบบงานเอกสารสำเร็จ", "success");
-                    } catch (e: any) {
-                      showToast(e.message || "เกิดข้อผิดพลาด", "error");
-                    }
-                  }}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                    enableDocument ? "bg-orange-650" : "bg-gray-200 dark:bg-gray-700"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                      enableDocument ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
-                </button>
-                <span className={`text-xs font-semibold ${enableDocument ? "text-orange-600 dark:text-orange-400" : "text-gray-400"}`}>
-                  {enableDocument ? (lang === "en" ? "Active" : "เปิดใช้งาน") : (lang === "en" ? "Inactive" : "ปิดใช้งาน")}
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-                {lang === "en"
-                  ? "When enabled, the 'Documents' menu item will appear in the sidebar. Users can create, send, receive, and track official documents within the system."
-                  : "เมื่อเปิดใช้งาน เมนู 'เอกสาร' จะปรากฏในแถบด้านข้าง ผู้ใช้สามารถสร้าง ส่ง รับ และติดตามหนังสือราชการภายในระบบได้"}
-              </p>
-            </div>
-
-            {enableDocument && (
-              <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800 animate-fadeIn">
-                {/* Tabs list */}
-                <div className="flex gap-2 flex-wrap bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800">
-                  {[
-                    { key: "sections", label: "งานย่อยบันทึกข้อความ", icon: FolderOpen },
-                    { key: "patterns", label: "ตั้งค่ารูปแบบเลข", icon: Hash },
-                    { key: "signees", label: "ผู้ลงนามใช้บ่อย", icon: UserCheck }
-                  ].map((tab) => {
-                    const Icon = tab.icon;
-                    const active = docActiveTab === tab.key;
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setDocActiveTab(tab.key as DocTab)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                          active
-                            ? "text-orange-600 dark:text-orange-400 bg-white dark:bg-gray-800 shadow-sm"
-                            : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Tab contents */}
-                {loadingDocData ? (
-                  <div className="py-12 flex justify-center">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-8 h-8 border-4 border-orange-100 border-t-orange-500 rounded-full"
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    <AnimatePresence mode="wait">
-                      {docActiveTab === "sections" && (
-                        <DocMemoSectionsTab
-                          key="sections"
-                          sections={docMemoSections}
-                          onRefresh={loadDocData}
-                          showToast={handleShowToast}
-                          lang={lang}
-                        />
-                      )}
-                      {docActiveTab === "patterns" && (
-                        <DocPatternBuilderTab
-                          key="patterns"
-                          configs={docConfigs}
-                          onRefresh={loadDocData}
-                          showToast={handleShowToast}
-                          lang={lang}
-                        />
-                      )}
-                      {docActiveTab === "signees" && (
-                        <DocSigneesTab
-                          key="signees"
-                          signees={docSignees}
-                          onRefresh={loadDocData}
-                          showToast={handleShowToast}
-                          lang={lang}
-                        />
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };

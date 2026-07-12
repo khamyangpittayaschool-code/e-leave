@@ -42,3 +42,8 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+node_modules_old/
+.superpowers/
+tests/
+pnpm-workspace.yaml.bak
