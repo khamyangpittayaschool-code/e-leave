@@ -75,6 +75,9 @@ export default function SettingsPage() {
   const [attendanceGeofenceLng, setAttendanceGeofenceLng] = useState("");
   const [attendanceGeofenceRadius, setAttendanceGeofenceRadius] = useState("100");
   const [attendanceGeofenceEnabled, setAttendanceGeofenceEnabled] = useState(false);
+  const [requireFaceScan, setRequireFaceScan] = useState(false);
+  const [faceMatchThreshold, setFaceMatchThreshold] = useState("0.65");
+  const [requireLivenessCheck, setRequireLivenessCheck] = useState(false);
   const [isSavingAttendance, setIsSavingAttendance] = useState(false);
 
   // Document settings states
@@ -407,6 +410,9 @@ export default function SettingsPage() {
       setAttendanceGeofenceLng(data.attendanceLongitude ? String(data.attendanceLongitude) : "");
       setAttendanceGeofenceRadius(data.attendanceRadius ? String(data.attendanceRadius) : "100");
       setAttendanceGeofenceEnabled(data.requireGeofence === true);
+      setRequireFaceScan(data.requireFaceScan === true);
+      setFaceMatchThreshold(data.faceMatchThreshold !== undefined ? String(data.faceMatchThreshold) : "0.65");
+      setRequireLivenessCheck(data.requireLivenessCheck === true);
 
       if (data.rolePermissions) {
 
@@ -463,7 +469,10 @@ export default function SettingsPage() {
         attendanceLatitude: attendanceGeofenceLat ? parseFloat(attendanceGeofenceLat) : null,
         attendanceLongitude: attendanceGeofenceLng ? parseFloat(attendanceGeofenceLng) : null,
         attendanceRadius: attendanceGeofenceRadius ? parseFloat(attendanceGeofenceRadius) : null,
-        requireGeofence: attendanceGeofenceEnabled
+        requireGeofence: attendanceGeofenceEnabled,
+        requireFaceScan,
+        faceMatchThreshold: parseFloat(faceMatchThreshold) || 0.65,
+        requireLivenessCheck
       });
       showToast("success", lang === "en" ? "Attendance settings saved successfully" : "บันทึกการตั้งค่าระบบลงเวลาปฏิบัติงานสำเร็จ");
     } catch (error: any) {
@@ -1904,91 +1913,172 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {enableAttendance && (
-          <div className="space-y-6 animate-fadeIn">
-            {/* Shift hours card */}
+        <div className="space-y-6">
+          {/* Shift hours card */}
 
-            {/* Geofence Check-in card */}
-            <div className="bg-slate-50 dark:bg-slate-900/40 border border-gray-150 dark:border-gray-800 rounded-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-                <h3 className="text-sm font-semibold text-gray-950 dark:text-white flex items-center gap-2">
-                  <span className="w-1.5 h-3 bg-indigo-500 rounded-full" />
-                  {lang === "en" ? "GPS Geofence Location Verification" : "ตั้งค่าการตรวจสอบพิกัด (GPS/Geofence)"}
-                </h3>
-                <div className="flex items-center gap-2">
+          {/* Geofence Check-in card */}
+          <div className="bg-slate-50 dark:bg-slate-900/40 border border-gray-150 dark:border-gray-800 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+              <h3 className="text-sm font-semibold text-gray-950 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-3 bg-indigo-500 rounded-full" />
+                {lang === "en" ? "GPS Geofence Location Verification" : "ตั้งค่าการตรวจสอบพิกัด (GPS/Geofence)"}
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAttendanceGeofenceEnabled(!attendanceGeofenceEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    attendanceGeofenceEnabled ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      attendanceGeofenceEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-gray-550 text-gray-500 dark:text-gray-400">
+                  {attendanceGeofenceEnabled ? (lang === "en" ? "Verified" : "เปิดตรวจสอบพิกัด") : (lang === "en" ? "Disabled" : "ปิดตรวจสอบพิกัด")}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                  {lang === "en" ? "Latitude" : "ละติจูด (Latitude)"}
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="เช่น 17.412345"
+                  value={attendanceGeofenceLat}
+                  onChange={(e) => setAttendanceGeofenceLat(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                  {lang === "en" ? "Longitude" : "ลองจิจูด (Longitude)"}
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="เช่น 102.789123"
+                  value={attendanceGeofenceLng}
+                  onChange={(e) => setAttendanceGeofenceLng(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                  {lang === "en" ? "Geofence Radius (meters)" : "รัศมีขอบเขตการลงเวลา (เมตร)"}
+                </label>
+                <input
+                  type="number"
+                  value={attendanceGeofenceRadius}
+                  onChange={(e) => setAttendanceGeofenceRadius(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Get current coords button */}
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={handleGetCurrentLocation}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-105 dark:hover:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm"
+              >
+                <MapPin className="w-4 h-4" />
+                {lang === "en" ? "Get Current GPS Coordinates" : "📍 ดึงพิกัดปัจจุบัน"}
+              </button>
+            </div>
+          </div>
+
+          {/* Face Scan settings card */}
+          <div className="bg-slate-50 dark:bg-slate-900/40 border border-gray-150 dark:border-gray-800 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+              <h3 className="text-sm font-semibold text-gray-950 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-3 bg-indigo-500 rounded-full" />
+                {lang === "en" ? "Face Recognition Verification" : "ระบบตรวจสอบใบหน้า (Face Recognition)"}
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRequireFaceScan(!requireFaceScan)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    requireFaceScan ? "bg-indigo-650" : "bg-gray-200 dark:bg-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      requireFaceScan ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-gray-550 text-gray-500 dark:text-gray-400 font-semibold">
+                  {requireFaceScan ? (lang === "en" ? "Required" : "เปิดสแกนใบหน้า") : (lang === "en" ? "Optional" : "ปิดสแกนใบหน้า")}
+                </span>
+              </div>
+            </div>
+
+            {requireFaceScan && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 animate-fadeIn">
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {lang === "en" ? "Face Match Confidence Threshold" : "เกณฑ์ความถูกต้องในการเปรียบเทียบใบหน้า (Match Threshold)"}
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="0.40"
+                      max="0.90"
+                      step="0.05"
+                      value={faceMatchThreshold}
+                      onChange={(e) => setFaceMatchThreshold(e.target.value)}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 dark:bg-gray-750"
+                    />
+                    <span className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400 w-12 text-right">
+                      {parseFloat(faceMatchThreshold).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                    {lang === "en" 
+                      ? "Higher value requires more strict facial resemblance (recommended: 0.60 - 0.70)." 
+                      : "ค่าที่สูงขึ้นต้องการความคล้ายคลึงของใบหน้าที่เข้มงวดมากขึ้น (แนะนำ: 0.60 - 0.70)"}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800/80">
+                  <div>
+                    <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                      {lang === "en" ? "Liveness Detection" : "ตรวจสอบบุคคลจริง (Liveness Detection)"}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      {lang === "en" 
+                        ? "Verify blink/motion to prevent check-in using printed photos." 
+                        : "ตรวจจับความเคลื่อนไหวเพื่อป้องกันการใช้รูปภาพถ่ายลงเวลา"}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setAttendanceGeofenceEnabled(!attendanceGeofenceEnabled)}
+                    onClick={() => setRequireLivenessCheck(!requireLivenessCheck)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                      attendanceGeofenceEnabled ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"
+                      requireLivenessCheck ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-700"
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        attendanceGeofenceEnabled ? "translate-x-6" : "translate-x-1"
+                        requireLivenessCheck ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
-                  <span className="text-xs text-gray-550 text-gray-500 dark:text-gray-400">
-                    {attendanceGeofenceEnabled ? (lang === "en" ? "Verified" : "เปิดตรวจสอบพิกัด") : (lang === "en" ? "Disabled" : "ปิดตรวจสอบพิกัด")}
-                  </span>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Latitude" : "ละติจูด (Latitude)"}
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    placeholder="เช่น 17.412345"
-                    value={attendanceGeofenceLat}
-                    onChange={(e) => setAttendanceGeofenceLat(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Longitude" : "ลองจิจูด (Longitude)"}
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    placeholder="เช่น 102.789123"
-                    value={attendanceGeofenceLng}
-                    onChange={(e) => setAttendanceGeofenceLng(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    {lang === "en" ? "Geofence Radius (meters)" : "รัศมีขอบเขตการลงเวลา (เมตร)"}
-                  </label>
-                  <input
-                    type="number"
-                    value={attendanceGeofenceRadius}
-                    onChange={(e) => setAttendanceGeofenceRadius(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Get current coords button */}
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={handleGetCurrentLocation}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-105 dark:hover:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm"
-                >
-                  <MapPin className="w-4 h-4" />
-                  {lang === "en" ? "Get Current GPS Coordinates" : "📍 ดึงพิกัดปัจจุบัน"}
-                </button>
-              </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <StickySaveBar isSaving={isSavingAttendance} label={isSavingAttendance ? t("saving") : t("saveSettings")} color="indigo" />
@@ -2058,79 +2148,77 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            {enableDocument && (
-              <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800 animate-fadeIn">
-                {/* Tabs list */}
-                <div className="flex gap-2 flex-wrap bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800">
-                  {[
-                    { key: "sections", label: "งานย่อยบันทึกข้อความ", icon: FolderOpen },
-                    { key: "patterns", label: "ตั้งค่ารูปแบบเลข", icon: Hash },
-                    { key: "signees", label: "ผู้ลงนามใช้บ่อย", icon: UserCheck }
-                  ].map((tab) => {
-                    const Icon = tab.icon;
-                    const active = docActiveTab === tab.key;
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setDocActiveTab(tab.key as DocTab)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                          active
-                            ? "text-orange-600 dark:text-orange-400 bg-white dark:bg-gray-800 shadow-sm"
-                            : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Tab contents */}
-                {loadingDocData ? (
-                  <div className="py-12 flex justify-center">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-8 h-8 border-4 border-orange-100 border-t-orange-500 rounded-full"
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    <AnimatePresence mode="wait">
-                      {docActiveTab === "sections" && (
-                        <DocMemoSectionsTab
-                          key="sections"
-                          sections={docMemoSections}
-                          onRefresh={loadDocData}
-                          showToast={handleShowToast}
-                          lang={lang}
-                        />
-                      )}
-                      {docActiveTab === "patterns" && (
-                        <DocPatternBuilderTab
-                          key="patterns"
-                          configs={docConfigs}
-                          onRefresh={loadDocData}
-                          showToast={handleShowToast}
-                          lang={lang}
-                        />
-                      )}
-                      {docActiveTab === "signees" && (
-                        <DocSigneesTab
-                          key="signees"
-                          signees={docSignees}
-                          onRefresh={loadDocData}
-                          showToast={handleShowToast}
-                          lang={lang}
-                        />
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              {/* Tabs list */}
+              <div className="flex gap-2 flex-wrap bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                {[
+                  { key: "sections", label: "งานย่อยบันทึกข้อความ", icon: FolderOpen },
+                  { key: "patterns", label: "ตั้งค่ารูปแบบเลข", icon: Hash },
+                  { key: "signees", label: "ผู้ลงนามใช้บ่อย", icon: UserCheck }
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const active = docActiveTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setDocActiveTab(tab.key as DocTab)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                        active
+                          ? "text-orange-600 dark:text-orange-400 bg-white dark:bg-gray-800 shadow-sm"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
               </div>
-            )}
+
+              {/* Tab contents */}
+              {loadingDocData ? (
+                <div className="py-12 flex justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-8 h-8 border-4 border-orange-100 border-t-orange-500 rounded-full"
+                  />
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <AnimatePresence mode="wait">
+                    {docActiveTab === "sections" && (
+                      <DocMemoSectionsTab
+                        key="sections"
+                        sections={docMemoSections}
+                        onRefresh={loadDocData}
+                        showToast={handleShowToast}
+                        lang={lang}
+                      />
+                    )}
+                    {docActiveTab === "patterns" && (
+                      <DocPatternBuilderTab
+                        key="patterns"
+                        configs={docConfigs}
+                        onRefresh={loadDocData}
+                        showToast={handleShowToast}
+                        lang={lang}
+                      />
+                    )}
+                    {docActiveTab === "signees" && (
+                      <DocSigneesTab
+                        key="signees"
+                        signees={docSignees}
+                        onRefresh={loadDocData}
+                        showToast={handleShowToast}
+                        lang={lang}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
