@@ -11,6 +11,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const isAttendanceRoute = request.nextUrl.pathname.startsWith("/attendance");
+  const isDocumentRoute = request.nextUrl.pathname.startsWith("/document");
+
+  if (isAttendanceRoute && process.env.ENABLE_ATTENDANCE === "false") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+  if (isDocumentRoute && process.env.ENABLE_DOCUMENT === "false") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   if (!sessionCookie) {
     if (!isAuthRoute) {
       return NextResponse.redirect(new URL("/login", request.url));

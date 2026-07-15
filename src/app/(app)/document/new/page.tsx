@@ -19,7 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 import { getMemoSections, getSigneePresets } from "@/app/actions/document-settings";
-import { saveDocDraft, issueDocNumber } from "@/app/actions/document";
+import { saveDocDraft, issueDocNumber, getDocumentDetails } from "@/app/actions/document";
 import { formatDocNumber } from "@/lib/document-utils";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -118,14 +118,45 @@ function DocumentNewPageInner() {
 
   // ── Load data ─────────────────────────────────────────────────────
   useEffect(() => {
-    Promise.all([getMemoSections(), getSigneePresets()])
-      .then(([s, p]) => {
+    const loadInitialData = async () => {
+      setLoading(true);
+      try {
+        const [s, p] = await Promise.all([getMemoSections(), getSigneePresets()]);
         setSections((s as MemoSection[]).filter((x) => x.isActive));
         setSignees(p as SigneePreset[]);
-      })
-      .catch((err) => showToast("โหลดข้อมูลไม่สำเร็จ", "err"))
-      .finally(() => setLoading(false));
-  }, [showToast]);
+
+        const cloneId = searchParams.get("clone");
+        if (cloneId) {
+          const cloneRes = await getDocumentDetails(cloneId);
+          if (cloneRes.success && cloneRes.data) {
+            const doc = cloneRes.data;
+            setFormData((prev) => ({
+              ...prev,
+              docType: doc.docType,
+              memoSectionId: doc.memoSectionId || "",
+              title: doc.title || "",
+              to: doc.to || "",
+              origin: doc.origin || "",
+              content: doc.content || "",
+              signeeName: doc.signeeName || "",
+              signeePosition: doc.signeePosition || "",
+              enclosures: doc.enclosures || "",
+              references: doc.references || "",
+            }));
+            // Automatically advance to step 1 (doc details form) since type is pre-filled from clone
+            setStep(1);
+          } else {
+            showToast("ไม่สามารถโหลดเอกสารต้นฉบับที่จะคัดลอกได้", "err");
+          }
+        }
+      } catch (err) {
+        showToast("โหลดข้อมูลไม่สำเร็จ", "err");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialData();
+  }, [searchParams, showToast]);
 
   // ── Auto-save draft every 30s ─────────────────────────────────────
   useEffect(() => {
@@ -133,9 +164,11 @@ function DocumentNewPageInner() {
       if (!formData.title || !formData.content) return;
       try {
         const res = await saveDocDraft({ ...formData });
-        setFormData((prev) => ({ ...prev, id: res.id }));
-        setDraftSaved(true);
-        setTimeout(() => setDraftSaved(false), 2000);
+        if (res.success) {
+          setFormData((prev) => ({ ...prev, id: res.data.id }));
+          setDraftSaved(true);
+          setTimeout(() => setDraftSaved(false), 2000);
+        }
       } catch {
         // silent fail
       }
@@ -174,8 +207,12 @@ function DocumentNewPageInner() {
     setSaving(true);
     try {
       const res = await saveDocDraft({ ...formData });
-      updateField("id", res.id);
-      showToast("บันทึกฉบับร่างสำเร็จ");
+      if (res.success) {
+        updateField("id", res.data.id);
+        showToast("บันทึกฉบับร่างสำเร็จ");
+      } else {
+        showToast(res.error || "บันทึกไม่สำเร็จ", "err");
+      }
     } catch (err: any) {
       showToast(err.message || "บันทึกไม่สำเร็จ", "err");
     } finally {
@@ -188,13 +225,22 @@ function DocumentNewPageInner() {
     setIssuing(true);
     try {
       // Save draft first
-      const draft = await saveDocDraft({ ...formData });
+      const draftRes = await saveDocDraft({ ...formData });
+      if (!draftRes.success) {
+        showToast(draftRes.error || "บันทึกฉบับร่างไม่สำเร็จ", "err");
+        return;
+      }
+      const draft = draftRes.data;
       updateField("id", draft.id);
 
       // Issue number
-      const issued = await issueDocNumber(draft.id, formData.date);
-      setIssuedDocNo(issued.docNo);
-      showToast("ออกเลขเอกสารสำเร็จ!");
+      const issuedRes = await issueDocNumber(draft.id, formData.date);
+      if (issuedRes.success) {
+        setIssuedDocNo(issuedRes.data.docNo);
+        showToast("ออกเลขเอกสารสำเร็จ!");
+      } else {
+        showToast(issuedRes.error || "ออกเลขไม่สำเร็จ", "err");
+      }
     } catch (err: any) {
       showToast(err.message || "ออกเลขไม่สำเร็จ", "err");
     } finally {

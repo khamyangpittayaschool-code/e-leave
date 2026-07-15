@@ -8,9 +8,10 @@ import { getApprovedLeavesForPeriod } from "./attendance-leave-sync";
 import { isDateOnLeave } from "@/lib/attendance-utils";
 import { getTimezoneMemo } from "./leave";
 import crypto from "crypto";
+import { safeAction } from "@/lib/utils";
 
 // ──────────────────────────────────────────────
-// Auth Helpers (same pattern as admin.ts)
+// Auth Helpers
 // ──────────────────────────────────────────────
 
 async function requireAuth() {
@@ -46,7 +47,7 @@ function haversineDistance(
   lat1: number, lon1: number,
   lat2: number, lon2: number
 ): number {
-  const R = 6371000; // Earth radius in meters
+  const R = 6371000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -73,7 +74,7 @@ function computeLogHash(
 }
 
 // ──────────────────────────────────────────────
-// Rate Limiter (in-memory, per-process)
+// Rate Limiter
 // ──────────────────────────────────────────────
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number; lockedUntil: number }>();
@@ -83,19 +84,16 @@ function checkRateLimit(userId: string): { allowed: boolean; retryAfterMs?: numb
   const entry = rateLimitMap.get(userId);
 
   if (entry) {
-    // Check if locked (10 min)
     if (entry.lockedUntil > now) {
       return { allowed: false, retryAfterMs: entry.lockedUntil - now };
     }
-    // Reset window if expired (1 min window)
     if (entry.resetAt <= now) {
       rateLimitMap.set(userId, { count: 1, resetAt: now + 60_000, lockedUntil: 0 });
       return { allowed: true };
     }
-    // Increment
     entry.count += 1;
     if (entry.count > 5) {
-      entry.lockedUntil = now + 600_000; // Lock for 10 minutes
+      entry.lockedUntil = now + 600_000;
       return { allowed: false, retryAfterMs: 600_000 };
     }
     return { allowed: true };
@@ -109,10 +107,10 @@ function checkRateLimit(userId: string): { allowed: boolean; retryAfterMs?: numb
 // Nonce Management
 // ──────────────────────────────────────────────
 
-export async function generateAttendanceNonce() {
+async function generateAttendanceNonceImpl() {
   const session = await requireAuth();
   const nonce = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 60_000); // 60 seconds
+  const expiresAt = new Date(Date.now() + 60_000);
 
   await prisma.attendanceNonce.create({
     data: {
@@ -134,18 +132,16 @@ async function consumeNonce(userId: string, nonce: string): Promise<boolean> {
   if (!found) return false;
   if (found.userId !== userId) return false;
   if (found.expiresAt < now) {
-    // Expired — clean up
     await prisma.attendanceNonce.delete({ where: { id: found.id } }).catch(() => {});
     return false;
   }
 
-  // Single-use: delete after consumption
   await prisma.attendanceNonce.delete({ where: { id: found.id } });
   return true;
 }
 
 // ──────────────────────────────────────────────
-// Attendance Log (append-only with hash chain)
+// Attendance Log
 // ──────────────────────────────────────────────
 
 async function appendAttendanceLog(
@@ -156,7 +152,6 @@ async function appendAttendanceLog(
   longitude?: number,
   deviceInfo?: string
 ) {
-  // Get last log hash for chain continuity
   const lastLog = await prisma.attendanceLog.findFirst({
     where: { attendanceId },
     orderBy: { createdAt: "desc" },
@@ -183,7 +178,7 @@ async function appendAttendanceLog(
 // Geofence Verification
 // ──────────────────────────────────────────────
 
-export async function verifyLocation(latitude: number, longitude: number) {
+async function verifyLocationImpl(latitude: number, longitude: number) {
   const session = await requireAuth();
 
   const settings = await prisma.systemSettings.findUnique({
@@ -197,17 +192,16 @@ export async function verifyLocation(latitude: number, longitude: number) {
   });
 
   if (!settings?.requireGeofence) {
-    return { success: true, distance: 0, allowed: true, bypassReason: "Geofence disabled" };
+    return { distance: 0, allowed: true, bypassReason: "Geofence disabled" };
   }
 
-  // Check bypass for the specific user
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { bypassAttendance: true },
   });
 
   if (user?.bypassAttendance) {
-    return { success: true, distance: 0, allowed: true, bypassReason: "User bypass enabled" };
+    return { distance: 0, allowed: true, bypassReason: "User bypass enabled" };
   }
 
   if (
@@ -215,7 +209,7 @@ export async function verifyLocation(latitude: number, longitude: number) {
     settings.attendanceLongitude == null ||
     settings.attendanceRadius == null
   ) {
-    return { success: false, distance: 0, allowed: false, error: "Geofence not configured" };
+    throw new Error("ไม่ได้ตั้งค่าพิกัด Geofence สำหรับระบบลงเวลา");
   }
 
   const distance = haversineDistance(
@@ -228,7 +222,6 @@ export async function verifyLocation(latitude: number, longitude: number) {
   const allowed = distance <= settings.attendanceRadius;
 
   return {
-    success: true,
     distance: Math.round(distance),
     allowed,
     radius: settings.attendanceRadius,
@@ -252,29 +245,25 @@ interface ClockPayload {
 }
 
 function getAttendanceDate(now: Date): Date {
-  // Normalize to midnight UTC of the current day (in user's local timezone we rely on server timezone)
   const d = new Date(now);
   d.setUTCHours(0, 0, 0, 0);
   return d;
 }
 
-export async function clockIn(payload: ClockPayload) {
+async function clockInImpl(payload: ClockPayload) {
   const session = await requireAuth();
   const userId = session.user.id;
 
-  // Rate limit check
   const rateCheck = checkRateLimit(userId);
   if (!rateCheck.allowed) {
-    return { success: false, error: `Rate limit exceeded. Try again in ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s` };
+    throw new Error(`ลงเวลาถี่เกินไป กรุณารออีกประมาณ ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)} วินาที`);
   }
 
-  // Nonce verification
   const nonceValid = await consumeNonce(userId, payload.nonce);
   if (!nonceValid) {
-    return { success: false, error: "Invalid or expired nonce. Please refresh and try again." };
+    throw new Error("รหัสยืนยันการทำรายการหมดอายุหรือถูกใช้แล้ว กรุณารีเฟรชหน้าเว็บและลงเวลาอีกครั้ง");
   }
 
-  // Load settings
   const settings = await prisma.systemSettings.findUnique({
     where: { id: "default" },
     select: {
@@ -288,7 +277,6 @@ export async function clockIn(payload: ClockPayload) {
     },
   });
 
-  // Check user bypass
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { bypassAttendance: true, name: true, workShiftId: true },
@@ -296,14 +284,12 @@ export async function clockIn(payload: ClockPayload) {
 
   const isBypassed = dbUser?.bypassAttendance === true;
 
-  // Geofence check (server-side recalculation)
   if (settings?.requireGeofence && !isBypassed) {
     if (payload.latitude == null || payload.longitude == null) {
-      return { success: false, error: "GPS coordinates required" };
+      throw new Error("จำเป็นต้องใช้พิกัดตำแหน่ง GPS สำหรับลงเวลาเข้างาน");
     }
-    // Reject if GPS accuracy is too poor (>100m is suspicious)
     if (payload.gpsAccuracy != null && payload.gpsAccuracy > 100) {
-      return { success: false, error: "GPS accuracy too low. Please enable high-accuracy location." };
+      throw new Error("ความแม่นยำของพิกัดต่ำเกินไป กรุณาเปิดระบบหาพิกัดความละเอียดสูง (High-accuracy GPS) บนมือถือของท่าน");
     }
     if (
       settings.attendanceLatitude != null &&
@@ -317,36 +303,30 @@ export async function clockIn(payload: ClockPayload) {
         settings.attendanceLongitude
       );
       if (dist > settings.attendanceRadius) {
-        return {
-          success: false,
-          error: `Outside allowed radius. Distance: ${Math.round(dist)}m, Allowed: ${settings.attendanceRadius}m`,
-        };
+        throw new Error(`ท่านอยู่นอกพื้นที่ที่กำหนดไว้ (ระยะห่างปัจจุบัน ${Math.round(dist)} เมตร, พื้นที่อนุญาตในรัศมี ${settings.attendanceRadius} เมตร)`);
       }
     }
   }
 
-  // Face scan check
   if (settings?.requireFaceScan && !isBypassed) {
     if (payload.faceMatchScore == null) {
-      return { success: false, error: "Face scan required" };
+      throw new Error("จำเป็นต้องสแกนใบหน้าก่อนลงเวลา");
     }
     const threshold = settings.faceMatchThreshold ?? 0.65;
     if (payload.faceMatchScore < threshold) {
-      return { success: false, error: `Face match score too low (${payload.faceMatchScore.toFixed(2)} < ${threshold})` };
+      throw new Error(`ใบหน้าของท่านมีความคล้ายคลึงน้อยเกินไป (${payload.faceMatchScore.toFixed(2)} < ${threshold}) กรุณาสแกนใหม่อีกครั้ง`);
     }
   }
 
-  // Liveness check
   if (settings?.requireLivenessCheck && !isBypassed) {
     if (!payload.livenessPass) {
-      return { success: false, error: "Liveness check failed. Please try again." };
+      throw new Error("ระบบตรวจจับไม่ผ่าน (Liveness Check Failed) กรุณาขยับใบหน้าแล้วทำรายการใหม่อีกครั้ง");
     }
   }
 
   const now = new Date();
   const attendanceDate = getAttendanceDate(now);
 
-  // Check for duplicate check-in
   const existing = await prisma.attendance.findUnique({
     where: {
       userId_attendanceDate: { userId, attendanceDate },
@@ -354,10 +334,9 @@ export async function clockIn(payload: ClockPayload) {
   });
 
   if (existing?.checkInTime) {
-    return { success: false, error: "Already checked in today" };
+    throw new Error("ท่านได้บันทึกเวลาเข้างานสำหรับวันนี้ไปเรียบร้อยแล้ว");
   }
 
-  // Determine status based on shift
   let status: "PRESENT" | "LATE" = "PRESENT";
   if (dbUser?.workShiftId) {
     const shift = await prisma.workShift.findUnique({
@@ -382,7 +361,6 @@ export async function clockIn(payload: ClockPayload) {
     }
   }
 
-  // Upsert attendance record
   const attendance = existing
     ? await prisma.attendance.update({
         where: { id: existing.id },
@@ -402,19 +380,17 @@ export async function clockIn(payload: ClockPayload) {
         },
       });
 
-  // Save photo if provided
   if (payload.photoBase64) {
     await prisma.attendancePhoto.create({
       data: {
         attendanceId: attendance.id,
-        photoUrl: payload.photoBase64, // Base64 data URI stored directly
+        photoUrl: payload.photoBase64,
         faceMatchScore: payload.faceMatchScore,
         isLivenessPassed: payload.livenessPass ?? false,
       },
     });
   }
 
-  // Append audit log
   await appendAttendanceLog(
     attendance.id,
     "CHECK_IN",
@@ -424,37 +400,33 @@ export async function clockIn(payload: ClockPayload) {
     payload.deviceInfo
   );
 
-  // Send LINE notification if late
   if (status === "LATE") {
     sendLineNotify(
       `⏰ แจ้งเตือน: ${dbUser?.name || "ผู้ใช้"} ลงเวลาเข้างานสาย เวลา ${now.toLocaleTimeString("th-TH")}`
-    ).catch(() => {}); // Fire and forget
+    ).catch(() => {});
   }
 
   revalidatePath("/attendance");
-  return { success: true, status, attendanceId: attendance.id };
+  return { status, attendanceId: attendance.id };
 }
 
-export async function clockOut(payload: ClockPayload) {
+async function clockOutImpl(payload: ClockPayload) {
   const session = await requireAuth();
   const userId = session.user.id;
 
-  // Rate limit check
   const rateCheck = checkRateLimit(userId);
   if (!rateCheck.allowed) {
-    return { success: false, error: `Rate limit exceeded. Try again in ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s` };
+    throw new Error(`ลงเวลาถี่เกินไป กรุณารออีกประมาณ ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)} วินาที`);
   }
 
-  // Nonce verification
   const nonceValid = await consumeNonce(userId, payload.nonce);
   if (!nonceValid) {
-    return { success: false, error: "Invalid or expired nonce. Please refresh and try again." };
+    throw new Error("รหัสยืนยันการทำรายการหมดอายุหรือถูกใช้แล้ว กรุณารีเฟรชหน้าเว็บและลงเวลาอีกครั้ง");
   }
 
   const now = new Date();
   let attendanceDate = getAttendanceDate(now);
 
-  // Find today's attendance first
   let attendance = await prisma.attendance.findUnique({
     where: {
       userId_attendanceDate: { userId, attendanceDate },
@@ -462,7 +434,6 @@ export async function clockOut(payload: ClockPayload) {
     include: { workShift: true },
   });
 
-  // Overnight shift support: if no attendance today, check yesterday
   if (!attendance) {
     const yesterday = new Date(attendanceDate);
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
@@ -474,21 +445,20 @@ export async function clockOut(payload: ClockPayload) {
     });
 
     if (attendance?.workShift?.isOvernight && !attendance.checkOutTime) {
-      attendanceDate = yesterday; // Use yesterday's record for overnight shifts
+      attendanceDate = yesterday;
     } else {
-      return { success: false, error: "No check-in record found" };
+      throw new Error("ไม่พบประวัติการเข้างานสำหรับวันนี้ หรือพ้นกำหนดเวลาลงชื่อออกงานแล้ว");
     }
   }
 
   if (!attendance.checkInTime) {
-    return { success: false, error: "You must check in before checking out" };
+    throw new Error("ไม่สามารถลงเวลาออกงานได้เนื่องจากยังไม่ได้สแกนบันทึกเข้างาน");
   }
 
   if (attendance.checkOutTime) {
-    return { success: false, error: "Already checked out" };
+    throw new Error("ท่านได้บันทึกเวลาออกงานสำหรับกะเวลานี้ไปเรียบร้อยแล้ว");
   }
 
-  // Determine early-out status
   let status = attendance.status;
   if (attendance.workShift) {
     const [endH, endM] = attendance.workShift.endTime.split(":").map(Number);
@@ -503,10 +473,9 @@ export async function clockOut(payload: ClockPayload) {
     const [bangkokH, bangkokM] = bangkokTimeStr.split(":").map(Number);
     const currentMinutes = bangkokH * 60 + bangkokM;
 
-    // For overnight shifts, adjust calculation
     let adjustedCurrent = currentMinutes;
     if (attendance.workShift.isOvernight && currentMinutes < endMinutes) {
-      adjustedCurrent = currentMinutes; // Already correct for next-day checkout
+      adjustedCurrent = currentMinutes;
     }
 
     if (adjustedCurrent < endMinutes - attendance.workShift.earlyOutThreshold) {
@@ -514,7 +483,6 @@ export async function clockOut(payload: ClockPayload) {
     }
   }
 
-  // Update attendance
   const updated = await prisma.attendance.update({
     where: { id: attendance.id },
     data: {
@@ -523,7 +491,6 @@ export async function clockOut(payload: ClockPayload) {
     },
   });
 
-  // Save photo if provided
   if (payload.photoBase64) {
     await prisma.attendancePhoto.create({
       data: {
@@ -535,7 +502,6 @@ export async function clockOut(payload: ClockPayload) {
     });
   }
 
-  // Append audit log
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { name: true },
@@ -551,14 +517,14 @@ export async function clockOut(payload: ClockPayload) {
   );
 
   revalidatePath("/attendance");
-  return { success: true, status, attendanceId: updated.id };
+  return { status, attendanceId: updated.id };
 }
 
 // ──────────────────────────────────────────────
 // Get User Attendance Status (for UI)
 // ──────────────────────────────────────────────
 
-export async function getMyAttendanceToday() {
+async function getMyAttendanceTodayImpl() {
   const session = await requireAuth();
   const attendanceDate = getAttendanceDate(new Date());
 
@@ -575,7 +541,6 @@ export async function getMyAttendanceToday() {
     },
   });
 
-  // Also get the user's shift info
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -612,7 +577,7 @@ export async function getMyAttendanceToday() {
 // Face Consent & Registration
 // ──────────────────────────────────────────────
 
-export async function updateFaceConsent(consent: boolean) {
+async function updateFaceConsentImpl(consent: boolean) {
   const session = await requireAuth();
 
   if (consent) {
@@ -624,7 +589,6 @@ export async function updateFaceConsent(consent: boolean) {
       },
     });
   } else {
-    // Withdrawing consent: clear all face data
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
@@ -640,18 +604,16 @@ export async function updateFaceConsent(consent: boolean) {
   return { success: true };
 }
 
-
-export async function registerFaceProfile(descriptor: number[], profileImageBase64: string) {
+async function registerFaceProfileImpl(descriptor: number[], profileImageBase64: string) {
   const session = await requireAuth();
 
-  // Check consent first
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { faceConsent: true },
   });
 
   if (!user?.faceConsent) {
-    return { success: false, error: "Biometric consent required before registration" };
+    throw new Error("จำเป็นต้องยินยอมในการเก็บข้อมูลใบหน้าชีวมิติก่อนทำการลงทะเบียน");
   }
 
   await prisma.user.update({
@@ -670,7 +632,7 @@ export async function registerFaceProfile(descriptor: number[], profileImageBase
 // Admin: WorkShift CRUD
 // ──────────────────────────────────────────────
 
-export async function getWorkShifts() {
+async function getWorkShiftsImpl() {
   await requireAdmin();
   return prisma.workShift.findMany({
     orderBy: { name: "asc" },
@@ -678,7 +640,7 @@ export async function getWorkShifts() {
   });
 }
 
-export async function createWorkShift(data: {
+async function createWorkShiftImpl(data: {
   name: string;
   startTime: string;
   endTime: string;
@@ -703,7 +665,7 @@ export async function createWorkShift(data: {
   return shift;
 }
 
-export async function updateWorkShift(
+async function updateWorkShiftImpl(
   id: string,
   data: {
     name?: string;
@@ -720,10 +682,9 @@ export async function updateWorkShift(
   return shift;
 }
 
-export async function deleteWorkShift(id: string) {
+async function deleteWorkShiftImpl(id: string) {
   await requireAdmin();
 
-  // First unlink all users from this shift
   await prisma.user.updateMany({
     where: { workShiftId: id },
     data: { workShiftId: null },
@@ -734,7 +695,7 @@ export async function deleteWorkShift(id: string) {
   return { success: true };
 }
 
-export async function assignUserShift(userId: string, shiftId: string | null) {
+async function assignUserShiftImpl(userId: string, shiftId: string | null) {
   await requireAdmin();
   await prisma.user.update({
     where: { id: userId },
@@ -749,7 +710,7 @@ export async function assignUserShift(userId: string, shiftId: string | null) {
 // Admin: Attendance Reports & KPI
 // ──────────────────────────────────────────────
 
-export async function getAttendanceReport(params: {
+async function getAttendanceReportImpl(params: {
   startDate: string;
   endDate: string;
   userId?: string;
@@ -802,7 +763,7 @@ export async function getAttendanceReport(params: {
   });
 }
 
-export async function getAttendanceKPI(params: { startDate: string; endDate: string }) {
+async function getAttendanceKPIImpl(params: { startDate: string; endDate: string }) {
   await requireAdmin();
 
   const settings = await prisma.systemSettings.findUnique({
@@ -827,7 +788,6 @@ export async function getAttendanceKPI(params: { startDate: string; endDate: str
   const leaves = await getApprovedLeavesForPeriod(userIds, start, end);
   const tz = await getTimezoneMemo();
 
-  // Apply leave status overrides in-memory before compiling KPIs
   records.forEach((r) => {
     const hasLeave = isDateOnLeave(r.attendanceDate, r.userId, leaves, tz);
     if (hasLeave && r.status !== "PRESENT") {
@@ -835,7 +795,6 @@ export async function getAttendanceKPI(params: { startDate: string; endDate: str
     }
   });
 
-  // Basic KPI
   const totalRecords = records.length;
   const presentCount = records.filter((r) => r.status === "PRESENT").length;
   const lateCount = records.filter((r) => r.status === "LATE").length;
@@ -845,7 +804,6 @@ export async function getAttendanceKPI(params: { startDate: string; endDate: str
 
   const punctualityRate = totalRecords > 0 ? ((presentCount / totalRecords) * 100).toFixed(1) : "0.0";
 
-  // Average delay (minutes) for late arrivals
   let avgDelayMinutes = 0;
   if (lateCount > 0) {
     const totalDelay = records
@@ -879,13 +837,9 @@ export async function getAttendanceKPI(params: { startDate: string; endDate: str
     avgDelayMinutes,
   };
 
-  // Bradford Factor (only if enabled)
   if (settings?.enableAdvancedKPI) {
-    // Bradford Factor = S^2 * D (per user)
-    // S = number of separate absence spells, D = total days absent
     const userAbsences = new Map<string, { spells: number; days: number; name: string }>();
 
-    // Group records by user
     const byUser = new Map<string, typeof records>();
     for (const r of records) {
       const arr = byUser.get(r.userId) || [];
@@ -933,10 +887,10 @@ export async function getAttendanceKPI(params: { startDate: string; endDate: str
 }
 
 // ──────────────────────────────────────────────
-// Cleanup: Expired Nonces & Photo Purge
+// Cleanup
 // ──────────────────────────────────────────────
 
-export async function cleanupExpiredNonces() {
+async function cleanupExpiredNoncesImpl() {
   await requireAdmin();
   const result = await prisma.attendanceNonce.deleteMany({
     where: { expiresAt: { lt: new Date() } },
@@ -944,7 +898,7 @@ export async function cleanupExpiredNonces() {
   return { deleted: result.count };
 }
 
-export async function purgeOldPhotos() {
+async function purgeOldPhotosImpl() {
   await requireAdmin();
 
   const settings = await prisma.systemSettings.findUnique({
@@ -967,7 +921,7 @@ export async function purgeOldPhotos() {
 // Admin: Attendance Settings Update
 // ──────────────────────────────────────────────
 
-export async function updateAttendanceSettings(data: {
+async function updateAttendanceSettingsImpl(data: {
   enableAttendance?: boolean;
   attendanceLatitude?: number | null;
   attendanceLongitude?: number | null;
@@ -995,7 +949,7 @@ export async function updateAttendanceSettings(data: {
 // Verify Audit Log Chain Integrity
 // ──────────────────────────────────────────────
 
-export async function verifyLogChain(attendanceId: string) {
+async function verifyLogChainImpl(attendanceId: string) {
   await requireAdmin();
 
   const logs = await prisma.attendanceLog.findMany({
@@ -1007,14 +961,6 @@ export async function verifyLogChain(attendanceId: string) {
 
   let previousHash = "GENESIS";
   for (const log of logs) {
-    const expected = computeLogHash(
-      previousHash,
-      log.action,
-      `${log.attendanceId}`, // Simplified description for verification
-      log.createdAt.toISOString()
-    );
-    // Note: exact match won't work because description was different at write-time
-    // We verify chain continuity instead
     if (!log.verificationHash) {
       return { valid: false, brokenAt: log.id, reason: "Missing hash" };
     }
@@ -1025,12 +971,12 @@ export async function verifyLogChain(attendanceId: string) {
 }
 
 // ──────────────────────────────────────────────
-// Admin/HR: Official Duty (ไปราชการ) Management
+// Admin/HR: Official Duty Management
 // ──────────────────────────────────────────────
 
-export async function recordOfficialDuty(data: {
+async function recordOfficialDutyImpl(data: {
   userId: string;
-  dateStr: string; // "YYYY-MM-DD"
+  dateStr: string;
 }) {
   const session = await checkHRorAdminPermission();
   const currentUser = session.user as any;
@@ -1065,10 +1011,10 @@ export async function recordOfficialDuty(data: {
   revalidatePath("/attendance");
   revalidatePath("/attendance/stats");
   revalidatePath("/dashboard");
-  return { success: true, record };
+  return { record };
 }
 
-export async function removeOfficialDuty(id: string) {
+async function removeOfficialDutyImpl(id: string) {
   await checkHRorAdminPermission();
 
   await prisma.attendance.delete({
@@ -1081,7 +1027,7 @@ export async function removeOfficialDuty(id: string) {
   return { success: true };
 }
 
-export async function getOfficialDutyRecords(dateStr?: string) {
+async function getOfficialDutyRecordsImpl(dateStr?: string) {
   await checkHRorAdminPermission();
 
   const where: any = { status: "OFFICIAL_DUTY" };
@@ -1103,3 +1049,29 @@ export async function getOfficialDutyRecords(dateStr?: string) {
     orderBy: { attendanceDate: "desc" }
   });
 }
+
+// ──────────────────────────────────────────────
+// Wrapped Safe Action Exports
+// ──────────────────────────────────────────────
+
+export const generateAttendanceNonce = safeAction(generateAttendanceNonceImpl);
+export const verifyLocation = safeAction(verifyLocationImpl);
+export const clockIn = safeAction(clockInImpl);
+export const clockOut = safeAction(clockOutImpl);
+export const getMyAttendanceToday = safeAction(getMyAttendanceTodayImpl);
+export const updateFaceConsent = safeAction(updateFaceConsentImpl);
+export const registerFaceProfile = safeAction(registerFaceProfileImpl);
+export const getWorkShifts = safeAction(getWorkShiftsImpl);
+export const createWorkShift = safeAction(createWorkShiftImpl);
+export const updateWorkShift = safeAction(updateWorkShiftImpl);
+export const deleteWorkShift = safeAction(deleteWorkShiftImpl);
+export const assignUserShift = safeAction(assignUserShiftImpl);
+export const getAttendanceReport = safeAction(getAttendanceReportImpl);
+export const getAttendanceKPI = safeAction(getAttendanceKPIImpl);
+export const cleanupExpiredNonces = safeAction(cleanupExpiredNoncesImpl);
+export const purgeOldPhotos = safeAction(purgeOldPhotosImpl);
+export const updateAttendanceSettings = safeAction(updateAttendanceSettingsImpl);
+export const verifyLogChain = safeAction(verifyLogChainImpl);
+export const recordOfficialDuty = safeAction(recordOfficialDutyImpl);
+export const removeOfficialDuty = safeAction(removeOfficialDutyImpl);
+export const getOfficialDutyRecords = safeAction(getOfficialDutyRecordsImpl);

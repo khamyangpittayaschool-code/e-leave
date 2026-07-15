@@ -14,7 +14,7 @@ interface AMSSBookDetails {
  * Parses AMSS++ book details page to extract metadata.
  * Uses HTTP fetch and RegExp parsing to avoid heavy libraries like Cheerio or JSDOM.
  */
-export async function parseAMSSUrl(urlStr: string): Promise<AMSSBookDetails | null> {
+export async function parseAMSSUrl(urlStr: string, cookieHeader?: string): Promise<AMSSBookDetails | null> {
   try {
     // Validate URL shape
     const url = new URL(urlStr);
@@ -31,6 +31,7 @@ export async function parseAMSSUrl(urlStr: string): Promise<AMSSBookDetails | nu
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7",
+        ...(cookieHeader ? { "Cookie": cookieHeader } : {}),
       },
     });
 
@@ -194,4 +195,82 @@ function parseThaiDateStr(dateStr: string): Date | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Handles PHP session cookies and forms-based login to AMSS++
+ */
+export async function loginToAMSS(baseUrl: string, username: string, passwordSecret: string): Promise<string | null> {
+  try {
+    const url = new URL(baseUrl);
+    const origin = url.origin;
+    
+    // Step 1: GET base URL with 5s timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const initRes = await fetch(origin, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      }
+    });
+    clearTimeout(timeoutId);
+    
+    const initHtml = await initRes.text();
+    const setCookieHeaders = initRes.headers.getSetCookie ? initRes.headers.getSetCookie() : [initRes.headers.get("set-cookie")].filter(Boolean) as string[];
+    
+    let cookies = setCookieHeaders.map(c => c.split(";")[0]).join("; ");
+    
+    // Extract hidden inputs using regex to avoid Cheerio
+    const hiddenInputs: Record<string, string> = {};
+    const inputRegex = /<input[^>]*type=["']hidden["'][^>]*name=["']([^"']+)["'][^>]*value=["']([^"']*)["']/gi;
+    let match;
+    while ((match = inputRegex.exec(initHtml)) !== null) {
+      hiddenInputs[match[1]] = match[2];
+    }
+    
+    // Also try matching inputs where value is before name
+    const inputRegexReverse = /<input[^>]*type=["']hidden["'][^>]*value=["']([^"']*)["'][^>]*name=["']([^"']+)["']/gi;
+    while ((match = inputRegexReverse.exec(initHtml)) !== null) {
+      hiddenInputs[match[2]] = match[1];
+    }
+
+    // Determine login post URL
+    const postUrl = `${origin}/index.php`;
+    
+    // Build payload
+    const payload = new URLSearchParams({
+      ...hiddenInputs,
+      username: username,
+      password: passwordSecret,
+    });
+    
+    // Step 2: POST login request with 5s timeout
+    const postController = new AbortController();
+    const postTimeoutId = setTimeout(() => postController.abort(), 5000);
+    
+    const loginRes = await fetch(postUrl, {
+      method: "POST",
+      signal: postController.signal,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Cookie": cookies,
+      },
+      body: payload.toString(),
+      redirect: "manual" // Prevent auto-redirect to capture new set-cookie headers
+    });
+    clearTimeout(postTimeoutId);
+    
+    const postCookies = loginRes.headers.getSetCookie ? loginRes.headers.getSetCookie() : [loginRes.headers.get("set-cookie")].filter(Boolean) as string[];
+    if (postCookies.length > 0) {
+      cookies = postCookies.map(c => c.split(";")[0]).join("; ");
+    }
+    
+    return cookies;
+  } catch (error) {
+    console.error("AMSS++ Login failed:", error);
+    return null;
+  }
 }

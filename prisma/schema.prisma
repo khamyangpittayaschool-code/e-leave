@@ -98,6 +98,8 @@ model User {
 
   createdRoutings     DocumentRouting[]  @relation("RoutingAssigner")
 
+  amssCredentials     AMSSCredentials?
+
 }
 
 
@@ -479,6 +481,10 @@ model DocumentRecord {
 
   department       String?            // ส่วนราชการเจ้าของเรื่อง
 
+  attachmentUrl    String?            // ลิงก์เอกสารแนบจริงที่อัปโหลด
+
+  attachmentName   String?            // ชื่อไฟล์เอกสารแนบ
+
   createdById      String
 
   createdAt        DateTime           @default(now())
@@ -783,7 +789,9 @@ model IncomingDocument {
 
   id              String            @id @default(cuid())
 
-  receiveNo       String            @unique           // เลขทะเบียนรับ (เช่น "รับที่ 123/2569")
+  amssOriginId    String?           @unique           // ไอดีแท้จาก AMSS++ ที่สกัดจาก URL (เช่น "85432")
+
+  receiveNo       String                              // เลขทะเบียนรับ (เช่น "รับที่ 123/2569")
 
   receiveDate     DateTime          @default(now())   // วันที่รับ
 
@@ -888,4 +896,18 @@ model Holiday {
   @@index([startDate, endDate])
 
 }
+
+model AMSSCredentials {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  username    String
+  url         String    @default("")
+  password    String    // Encrypted with AES-256-GCM
+  lastSyncAt  DateTime? // เวลาซิงค์สำเร็จครั้งล่าสุด
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 

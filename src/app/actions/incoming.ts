@@ -2,8 +2,13 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { parseAMSSUrl } from "@/lib/amss-parser";
+import { parseAMSSUrl, loginToAMSS } from "@/lib/amss-parser";
 import { parseAMSSListHtml } from "@/lib/amss-list-parser";
+import { safeAction } from "@/lib/utils";
+import { encrypt, decrypt } from "@/lib/crypto";
+
+// Server-side lock to prevent concurrent sync operations per user
+const activeSyncUsers = new Set<string>();
 
 // Helper to check user session
 async function getSessionUser() {
@@ -39,17 +44,294 @@ function safeRevalidatePath(path: string) {
 }
 
 // Scrape AMSS++ URL
-export async function scrapeAMSSDocument(url: string) {
-  await getSessionUser(); // Check auth
-  const details = await parseAMSSUrl(url);
-  if (!details) {
-    throw new Error("ไม่สามารถดึงข้อมูลจากลิงก์ AMSS++ ได้ กรุณากรอกข้อมูลด้วยตนเอง");
+export const scrapeAMSSDocument = safeAction(async (urlStr: string) => {
+  const user = await getSessionUser();
+  
+  // Extract amssOriginId from URL query parameters
+  let amssOriginId: string | null = null;
+  try {
+    const parsedUrl = new URL(urlStr);
+    amssOriginId = parsedUrl.searchParams.get("id");
+  } catch (e) {
+    throw new Error("รูปแบบลิงก์ AMSS++ ไม่ถูกต้อง");
   }
-  return details;
-}
+
+  // Pre-check for duplicate documents
+  if (amssOriginId) {
+    const existing = await prisma.incomingDocument.findUnique({
+      where: { amssOriginId }
+    });
+    if (existing) {
+      throw new Error("เอกสารนี้เคยถูกดึงเข้าระบบแล้ว (เลขทะเบียนรับ: " + existing.receiveNo + ")");
+    }
+  }
+
+  // Check if credentials exist for the user
+  const credentials = await prisma.aMSSCredentials.findUnique({
+    where: { userId: user.id }
+  });
+
+  let cookieHeader = "";
+  if (credentials) {
+    const decryptedPassword = decrypt(credentials.password);
+    const parsedUrl = new URL(urlStr);
+    const loginCookies = await loginToAMSS(parsedUrl.origin, credentials.username, decryptedPassword);
+    if (loginCookies) {
+      cookieHeader = loginCookies;
+    }
+  }
+
+  // Scrape page content using parseAMSSUrl with cookieHeader
+  const details = await parseAMSSUrl(urlStr, cookieHeader);
+  if (!details) {
+    throw new Error("ไม่สามารถดึงข้อมูลจากลิงก์ AMSS++ ได้ กรุณาตรวจสอบรหัสผ่านหรือความถูกต้องของลิงก์");
+  }
+
+  return {
+    ...details,
+    amssOriginId,
+  };
+});
+
+// Save or update AMSS credentials for current user
+export const saveAMSSCredentials = safeAction(async (data: {
+  url: string;
+  username: string;
+  password?: string;
+}) => {
+  const user = await getSessionUser();
+  
+  const normalizedUrl = data.url.trim().replace(/\/+$/, "");
+
+  // URL Validation
+  try {
+    const parsed = new URL(normalizedUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("โปรโตคอล URL ต้องเป็น HTTP หรือ HTTPS");
+    }
+  } catch (err: any) {
+    throw new Error("ลิงก์ URL ไม่ถูกต้อง: " + (err.message || ""));
+  }
+  
+  const existing = await prisma.aMSSCredentials.findUnique({
+    where: { userId: user.id }
+  });
+
+  if (existing) {
+    await prisma.aMSSCredentials.update({
+      where: { userId: user.id },
+      data: {
+        url: normalizedUrl,
+        username: data.username.trim(),
+        password: data.password ? encrypt(data.password) : existing.password
+      }
+    });
+    safeRevalidatePath("/document");
+    return { success: true, isNew: false };
+  }
+
+  if (!data.password) {
+    throw new Error("กรุณาระบุรหัสผ่านสำหรับการบันทึกครั้งแรก");
+  }
+
+  await prisma.aMSSCredentials.create({
+    data: {
+      userId: user.id,
+      url: normalizedUrl,
+      username: data.username.trim(),
+      password: encrypt(data.password)
+    }
+  });
+  
+  safeRevalidatePath("/document");
+  return { success: true, isNew: true };
+});
+
+// Check if credentials exist and return settings
+export const getAMSSCredentials = safeAction(async () => {
+  const user = await getSessionUser();
+  const creds = await prisma.aMSSCredentials.findUnique({
+    where: { userId: user.id },
+    select: { url: true, username: true, updatedAt: true, lastSyncAt: true }
+  });
+  return creds;
+});
+
+// Test AMSS Connection
+export const testAMSSConnection = safeAction(async (data: {
+  url: string;
+  username: string;
+  password?: string;
+}) => {
+  const user = await getSessionUser();
+  let passwordToUse = "";
+
+  const normalizedUrl = data.url.trim().replace(/\/+$/, "");
+
+  // URL Validation
+  try {
+    const parsed = new URL(normalizedUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("โปรโตคอล URL ต้องเป็น HTTP หรือ HTTPS");
+    }
+  } catch (err: any) {
+    throw new Error("ลิงก์ URL ไม่ถูกต้อง: " + (err.message || ""));
+  }
+
+  if (data.password) {
+    passwordToUse = data.password;
+  } else {
+    const existing = await prisma.aMSSCredentials.findUnique({
+      where: { userId: user.id }
+    });
+    if (!existing) {
+      throw new Error("ไม่มีข้อมูลรหัสผ่านเดิม กรุณากรอกรหัสผ่านใหม่");
+    }
+    passwordToUse = decrypt(existing.password);
+  }
+
+  try {
+    const parsedUrl = new URL(normalizedUrl);
+    const origin = parsedUrl.origin;
+    const loginCookies = await loginToAMSS(origin, data.username, passwordToUse);
+    if (!loginCookies) {
+      return { success: false, error: "เข้าสู่ระบบล้มเหลว ตรวจสอบชื่อผู้ใช้งานหรือรหัสผ่าน" };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "การเชื่อมต่อล้มเหลว ตรวจสอบความถูกต้องของลิงก์ URL" };
+  }
+});
+
+// Sync AMSS Documents Automatically
+export const syncAMSSDocumentsAutomatically = safeAction(async () => {
+  const user = await getSessionUser();
+
+  // Server-side lock to prevent concurrent sync operations per user
+  if (activeSyncUsers.has(user.id)) {
+    throw new Error("ระบบกำลังดำเนินการดึงข้อมูลอยู่แล้ว กรุณารอจนกว่าการซิงค์จะเสร็จสิ้น");
+  }
+  activeSyncUsers.add(user.id);
+
+  // Setup safety timeout to release the lock in case of network hanging
+  const lockTimeout = setTimeout(() => {
+    activeSyncUsers.delete(user.id);
+  }, 5 * 60 * 1000); // 5 minutes timeout
+
+  const startTime = Date.now();
+
+  try {
+    const credentials = await prisma.aMSSCredentials.findUnique({
+      where: { userId: user.id }
+    });
+
+    if (!credentials || !credentials.url) {
+      throw new Error("ยังไม่ได้ตั้งค่าข้อมูลการเชื่อมต่อหรือลิงก์ AMSS++");
+    }
+
+    const decryptedPassword = decrypt(credentials.password);
+    const parsedUrl = new URL(credentials.url);
+    const origin = parsedUrl.origin;
+
+    // Login
+    const loginCookies = await loginToAMSS(origin, credentials.username, decryptedPassword);
+    if (!loginCookies) {
+      throw new Error("เข้าสู่ระบบ AMSS++ ล้มเหลว กรุณาตรวจสอบความถูกต้องของชื่อผู้ใช้งานและรหัสผ่าน");
+    }
+
+    // Fetch list of documents (document list page receive_sch.php)
+    const pathsToTry = [
+      `${origin}/modules/document/receive_sch.php`,
+      `${origin}/document/receive_sch.php`,
+      `${origin}/receive_sch.php`,
+      `${credentials.url.replace(/\/+$/, "")}/modules/document/receive_sch.php`,
+      `${credentials.url.replace(/\/+$/, "")}/receive_sch.php`
+    ];
+
+    let htmlContent = "";
+    let successFetch = false;
+
+    for (const fetchUrl of pathsToTry) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(fetchUrl, {
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Cookie": loginCookies,
+          }
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const buffer = await res.arrayBuffer();
+          // Decode tis-620 / windows-874
+          htmlContent = new TextDecoder("windows-874").decode(buffer);
+          if (htmlContent.includes("bookdetail_receive_sch.php")) {
+            successFetch = true;
+            break;
+          }
+        }
+      } catch (e) {
+        // silent retry
+      }
+    }
+
+    if (!successFetch || !htmlContent) {
+      throw new Error("ไม่สามารถดึงรายการเอกสารรับจากระบบ AMSS++ ได้ (ตรวจสอบความถูกต้องของลิงก์หน้าแรกระบบของท่าน)");
+    }
+
+    // CAPTCHA and Cloudflare Detection
+    const lowerHtml = htmlContent.toLowerCase();
+    if (
+      lowerHtml.includes("captcha") ||
+      lowerHtml.includes("g-recaptcha") ||
+      lowerHtml.includes("recaptcha") ||
+      lowerHtml.includes("cf-challenge") ||
+      lowerHtml.includes("cloudflare") ||
+      lowerHtml.includes("challenge-platform")
+    ) {
+      throw new Error("ระบบ AMSS++ มีมาตรการความปลอดภัยขั้นสูง (CAPTCHA หรือ Cloudflare) บล็อกการดึงข้อมูลอัตโนมัติ กรุณาใช้วิธีนำเข้าแบบวางโค้ดแทน");
+    }
+
+    // Run the list sync
+    const syncResult = await syncAMSSDocumentsFromHtml(htmlContent);
+
+    // Save successful sync timestamp
+    const durationMs = Date.now() - startTime;
+    await prisma.aMSSCredentials.update({
+      where: { userId: user.id },
+      data: { lastSyncAt: new Date() }
+    });
+
+    // Save auto-sync session system log
+    await prisma.systemLog.create({
+      data: {
+        actionType: "INCOMING_SYNC_AUTO",
+        description: `ดึงข้อมูลจาก AMSS++ อัตโนมัติ: นำเข้าใหม่ ${syncResult.importedCount} รายการ, ข้าม ${syncResult.duplicatesCount} รายการ (ใช้เวลา ${durationMs}ms)`,
+        userId: user.id
+      }
+    });
+
+    return syncResult;
+  } finally {
+    clearTimeout(lockTimeout);
+    activeSyncUsers.delete(user.id);
+  }
+});
+
+// Delete AMSS credentials
+export const deleteAMSSCredentials = safeAction(async () => {
+  const user = await getSessionUser();
+  await prisma.aMSSCredentials.delete({
+    where: { userId: user.id }
+  });
+  safeRevalidatePath("/document");
+  return { success: true };
+});
 
 // Create/Register Incoming Document
-export async function createIncomingDoc(data: {
+export const createIncomingDoc = safeAction(async (data: {
   senderOrg: string;
   docRefNo?: string;
   title: string;
@@ -59,7 +341,8 @@ export async function createIncomingDoc(data: {
   memoSectionId?: string;
   note?: string;
   firstAssigneeId?: string; // If provided, start routing to this person immediately
-}) {
+  amssOriginId?: string | null; // Add this!
+}) => {
   const user = await getSessionUser();
   const receiveDate = new Date();
   const year = parseInt(new Date().toLocaleDateString("en-US", { year: "numeric", timeZone: "Asia/Bangkok" }), 10);
@@ -97,6 +380,7 @@ export async function createIncomingDoc(data: {
       data: {
         receiveNo,
         receiveDate,
+        amssOriginId: data.amssOriginId || null,
         senderOrg: data.senderOrg,
         docRefNo: data.docRefNo || null,
         title: data.title,
@@ -138,7 +422,7 @@ export async function createIncomingDoc(data: {
     safeRevalidatePath("/document");
     return doc;
   });
-}
+});
 
 // Add next step manually (if the manager wants to add a step to the chain)
 export async function addRoutingStep(data: {

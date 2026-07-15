@@ -177,16 +177,17 @@ export default function DashboardPage() {
     } else {
       getMyAttendanceToday()
         .then((res: any) => {
-          if (res) {
+          if (res?.success && res.data) {
+            const data = res.data;
             setPersonalAttendanceToday({
-              ...(res.attendance || {}),
-              workShift: res.userSettings?.shiftName ? {
-                name: res.userSettings.shiftName,
-                startTime: res.userSettings.shiftStart,
-                endTime: res.userSettings.shiftEnd,
+              ...(data.attendance || {}),
+              workShift: data.userSettings?.shiftName ? {
+                name: data.userSettings.shiftName,
+                startTime: data.userSettings.shiftStart,
+                endTime: data.userSettings.shiftEnd,
               } : null,
               user: {
-                bypassAttendance: res.userSettings?.bypassAttendance ?? false
+                bypassAttendance: data.userSettings?.bypassAttendance ?? false
               }
             });
           } else {
@@ -216,58 +217,64 @@ export default function DashboardPage() {
     try {
       if (type === "in") {
         const nonceRes = await generateAttendanceNonce();
-        if (!nonceRes || !nonceRes.nonce) {
-          alert("Failed to generate nonce. Please reload.");
+        if (!nonceRes.success) {
+          alert(nonceRes.error || "Failed to generate nonce. Please reload.");
           return;
         }
         
         const res = await clockIn({
-          nonce: nonceRes.nonce,
+          nonce: nonceRes.data.nonce,
           browserFingerprint: typeof window !== "undefined" ? window.navigator.userAgent : "dashboard"
         });
         
         if (res.success) {
           const todayRes = await getMyAttendanceToday();
-          setPersonalAttendanceToday({
-            ...(todayRes.attendance || {}),
-            workShift: todayRes.userSettings?.shiftName ? {
-              name: todayRes.userSettings.shiftName,
-              startTime: todayRes.userSettings.shiftStart,
-              endTime: todayRes.userSettings.shiftEnd,
-            } : null,
-            user: {
-              bypassAttendance: todayRes.userSettings?.bypassAttendance ?? false
-            }
-          });
+          if (todayRes?.success && todayRes.data) {
+            const tdata = todayRes.data;
+            setPersonalAttendanceToday({
+              ...(tdata.attendance || {}),
+              workShift: tdata.userSettings?.shiftName ? {
+                name: tdata.userSettings.shiftName,
+                startTime: tdata.userSettings.shiftStart,
+                endTime: tdata.userSettings.shiftEnd,
+              } : null,
+              user: {
+                bypassAttendance: tdata.userSettings?.bypassAttendance ?? false
+              }
+            });
+          }
           alert(lang === "en" ? "Clocked in successfully!" : "ลงเวลาเข้างานสำเร็จ!");
         } else {
           alert(res.error || "Failed to clock in");
         }
       } else {
         const nonceRes = await generateAttendanceNonce();
-        if (!nonceRes || !nonceRes.nonce) {
-          alert("Failed to generate nonce. Please reload.");
+        if (!nonceRes.success) {
+          alert(nonceRes.error || "Failed to generate nonce. Please reload.");
           return;
         }
 
         const res = await clockOut({
-          nonce: nonceRes.nonce,
+          nonce: nonceRes.data.nonce,
           browserFingerprint: typeof window !== "undefined" ? window.navigator.userAgent : "dashboard"
         });
         
         if (res.success) {
           const todayRes = await getMyAttendanceToday();
-          setPersonalAttendanceToday({
-            ...(todayRes.attendance || {}),
-            workShift: todayRes.userSettings?.shiftName ? {
-              name: todayRes.userSettings.shiftName,
-              startTime: todayRes.userSettings.shiftStart,
-              endTime: todayRes.userSettings.shiftEnd,
-            } : null,
-            user: {
-              bypassAttendance: todayRes.userSettings?.bypassAttendance ?? false
-            }
-          });
+          if (todayRes?.success && todayRes.data) {
+            const tdata = todayRes.data;
+            setPersonalAttendanceToday({
+              ...(tdata.attendance || {}),
+              workShift: tdata.userSettings?.shiftName ? {
+                name: tdata.userSettings.shiftName,
+                startTime: tdata.userSettings.shiftStart,
+                endTime: tdata.userSettings.shiftEnd,
+              } : null,
+              user: {
+                bypassAttendance: tdata.userSettings?.bypassAttendance ?? false
+              }
+            });
+          }
           alert(lang === "en" ? "Clocked out successfully!" : "ลงเวลาออกงานสำเร็จ!");
         } else {
           alert(res.error || "Failed to clock out");

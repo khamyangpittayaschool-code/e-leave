@@ -51,7 +51,11 @@ export async function upsertMemoSection(
   isActive: boolean = true,
   color: string = "#6366f1",
   icon: string = "Folder",
-  sortOrder: number = 0
+  sortOrder: number = 0,
+  prefix?: string,
+  useThaiNumerals?: boolean,
+  paddingDigits?: number,
+  yearFormat?: string
 ) {
   await checkAuth();
   const codeUpper = code.trim().toUpperCase();
@@ -61,17 +65,22 @@ export async function upsertMemoSection(
       data: { name, code: codeUpper, isActive, color, icon, sortOrder }
     });
     
-    // Create DocumentConfig for this section if not exists
+    // Create or update DocumentConfig for this section
     await prisma.documentConfig.upsert({
       where: { memoSectionId: updated.id },
-      update: {},
+      update: {
+        prefix: prefix !== undefined ? prefix : `สราลีฟ ${codeUpper}`,
+        useThaiNumerals: useThaiNumerals !== undefined ? useThaiNumerals : true,
+        paddingDigits: paddingDigits !== undefined ? paddingDigits : 1,
+        yearFormat: yearFormat !== undefined ? yearFormat : "TH_BE"
+      },
       create: {
         docType: "MEMO",
         memoSectionId: updated.id,
-        prefix: `\u0e2a\u0e23\u0e32\u0e25\u0e35\u0e1f ${codeUpper}`, // Default prefix matching school initials
-        useThaiNumerals: true,
-        paddingDigits: 1,
-        yearFormat: "TH_BE"
+        prefix: prefix !== undefined ? prefix : `สราลีฟ ${codeUpper}`,
+        useThaiNumerals: useThaiNumerals !== undefined ? useThaiNumerals : true,
+        paddingDigits: paddingDigits !== undefined ? paddingDigits : 1,
+        yearFormat: yearFormat !== undefined ? yearFormat : "TH_BE"
       }
     });
     
@@ -86,10 +95,10 @@ export async function upsertMemoSection(
       data: {
         docType: "MEMO",
         memoSectionId: created.id,
-        prefix: `\u0e2a\u0e23\u0e32\u0e25\u0e35\u0e1f ${codeUpper}`,
-        useThaiNumerals: true,
-        paddingDigits: 1,
-        yearFormat: "TH_BE"
+        prefix: prefix !== undefined ? prefix : `สราลีฟ ${codeUpper}`,
+        useThaiNumerals: useThaiNumerals !== undefined ? useThaiNumerals : true,
+        paddingDigits: paddingDigits !== undefined ? paddingDigits : 1,
+        yearFormat: yearFormat !== undefined ? yearFormat : "TH_BE"
       }
     });
     

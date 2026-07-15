@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSession } from "@/lib/auth-client";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,6 +43,8 @@ export default function DocumentEditPage() {
   const params = useParams();
   const id = params.id as string;
 
+  const { data: session } = useSession();
+  const [docOwnerId, setDocOwnerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [presets, setPresets] = useState<SigneePreset[]>([]);
@@ -71,20 +74,29 @@ export default function DocumentEditPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [doc, signeesList, secs] = await Promise.all([
+      const [docRes, signeesList, secs] = await Promise.all([
         getDocumentDetails(id),
         getSigneePresets(),
         getMemoSections()
       ]);
 
-      if (!doc) {
-        showToast("ไม่พบเอกสารที่ระบุ", "err");
+      if (!docRes.success) {
+        showToast(docRes.error || "ไม่พบเอกสารที่ระบุ", "err");
         router.push("/document");
         return;
       }
 
+      if (!docRes.data) {
+        showToast("ไม่พบข้อมูลเอกสาร", "err");
+        router.push("/document");
+        return;
+      }
+
+      const doc = docRes.data;
+
       setPresets(signeesList as SigneePreset[]);
       setSections(secs as MemoSection[]);
+      setDocOwnerId(doc.createdById);
 
       setForm({
         docType: doc.docType,
@@ -111,11 +123,23 @@ export default function DocumentEditPage() {
     loadData();
   }, [loadData]);
 
+  // Auth checking effect
+  useEffect(() => {
+    if (!loading && docOwnerId && session) {
+      const isOwner = docOwnerId === session.user.id;
+      const isAdmin = (session.user as any).role === "ADMIN";
+      if (!isOwner && !isAdmin) {
+        showToast("คุณไม่มีสิทธิ์แก้ไขเอกสารนี้", "err");
+        router.push("/document");
+      }
+    }
+  }, [loading, docOwnerId, session, router, showToast]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await saveDocDraft({
+      const res = await saveDocDraft({
         id,
         docType: form.docType,
         memoSectionId: form.docType === "MEMO" ? form.memoSectionId : undefined,
@@ -129,8 +153,12 @@ export default function DocumentEditPage() {
         enclosures: form.enclosures.trim() || undefined,
         references: form.references.trim() || undefined
       });
-      showToast("บันทึกการแก้ไขสำเร็จ!");
-      router.push(`/document/${id}`);
+      if (res.success) {
+        showToast("บันทึกการแก้ไขสำเร็จ!");
+        router.push(`/document/${id}`);
+      } else {
+        showToast(res.error || "บันทึกข้อมูลล้มเหลว", "err");
+      }
     } catch (err: any) {
       showToast(err.message || "บันทึกข้อมูลล้มเหลว", "err");
     } finally {

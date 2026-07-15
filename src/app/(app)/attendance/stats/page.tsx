@@ -218,8 +218,14 @@ export default function AttendanceStatsPage() {
   useEffect(() => {
     if (activeTab === "official-duty") {
       setIsLoadingOd(true);
-      getOfficialDutyRecords()
-        .then(setOfficialDutyList)
+      getOfficialDutyRecords()
+        .then((res) => {
+          if (res.success && res.data) {
+            setOfficialDutyList(res.data);
+          } else {
+            showToast("error", "โหลดข้อมูลไปราชการล้มเหลว");
+          }
+        })
         .catch(() => showToast("error", "โหลดข้อมูลไปราชการล้มเหลว"))
         .finally(() => setIsLoadingOd(false));
     }
@@ -236,8 +242,10 @@ export default function AttendanceStatsPage() {
       const res = await recordOfficialDuty({ userId: odUserId, dateStr: odDateInput });
       if (res.success) {
         showToast("success", "บันทึกข้อมูลการไปราชการสำเร็จ");
-        const list = await getOfficialDutyRecords();
-        setOfficialDutyList(list);
+        const listRes = await getOfficialDutyRecords();
+        if (listRes.success && listRes.data) {
+          setOfficialDutyList(listRes.data);
+        }
       }
     } catch (err: any) {
       showToast("error", err.message || "บันทึกล้มเหลว");
@@ -252,8 +260,10 @@ export default function AttendanceStatsPage() {
       const res = await removeOfficialDuty(id);
       if (res.success) {
         showToast("success", "ยกเลิกข้อมูลสำเร็จ");
-        const list = await getOfficialDutyRecords();
-        setOfficialDutyList(list);
+        const listRes = await getOfficialDutyRecords();
+        if (listRes.success && listRes.data) {
+          setOfficialDutyList(listRes.data);
+        }
       }
     } catch (err: any) {
       showToast("error", err.message || "ยกเลิกล้มเหลว");

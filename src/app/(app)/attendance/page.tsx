@@ -126,12 +126,16 @@ export default function AttendancePage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [attendanceData, settingsData] = await Promise.all([
+      const [attendanceDataRes, settingsData] = await Promise.all([
         getMyAttendanceToday(),
         getSystemSettings(),
       ]);
-      setAttendance(attendanceData.attendance);
-      setUserSettings(attendanceData.userSettings);
+      if (attendanceDataRes.success && attendanceDataRes.data) {
+        setAttendance(attendanceDataRes.data.attendance);
+        setUserSettings(attendanceDataRes.data.userSettings);
+      } else {
+        setMessage({ type: "error", text: "ไม่สามารถโหลดข้อมูลผู้ใช้หรือประวัติการลงเวลาได้" });
+      }
       setSysSettings({
         enableAttendance: (settingsData as Record<string, unknown>).enableAttendance as boolean ?? false,
         requireFaceScan: (settingsData as Record<string, unknown>).requireFaceScan as boolean ?? false,
@@ -174,10 +178,10 @@ export default function AttendancePage() {
         // Verify with server
         try {
           const result = await verifyLocation(coords.lat, coords.lon);
-          if (result.success) {
-            setGpsDistance({ distance: result.distance ?? 0, allowed: result.allowed ?? false });
+          if (result.success && result.data) {
+            setGpsDistance({ distance: result.data.distance ?? 0, allowed: result.data.allowed ?? false });
           } else {
-            setMessage({ type: "error", text: result.error || "ตรวจสอบพิกัดล้มเหลว" });
+            setMessage({ type: "error", text: !result.success ? (result.error || "ตรวจสอบพิกัดล้มเหลว") : "ตรวจสอบพิกัดล้มเหลว" });
           }
         } catch {
           setMessage({ type: "error", text: "ตรวจสอบพิกัดกับเซิร์ฟเวอร์ล้มเหลว" });
@@ -211,11 +215,11 @@ export default function AttendancePage() {
 
     try {
       const result = await verifyLocation(coords.lat, coords.lon);
-      if (result.success) {
-        setGpsDistance({ distance: result.distance ?? 0, allowed: result.allowed ?? false });
+      if (result.success && result.data) {
+        setGpsDistance({ distance: result.data.distance ?? 0, allowed: result.data.allowed ?? false });
         setMessage({ type: "success", text: "จำลองพิกัดโรงเรียนสำเร็จ!" });
       } else {
-        setMessage({ type: "error", text: result.error || "ตรวจสอบพิกัดจำลองล้มเหลว" });
+        setMessage({ type: "error", text: !result.success ? (result.error || "ตรวจสอบพิกัดจำลองล้มเหลว") : "ตรวจสอบพิกัดจำลองล้มเหลว" });
       }
     } catch {
       setMessage({ type: "error", text: "ตรวจสอบพิกัดจำลองกับเซิร์ฟเวอร์ล้มเหลว" });
@@ -401,6 +405,13 @@ export default function AttendancePage() {
       try {
         // Step 1: Generate nonce
         const nonceResult = await generateAttendanceNonce();
+        if (!nonceResult.success) {
+          setMessage({ type: "error", text: nonceResult.error || "ไม่สามารถลงเวลาได้เนื่องจากเกิดข้อผิดพลาดในการรับรหัสยืนยันความปลอดภัย" });
+          setActionLoading(false);
+          return;
+        }
+        
+        const nonceData = nonceResult.data;
 
         // Step 2: Capture photo if camera is open
         let photo: string | null = capturedPhoto;
@@ -418,7 +429,7 @@ export default function AttendancePage() {
 
         // Step 4: Construct payload
         const payload = {
-          nonce: nonceResult.nonce,
+          nonce: nonceData.nonce,
           latitude: gpsCoords?.lat,
           longitude: gpsCoords?.lon,
           gpsAccuracy: gpsCoords?.accuracy,
@@ -432,17 +443,17 @@ export default function AttendancePage() {
         // Step 5: Execute action
         const result = action === "in" ? await clockIn(payload) : await clockOut(payload);
 
-        if (result.success) {
+        if (result.success && result.data) {
           setMessage({
             type: "success",
             text: action === "in"
-              ? `ลงเวลาเข้างานสำเร็จ (${ATTENDANCE_STATUS_LABELS[result.status || "PRESENT"]})`
+              ? `ลงเวลาเข้างานสำเร็จ (${ATTENDANCE_STATUS_LABELS[result.data.status || "PRESENT"]})`
               : `ลงเวลาออกงานสำเร็จ`,
           });
           stopCamera();
           await loadData();
         } else {
-          setMessage({ type: "error", text: result.error || "เกิดข้อผิดพลาด" });
+          setMessage({ type: "error", text: !result.success ? (result.error || "เกิดข้อผิดพลาด") : "เกิดข้อผิดพลาด" });
         }
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
