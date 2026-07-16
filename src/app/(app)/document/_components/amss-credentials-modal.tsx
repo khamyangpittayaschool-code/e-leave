@@ -33,6 +33,11 @@ export default function AmssCredentialsModal({
   const [deleting, setDeleting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
   const [hasTested, setHasTested] = useState(false);
+  
+  // Diagnostics additions
+  const [diagnosticLogs, setDiagnosticLogs] = useState<{ step: string; status: "success" | "error" | "warning" | "info"; message: string }[] | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagnosing, setDiagnosing] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -92,6 +97,42 @@ export default function AmssCredentialsModal({
       setTestResult({ success: false, msg: err.message || "เกิดข้อผิดพลาดในการเชื่อมต่อ" });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleDiagnostics = async () => {
+    if (!url.trim() || !username.trim()) {
+      showToast("กรุณากรอก URL และชื่อผู้ใช้งานเพื่อเริ่มขั้นตอนวินิจฉัย", "error");
+      return;
+    }
+    setDiagnosing(true);
+    setDiagnosticLogs(null);
+    setShowDiagnostics(true);
+    try {
+      const res = await fetch("/api/amss-test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: url.trim(),
+          username: username.trim(),
+          password: password.trim() || undefined,
+        }),
+      });
+      
+      const data = await res.json();
+      setDiagnosticLogs(data.logs || []);
+      if (data.success) {
+        showToast("วินิจฉัยการเชื่อมต่อสำเร็จ!", "success");
+      } else {
+        showToast("พบปัญหาในการเชื่อมโยงระบบ AMSS++", "error");
+      }
+    } catch (err: any) {
+      showToast(err.message || "เกิดข้อผิดพลาดในการวินิจฉัย", "error");
+      setDiagnosticLogs([{ step: "CLIENT", status: "error", message: err.message || "การเชื่อมต่อกับเซิร์ฟเวอร์ล้มเหลว" }]);
+    } finally {
+      setDiagnosing(false);
     }
   };
 
@@ -273,6 +314,59 @@ export default function AmssCredentialsModal({
                 <span>{testResult.msg}</span>
               </div>
             )}
+
+            {/* Diagnostics Panel Trigger & Content */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (showDiagnostics) {
+                    setShowDiagnostics(false);
+                  } else {
+                    handleDiagnostics();
+                  }
+                }}
+                className="w-full h-10 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-indigo-500 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {diagnosing ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : showDiagnostics ? (
+                  "ปิดแผงการวินิจฉัย"
+                ) : (
+                  "วินิจฉัยปัญหาเชื่อมต่อเชิงลึก"
+                )}
+              </button>
+
+              {showDiagnostics && (
+                <div className="max-h-60 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3 space-y-2 text-[10px] font-mono leading-normal text-slate-700 dark:text-slate-355 font-sans">
+                  {diagnosing && (
+                    <div className="flex items-center gap-2 text-slate-500 py-1 font-bold">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span>กำลังตรวจวิเคราะห์ระบบเชื่อมต่อ...</span>
+                    </div>
+                  )}
+                  {diagnosticLogs && diagnosticLogs.length === 0 && (
+                    <div className="text-slate-500 italic py-1">ไม่มีข้อมูลบันทึกการวินิจฉัย</div>
+                  )}
+                  {diagnosticLogs && diagnosticLogs.map((log, idx) => {
+                    let colorClass = "text-slate-500 dark:text-slate-400";
+                    if (log.status === "success") colorClass = "text-emerald-600 dark:text-emerald-400";
+                    if (log.status === "error") colorClass = "text-rose-600 dark:text-rose-400 font-bold";
+                    if (log.status === "warning") colorClass = "text-amber-500 dark:text-amber-400";
+                    
+                    return (
+                      <div key={idx} className="border-b border-slate-100 dark:border-slate-800 pb-1.5 last:border-0 last:pb-0">
+                        <div className="flex justify-between font-bold mb-0.5">
+                          <span>[{log.step}]</span>
+                          <span className={colorClass}>{log.status.toUpperCase()}</span>
+                        </div>
+                        <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 whitespace-pre-wrap">{log.message}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Test + Delete Buttons */}
             <div className="flex gap-2">

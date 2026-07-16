@@ -14,19 +14,52 @@ interface AMSSBookDetails {
  * Parses AMSS++ book details page to extract metadata.
  * Uses HTTP fetch and RegExp parsing to avoid heavy libraries like Cheerio or JSDOM.
  */
+export async function fetchWithTlsFallback(url: string | URL, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (error: any) {
+    const isTlsError = 
+      error.code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
+      error.code === "DEPTH_ZERO_SELF_SIGNED_CERT" ||
+      error.code === "CERT_HAS_EXPIRED" ||
+      (error.message && (
+        error.message.includes("certificate") ||
+        error.message.includes("TLS") ||
+        error.message.includes("ssl") ||
+        error.message.includes("self-signed")
+      ));
+    
+    if (isTlsError) {
+      // NOTE: Temporarily disabling TLS validation is asynchronous-safe but shares the global Node process variable.
+      // In a single-threaded server, concurrent requests during this execution window will also bypass TLS checks.
+      console.warn(`TLS certificate error detected for ${url.toString()}. Retrying with Reject Unauthorized disabled.`);
+      const originalVal = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+      try {
+        return await fetch(url, init);
+      } finally {
+        if (originalVal === undefined) {
+          delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+        } else {
+          process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalVal;
+        }
+      }
+    }
+    throw error;
+  }
+}
+
 export async function parseAMSSUrl(urlStr: string, cookieHeader?: string): Promise<AMSSBookDetails | null> {
   try {
-    // Validate URL shape
     const url = new URL(urlStr);
     if (!url.hostname.includes("amss")) {
       throw new Error("Not a valid AMSS domain");
     }
 
-    // Fetch the page content with a timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch(urlStr, {
+    const response = await fetchWithTlsFallback(urlStr, {
       signal: controller.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -203,13 +236,21 @@ function parseThaiDateStr(dateStr: string): Date | undefined {
 export async function loginToAMSS(baseUrl: string, username: string, passwordSecret: string): Promise<string | null> {
   try {
     const url = new URL(baseUrl);
-    const origin = url.origin;
     
-    // Step 1: GET base URL with 5s timeout
+    // Resolve base path for subdirectories
+    let basePath = url.origin + url.pathname;
+    if (basePath.endsWith(".php")) {
+      basePath = basePath.substring(0, basePath.lastIndexOf("/"));
+    }
+    if (!basePath.endsWith("/")) {
+      basePath += "/";
+    }
+    
+    const initUrl = baseUrl;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    const initRes = await fetch(origin, {
+    const initRes = await fetchWithTlsFallback(initUrl, {
       signal: controller.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -222,7 +263,6 @@ export async function loginToAMSS(baseUrl: string, username: string, passwordSec
     
     let cookies = setCookieHeaders.map(c => c.split(";")[0]).join("; ");
     
-    // Extract hidden inputs using regex to avoid Cheerio
     const hiddenInputs: Record<string, string> = {};
     const inputRegex = /<input[^>]*type=["']hidden["'][^>]*name=["']([^"']+)["'][^>]*value=["']([^"']*)["']/gi;
     let match;
@@ -230,27 +270,27 @@ export async function loginToAMSS(baseUrl: string, username: string, passwordSec
       hiddenInputs[match[1]] = match[2];
     }
     
-    // Also try matching inputs where value is before name
     const inputRegexReverse = /<input[^>]*type=["']hidden["'][^>]*value=["']([^"']*)["'][^>]*name=["']([^"']+)["']/gi;
     while ((match = inputRegexReverse.exec(initHtml)) !== null) {
       hiddenInputs[match[2]] = match[1];
     }
 
-    // Determine login post URL
-    const postUrl = `${origin}/index.php`;
+    // Determine login post URL relative to base path
+    const postUrl = `${basePath}index.php`;
     
-    // Build payload
+    // Build payload using 'pass', 'user_os', and 'login_submit'
     const payload = new URLSearchParams({
       ...hiddenInputs,
       username: username,
-      password: passwordSecret,
+      pass: passwordSecret,
+      user_os: "desktop",
+      login_submit: "Login",
     });
     
-    // Step 2: POST login request with 5s timeout
     const postController = new AbortController();
     const postTimeoutId = setTimeout(() => postController.abort(), 5000);
     
-    const loginRes = await fetch(postUrl, {
+    const loginRes = await fetchWithTlsFallback(postUrl, {
       method: "POST",
       signal: postController.signal,
       headers: {

@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { parseAMSSUrl, loginToAMSS } from "@/lib/amss-parser";
+import { parseAMSSUrl, loginToAMSS, fetchWithTlsFallback } from "@/lib/amss-parser";
 import { parseAMSSListHtml } from "@/lib/amss-list-parser";
 import { safeAction } from "@/lib/utils";
 import { encrypt, decrypt } from "@/lib/crypto";
@@ -74,8 +74,7 @@ export const scrapeAMSSDocument = safeAction(async (urlStr: string) => {
   let cookieHeader = "";
   if (credentials) {
     const decryptedPassword = decrypt(credentials.password);
-    const parsedUrl = new URL(urlStr);
-    const loginCookies = await loginToAMSS(parsedUrl.origin, credentials.username, decryptedPassword);
+    const loginCookies = await loginToAMSS(credentials.url, credentials.username, decryptedPassword);
     if (loginCookies) {
       cookieHeader = loginCookies;
     }
@@ -191,9 +190,7 @@ export const testAMSSConnection = safeAction(async (data: {
   }
 
   try {
-    const parsedUrl = new URL(normalizedUrl);
-    const origin = parsedUrl.origin;
-    const loginCookies = await loginToAMSS(origin, data.username, passwordToUse);
+    const loginCookies = await loginToAMSS(normalizedUrl, data.username, passwordToUse);
     if (!loginCookies) {
       return { success: false, error: "เข้าสู่ระบบล้มเหลว ตรวจสอบชื่อผู้ใช้งานหรือรหัสผ่าน" };
     }
@@ -230,16 +227,16 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
     }
 
     const decryptedPassword = decrypt(credentials.password);
-    const parsedUrl = new URL(credentials.url);
-    const origin = parsedUrl.origin;
 
-    // Login
-    const loginCookies = await loginToAMSS(origin, credentials.username, decryptedPassword);
+    // Login using the full credentials.url path
+    const loginCookies = await loginToAMSS(credentials.url, credentials.username, decryptedPassword);
     if (!loginCookies) {
       throw new Error("เข้าสู่ระบบ AMSS++ ล้มเหลว กรุณาตรวจสอบความถูกต้องของชื่อผู้ใช้งานและรหัสผ่าน");
     }
 
     // Fetch list of documents (document list page receive_sch.php)
+    const parsedUrl = new URL(credentials.url);
+    const origin = parsedUrl.origin;
     const pathsToTry = [
       `${origin}/modules/document/receive_sch.php`,
       `${origin}/document/receive_sch.php`,
@@ -255,7 +252,7 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
-        const res = await fetch(fetchUrl, {
+        const res = await fetchWithTlsFallback(fetchUrl, {
           signal: controller.signal,
           headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -265,7 +262,6 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
         clearTimeout(timeoutId);
         if (res.ok) {
           const buffer = await res.arrayBuffer();
-          // Decode tis-620 / windows-874
           htmlContent = new TextDecoder("windows-874").decode(buffer);
           if (htmlContent.includes("bookdetail_receive_sch.php")) {
             successFetch = true;
