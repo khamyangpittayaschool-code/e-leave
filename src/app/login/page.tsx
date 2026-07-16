@@ -50,6 +50,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
+    // Safety timeout: reset loading after 15s ป้องกัน stuck ทุกกรณี
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 15000);
+
     let finalEmail = email.trim();
     let usernameVal = "";
     if (!finalEmail.includes("@")) {
@@ -62,6 +67,7 @@ export default function LoginPage() {
     if (isRegister) {
       if (["ครู", "นักศึกษาฝึกประสบการณ์", "หัวหน้างานบุคคล"].includes(position) && !subjectGroup) {
         alert(t("requiredSubjectGroup"));
+        clearTimeout(safetyTimer);
         setLoading(false);
         return;
       }
@@ -77,12 +83,14 @@ export default function LoginPage() {
         subjectGroup: ["ครู", "นักศึกษาฝึกประสบการณ์", "หัวหน้างานบุคคล"].includes(position) ? subjectGroup : "",
         fetchOptions: {
           onSuccess: () => {
+            clearTimeout(safetyTimer);
             alert(t("registerSuccess"));
             setIsRegister(false);
             setLoading(false);
             setPassword("");
           },
           onError: (ctx: any) => {
+            clearTimeout(safetyTimer);
             alert(ctx.error.message);
             setLoading(false);
           },
@@ -96,15 +104,28 @@ export default function LoginPage() {
           password,
           fetchOptions: {
             onSuccess: () => {
-              router.push("/dashboard");
+              clearTimeout(safetyTimer);
+              // ใช้ window.location เป็น hard fallback ถ้า router.push ช้า
+              try {
+                router.push("/dashboard");
+                setTimeout(() => {
+                  if (document.location.pathname !== "/dashboard") {
+                    window.location.href = "/dashboard";
+                  }
+                }, 3000);
+              } catch {
+                window.location.href = "/dashboard";
+              }
             },
             onError: (ctx: any) => {
+              clearTimeout(safetyTimer);
               alert(ctx.error.message);
               setLoading(false);
             },
           },
         });
       } catch (err: any) {
+        clearTimeout(safetyTimer);
         alert(err.message || (lang === "en" ? "An error occurred during login." : "เกิดข้อผิดพลาดในการเข้าสู่ระบบ"));
         setLoading(false);
       }
