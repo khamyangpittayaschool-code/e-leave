@@ -323,13 +323,40 @@ function AppContent({ children }: { children: React.ReactNode }) {
   }, [session, isPending, router]);
 
   useEffect(() => {
+    // 1. Immediately read from localStorage on client-side mount to prevent async DB fetch lag
+    if (typeof window !== "undefined") {
+      const storedSchoolName = localStorage.getItem("eleave_schoolName");
+      const storedSubheader = localStorage.getItem("eleave_subheader");
+      const storedLogoUrl = localStorage.getItem("eleave_logoUrl");
+      const storedEnableAttendance = localStorage.getItem("eleave_enableAttendance");
+      const storedEnableDocument = localStorage.getItem("eleave_enableDocument");
+
+      if (storedSchoolName) setBrandName(storedSchoolName);
+      if (storedSubheader) setBrandSubheader(storedSubheader);
+      if (storedLogoUrl) setBrandLogo(storedLogoUrl);
+      if (storedEnableAttendance) setEnableAttendance(storedEnableAttendance === "true");
+      if (storedEnableDocument) setEnableDocument(storedEnableDocument === "true");
+      
+      // If we loaded cached data, we can mark settings loading as finished to bypass default splash page
+      if (storedSchoolName || storedLogoUrl) {
+        setIsLoadingSettings(false);
+      }
+    }
+
     import("@/app/actions/settings").then(({ getSystemSettings }) => {
       getSystemSettings().then((s) => {
-        setBrandName(s.schoolName || t("loginTitle"));
-        setBrandLogo(s.logoUrl || null);
-        setBrandSubheader(s.subheader || "ระบบจัดการการลา");
-        setEnableAttendance(s.enableAttendance === true);
-        setEnableDocument(s.enableDocument === true);
+        const finalSchoolName = s.schoolName || t("loginTitle");
+        const finalSubheader = s.subheader || "ระบบจัดการการลา";
+        const finalLogoUrl = s.logoUrl || null;
+        const finalEnableAttendance = s.enableAttendance === true;
+        const finalEnableDocument = s.enableDocument === true;
+
+        setBrandName(finalSchoolName);
+        setBrandLogo(finalLogoUrl);
+        setBrandSubheader(finalSubheader);
+        setEnableAttendance(finalEnableAttendance);
+        setEnableDocument(finalEnableDocument);
+        
         if (s.finalApproverUserIds && session?.user?.id) {
           const allowedIds = s.finalApproverUserIds.split(",").map((id: string) => id.trim()).filter(Boolean);
           setIsFinalApprover(allowedIds.includes(session.user.id));
@@ -341,6 +368,19 @@ function AppContent({ children }: { children: React.ReactNode }) {
             console.error("Failed to parse rolePermissions", e);
           }
         }
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem("eleave_schoolName", finalSchoolName);
+          localStorage.setItem("eleave_subheader", finalSubheader);
+          if (finalLogoUrl) {
+            localStorage.setItem("eleave_logoUrl", finalLogoUrl);
+          } else {
+            localStorage.removeItem("eleave_logoUrl");
+          }
+          localStorage.setItem("eleave_enableAttendance", String(finalEnableAttendance));
+          localStorage.setItem("eleave_enableDocument", String(finalEnableDocument));
+        }
+
         setIsLoadingSettings(false);
       }).catch(() => {
         setIsLoadingSettings(false);

@@ -32,12 +32,47 @@ export default function LoginPage() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    // 1. Immediately read from localStorage on client-side mount to prevent async DB fetch lag
+    if (typeof window !== "undefined") {
+      const storedSchoolName = localStorage.getItem("eleave_schoolName");
+      const storedSubheader = localStorage.getItem("eleave_subheader");
+      const storedLogoUrl = localStorage.getItem("eleave_logoUrl");
+      const storedFooterText = localStorage.getItem("eleave_footerText");
+
+      if (storedSchoolName) setSchoolName(storedSchoolName);
+      if (storedSubheader) setSubheader(storedSubheader);
+      if (storedLogoUrl) setLogoUrl(storedLogoUrl);
+      if (storedFooterText) setFooterText(storedFooterText);
+      
+      // If we loaded cached data, we can mark brand loading as finished
+      if (storedSchoolName || storedLogoUrl) {
+        setIsLoadingBrand(false);
+      }
+    }
+
     getSystemSettings().then((s) => {
-      setSchoolName(s.schoolName || (lang === "en" ? "Leave Management System" : "ระบบจัดการการลา"));
-      setSubheader(s.subheader || (lang === "en" ? "Leave Management System" : "ระบบจัดการการลา"));
-      setLogoUrl(s.logoUrl || null);
-      setFooterText(s.footerText || "© 2006 Panchapon Getrat KP-school");
+      const finalSchoolName = s.schoolName || (lang === "en" ? "Leave Management System" : "ระบบจัดการการลา");
+      const finalSubheader = s.subheader || (lang === "en" ? "Leave Management System" : "ระบบจัดการการลา");
+      const finalLogoUrl = s.logoUrl || null;
+      const finalFooterText = s.footerText || "© 2006 Panchapon Getrat KP-school";
+
+      setSchoolName(finalSchoolName);
+      setSubheader(finalSubheader);
+      setLogoUrl(finalLogoUrl);
+      setFooterText(finalFooterText);
       setIsLoadingBrand(false);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("eleave_schoolName", finalSchoolName);
+        localStorage.setItem("eleave_subheader", finalSubheader);
+        if (finalLogoUrl) {
+          localStorage.setItem("eleave_logoUrl", finalLogoUrl);
+        } else {
+          localStorage.removeItem("eleave_logoUrl");
+        }
+        localStorage.setItem("eleave_footerText", finalFooterText);
+      }
+
       // Show splash for at least 1.4s for a smooth feel
       setTimeout(() => setShowSplash(false), 1400);
     }).catch(() => {
