@@ -1,13 +1,14 @@
-# ระบบแจ้งซ่อม (Repair Request System) Implementation Plan v7.1
+# ระบบแจ้งซ่อม (Repair Request System) Implementation Plan v7.2
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** สร้างระบบแจ้งซ่อมสำหรับโรงเรียนแบบประสิทธิภาพสูง ตามพิมพ์เขียว Master Architecture Blueprint v7.1 โดยเปลี่ยนการบันทึกภาพจากการเก็บในฐานข้อมูลหรือเก็บ URL แข็ง เป็นระบบอ้างอิงตำแหน่งบน Storage (Signed URL / Runtime Dynamic resolution) ผ่าน Provider Pattern, เพิ่มชั้นเลเยอร์การทำงาน (Repositories/Services), จัดการ Concurrency แบบ Optimistic OCC (version field + index), กำหนดหมวดหมู่แจ้งซ่อม, SLA Tracking + slaStatus, Soft Delete + audit tracking (deletedBy, deleteReason), และบันทึกประวัติแบบตารางจดหมายเหตุคู่ขนาน (Mirror Archive Tables)
+**Goal:** สร้างระบบแจ้งซ่อมสำหรับโรงเรียนแบบประสิทธิภาพสูง ตามพิมพ์เขียว Master Architecture Blueprint v7.2 โดยเปลี่ยนการบันทึกภาพจากการเก็บในฐานข้อมูลหรือเก็บ URL แข็ง เป็นระบบอ้างอิงตำแหน่งบน Storage (Signed URL / Runtime Dynamic resolution) ผ่าน Provider Pattern แยกโฟลเดอร์, เพิ่มชั้นเลเยอร์การทำงาน (Repositories/Services), จัดการ Concurrency แบบ Optimistic OCC (version field + index), กำหนดหมวดหมู่แจ้งซ่อม, SLA Tracking + SLAStatus Enum, Soft Delete + audit tracking (deletedBy, deleteReason), ทำการออกรหัสแจ้งซ่อมแบบ Thread-Safe (RunningNumber sequence table), และบันทึกประวัติแบบตารางจดหมายเหตุคู่ขนาน (Mirror Archive Tables)
 
 **Architecture:** 
-- ตาราง `RepairRequest`, `RepairPhoto` (เก็บเฉพาะ storageKey, fileSize, mimeType ไร้ฟิลด์ URL), `RepairRequestArchive`, `RepairPhotoArchive` และ `SystemLog` (เก็บ JSON metadata)
+- ตาราง `RepairRequest`, `RepairPhoto` (เก็บเฉพาะ storageKey, fileSize, mimeType ไร้ฟิลด์ URL), `RunningNumber`, `RepairRequestArchive`, `RepairPhotoArchive` (มี index บน storageKey) และ `SystemLog` (เก็บ JSON metadata)
 - API Stream/Serve รูปภาพพร้อมแคชถาวร 7 วัน, แคชบัสเตอร์ `?v={createdAt}` และ ETag + 304 Not Modified
 - Services Layer (`src/services/` และ `src/repositories/`) แยกหน้าที่และ Logic ออกจาก Server Actions ชัดเจน
+- Storage Services แยกโฟลเดอร์ `src/services/storage/` (Interface + Providers) ชัดเจน
 - Server Action สำหรับย้ายข้อมูลเก่า (>180 วัน) ผ่าน Prisma Transaction ย้ายข้อมูลเข้าตารางประวัติศาสตร์คู่ขนาน และลบข้อมูลตารางทำงานออก ( Cascade Delete รูปใน DB แต่คงคีย์และขนาดใน Archive)
 - สิทธิ์การทำงานอิงตาม Permissions: `repair:view.own`, `repair:view.all`, `repair:view.cost`, `repair:create`, `repair:assign`, `repair:update`, `repair:export`, `repair:delete`, `repair:archive`
 - ระบบตรวจสอบและอัปเดตข้อมูลแบบป้องกัน Lost Update โดยใช้คำสั่ง Atomic Compare-And-Swap บน status และ version
@@ -41,7 +42,7 @@
     requestsCreated  RepairRequest[] @relation("RequestCreatedBy")
     requestsAssigned RepairRequest[] @relation("RequestAssignedTo")
     ```
-  - เพิ่มโมเดลและโครงสร้างตารางแจ้งซ่อมตามสเปก v7.1:
+  - เพิ่มโมเดลและโครงสร้างตารางแจ้งซ่อมตามสเปก v7.2:
     ```prisma
     enum RepairStatus {
       PENDING
@@ -71,6 +72,18 @@
       OTHER
     }
 
+    enum SLAStatus {
+      ON_TIME
+      WARNING
+      OVERDUE
+    }
+
+    model RunningNumber {
+      key     String @id
+      year    Int
+      current Int
+    }
+
     model RepairRequest {
       id             String          @id @default(cuid())
       repairNo       String          @unique
@@ -91,7 +104,7 @@
       cancelReason   String?         @db.Text
       expectedFinishAt DateTime?
       actualFinishAt   DateTime?
-      slaStatus      String?
+      slaStatus      SLAStatus?
       assignedAt     DateTime?
       finishedAt     DateTime?
       deletedAt      DateTime?
@@ -133,6 +146,7 @@
       urgency        RepairUrgency
       category       RepairCategory
       status         RepairStatus
+      version        Int
       requesterId    String
       assigneeId     String?
       resolutionNote String?         @db.Text
@@ -141,7 +155,7 @@
       cancelReason   String?         @db.Text
       expectedFinishAt DateTime?
       actualFinishAt   DateTime?
-      slaStatus      String?
+      slaStatus      SLAStatus?
       assignedAt     DateTime?
       finishedAt     DateTime?
       createdAt      DateTime
@@ -163,6 +177,7 @@
       repair     RepairRequestArchive @relation(fields: [repairId], references: [id], onDelete: Cascade)
 
       @@index([repairId])
+      @@index([storageKey])
     }
     ```
 
@@ -197,7 +212,7 @@
 
 - [ ] **Step 5: Commit changes**
   - Run: `git add prisma/schema.prisma prisma/migrations/`
-  - Run: `git commit -m "db: add enums, models, checks, and indexes for Repair engine v7.1"`
+  - Run: `git commit -m "db: add enums, models, checks, and indexes for Repair engine v7.2"`
 
 ---
 
@@ -205,31 +220,42 @@
 
 **Files:**
 - Create: [src/repositories/repair.repository.ts](file:///C:/dev/eLeave/src/repositories/repair.repository.ts)
+- Create: Folder `src/services/storage/` and files:
+  - [StorageProvider.ts](file:///C:/dev/eLeave/src/services/storage/StorageProvider.ts)
+  - [providers/local.provider.ts](file:///C:/dev/eLeave/src/services/storage/providers/local.provider.ts)
+  - [providers/supabase.provider.ts](file:///C:/dev/eLeave/src/services/storage/providers/supabase.provider.ts)
+  - [providers/s3.provider.ts](file:///C:/dev/eLeave/src/services/storage/providers/s3.provider.ts)
 - Create: [src/services/photo.service.ts](file:///C:/dev/eLeave/src/services/photo.service.ts)
 - Create: [src/services/audit.service.ts](file:///C:/dev/eLeave/src/services/audit.service.ts)
 - Create: [src/services/repair.service.ts](file:///C:/dev/eLeave/src/services/repair.service.ts)
 - Create: [src/lib/permissions.ts](file:///C:/dev/eLeave/src/lib/permissions.ts)
 
 - [ ] **Step 1: Write `src/lib/permissions.ts`**
-  - เขียนออบเจกต์และฟังก์ชันตรวจสอบสิทธิ์ `hasPermission` ครอบคลุมสิทธิ์ระบบแจ้งซ่อม v7.1 ทั้งหมด รวมถึงบทบาท Matrix และสิทธิ์งบประมาณ (`repair:view.cost`) และการ Export/Delete
+  - เขียนออบเจกต์และฟังก์ชันตรวจสอบสิทธิ์ `hasPermission` ครอบคลุมสิทธิ์ระบบแจ้งซ่อม v7.2 ทั้งหมด รวมถึงบทบาท Matrix และสิทธิ์งบประมาณ (`repair:view.cost`) และการ Export/Delete
 
 - [ ] **Step 2: Create `src/repositories/repair.repository.ts`**
   - เขียนฟังก์ชันค้นหา อัปเดต และสร้างรายการผ่าน `prisma.repairRequest`
   - กรองค่า `deletedAt: null` เสมอในการค้นหาทั่วไป
   - จัดการ Optimistic Concurrency Control (OCC) โดยการตรวจสอบ version และเพิ่มค่า version atomically เมื่อเขียนข้อมูล โดยอิงผ่าน index `[id, version]`
-  - ระบบจัดทำหมายเลขแจ้งซ่อม `repairNo` (เช่นดึงหมายเลขล่าสุดมาเพิ่มทีละ 1 ในรูปแบบ `REP-YYYY-XXXXXX`)
+  - ระบบจัดทำหมายเลขแจ้งซ่อม `repairNo` โดยดึงและล็อก atomically ผ่าน RunningNumber table:
+    ```typescript
+    const running = await tx.runningNumber.update({
+      where: { key: `repair_${currentYear}` },
+      data: { current: { increment: 1 } }
+    });
+    ```
 
-- [ ] **Step 3: Create `src/services/photo.service.ts`**
+- [ ] **Step 3: Create `src/services/storage/` structures**
   - เขียน Interface `StorageProvider`
-  - เขียน `LocalDiskProvider` บันทึกรูปลงในไดเรกทอรีโลคัล (สำหรับ Development)
-  - เขียน `SupabaseStorageProvider` อัปโหลดขึ้นบริการ Cloud (สำหรับ Production)
-  - พัฒนา `PhotoService` ดึงข้อมูลด้วยการแปลง `storageKey` เป็น URL แบบไดนามิกผ่าน Provider ที่ใช้งานอยู่
+  - เขียน `LocalDiskProvider` บันทึกรูปลงในไดเรกทอรี public
+  - เขียน `SupabaseStorageProvider` อัปโหลดขึ้นบริการ Cloud
+  - พัฒนา `PhotoService` ดึงข้อมูลผ่านการแปลง `storageKey` เป็น Signed/Dynamic URL ตอน Runtime
 
 - [ ] **Step 4: Create `src/services/audit.service.ts`**
   - จัดการ Log Audit ในโมเดล `SystemLog` บันทึก JSON metadata โครงสร้างในฟิลด์ `metadata` และใช้ Enum `SystemAction`
 
 - [ ] **Step 5: Create `src/services/repair.service.ts`**
-  - จัดการ Business Flow แจ้งซ่อม (นับรูป BEFORE/AFTER สูงสุด 2 ใน transaction, ปรับปรุงสถานะ SLA อัตโนมัติในฟิลด์ `slaStatus`, และรองรับ Soft Delete พร้อมเก็บข้อมูลผู้ลบและเหตุผล)
+  - จัดการ Business Flow แจ้งซ่อม (นับรูป BEFORE/AFTER สูงสุด 2 ใน transaction, ปรับปรุงสถานะ SLA อัตโนมัติในฟิลด์ `slaStatus` (SLAStatus Enum), และรองรับ Soft Delete พร้อมเก็บข้อมูลผู้ลบและเหตุผล)
 
 ---
 
@@ -253,7 +279,7 @@
 
 - [ ] **Step 3: Commit changes**
   - Run: `git add src/repositories/ src/services/ src/app/actions/repair/ src/app/api/repair/`
-  - Run: `git commit -m "feat: implement repository, services, server actions, and dynamic photo streaming for Repair module v7.1"`
+  - Run: `git commit -m "feat: implement repository, services, storage providers, server actions, and dynamic photo streaming for Repair module v7.2"`
 
 ---
 
@@ -267,7 +293,7 @@
   - ตรวจสอบสิทธิ์ `repair:archive`
   - กวาดใบแจ้งซ่อม Completed/Cancelled อายุ > 180 วัน โดยเรียงลำดับ `updatedAt: "asc"` ครั้งละ 200 รายการ จำกัดลูปสูงสุด `MAX_BATCHES = 100`
   - ทำธุรกรรมภายใต้ `prisma.$transaction(..., { timeout: 30000 })` และ pg_advisory_xact_lock(45729)
-  - โอนย้ายข้อมูลเข้าตารางจดหมายเหตุ `RepairRequestArchive` และ `RepairPhotoArchive` โดยตรง (รักษาคีย์ภาพใน Storage)
+  - โอนย้ายข้อมูลเข้าตารางจดหมายเหตุ `RepairRequestArchive` และ `RepairPhotoArchive` โดยตรง (รักษาคีย์ภาพใน Storage, เก็บเวอร์ชันประวัติ `version`)
   - ลบรายการทำงานหลัก `RepairRequest` และบันทึก Log
 
 - [ ] **Step 2: Create Action Archive Interface**

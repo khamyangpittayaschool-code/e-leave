@@ -1,4 +1,4 @@
-# ระบบแจ้งซ่อม (Repair Request System) — Design Specification v7.1 (Production-Scale Blueprint)
+# ระบบแจ้งซ่อม (Repair Request System) — Design Specification v7.2 (Production-Scale Blueprint)
 
 เอกสารนี้กำหนดสถาปัตยกรรมระดับองค์กร (Production-Scale Enterprise Architecture) ของ **ระบบแจ้งซ่อม** ซึ่งเป็นระบบย่อยเพิ่มเติมในกลุ่มงานทั่วไปสำหรับระบบ **eLeave & School OS** เพื่อรองรับการทำงานในระยะยาว (5-10 ปี) โดยไม่มีปัญหาฐานข้อมูลบวม ทำการแบ็คอัพง่าย ป้องกันปัญหาสิทธิ์เข้าถึงข้อมูลด้านงบประมาณการเงิน และโครงสร้างที่ลดความผูกมัดทางเทคโนโลยี (Decoupled Layer Architecture)
 
@@ -6,7 +6,7 @@
 
 ## 1. โครงสร้างสิทธิ์และการจัดคู่บทบาท (Role-Capability Permission Matrix)
 
-เพื่อป้องกันการเขียนโค้ดเช็คบทบาทแบบดิบ (เช่น `if (role === "ADMIN")`) ทุกการอัปเดตจะพึ่งพาคุณสมบัติสิทธิ์ (Capability-Based Permissions) ในไฟล์ [src/lib/permissions.ts](file:///C:/dev/eLeave/src/lib/permissions.ts) มีรายละเอียดแผนผังความสัมพันธ์ดังนี้:
+เพื่อป้องกันการเขียนโค้ดเช็คบทบาทแบบดิบ ทุกการอัปเดตจะพึ่งพาคุณสมบัติสิทธิ์ (Capability-Based Permissions) ในไฟล์ [src/lib/permissions.ts](file:///C:/dev/eLeave/src/lib/permissions.ts) มีรายละเอียดแผนผังความสัมพันธ์ดังนี้:
 
 | บทบาท (Role) | สิทธิ์การเข้าถึง (Repair Permissions) | คำอธิบายพฤติกรรม |
 |---|---|---|
@@ -17,19 +17,20 @@
 
 ---
 
-## 2. โครงสร้างสถาปัตยกรรมรูปภาพและการจัดเก็บ (Provider Pattern Storage)
+## 2. โครงสร้างสถาปัตยกรรมรูปภาพและการจัดเก็บ (Storage Provider Folder Scheme)
 
 รูปภาพจะไม่มีการจัดเก็บในฐานข้อมูล (Metadata Only) และจะไม่มีการเก็บลิงก์ URL สาธารณะตรงๆ ในฐานข้อมูล เพื่อป้องกันปัญหา URL เสียหายหรือเมื่อมีการเปลี่ยนโดเมนระบบคลาวด์ในอนาคต
 
-- **การจัดเก็บ**: ใช้รูปแบบ **Provider Pattern** ในการพัฒนาเลเยอร์จัดเก็บรูปภาพ:
-  - `StorageProvider` (Interface)
-  - `LocalDiskProvider` (สำหรับเครื่องพัฒนาระบบ / Local Development)
-  - `SupabaseStorageProvider` (สำหรับ Production / Cloud Storage)
+- **โครงสร้างโฟลเดอร์**: แยกสถาปัตยกรรมการต่อเชื่อมรูปภาพไว้ภายใต้ `src/services/storage/` ดังนี้:
+  - `StorageProvider.ts` (Interface)
+  - `providers/local.provider.ts` (สำหรับ Local Disk ในช่วง Development)
+  - `providers/supabase.provider.ts` (สำหรับ Supabase Storage ในช่วง Production)
+  - `providers/s3.provider.ts` (สำหรับ S3-Compatible/Neon Storage ในอนาคต)
 - **การนำไปแสดงผล**: สร้าง URL ชั่วคราว (Signed URL) หรือจัดส่ง URL จาก `PhotoService` ตอน Runtime โดยอ้างอิงจาก `storageKey`
 - **ขีดจำกัดรูปภาพ**: แนบรูปก่อนซ่อม (BEFORE) ได้สูงสุด **2 รูป** และหลังซ่อม (AFTER) ได้สูงสุด **2 รูป** (รวมสูงสุด 4 รูปต่อใบงาน)
 - **การบีบอัดรูปภาพ (Image Policy)**: 
   - ขนาดความกว้างสูงสุด 800px บีบอัดด้วย JPEG (Quality = 0.7)
-  - ขนาดเป้าหมายหลังบีบอัด **100 KB - 300 KB** (เพื่อให้รูปภาพมีความละเอียดและรายละเอียดความคมชัดเพียงพอ)
+  - ขนาดเป้าหมายหลังบีบอัด **100 KB - 300 KB**
 - **ฟิลด์ข้อมูลตารางรูปภาพ**:
   - `storageKey`: คีย์อ้างอิงไฟล์ (เช่น `repairs/REP-2026-000012-before-1.jpg`)
   - `mimeType`: ประเภทคอนเทนต์ของไฟล์ภาพ เช่น `image/jpeg`
@@ -59,7 +60,7 @@
 
 ---
 
-## 4. โครงสร้างฐานข้อมูลอัปเกรด (Database Schema v7.1)
+## 4. โครงสร้างฐานข้อมูลอัปเกรด (Database Schema v7.2)
 
 การปรับปรุงโมเดลระบบแจ้งซ่อมใน [schema.prisma](file:///C:/dev/eLeave/prisma/schema.prisma):
 
@@ -92,10 +93,23 @@ enum RepairCategory {
   OTHER
 }
 
+enum SLAStatus {
+  ON_TIME
+  WARNING
+  OVERDUE
+}
+
+// ตารางสำหรับป้องกัน Concurrency ในการออกรหัสใบแจ้งซ่อม (Thread-Safe Sequence generator)
+model RunningNumber {
+  key     String @id // e.g. "repair_2026"
+  year    Int
+  current Int
+}
+
 // ตารางแจ้งซ่อมหลัก
 model RepairRequest {
   id             String          @id @default(cuid())
-  repairNo       String          @unique // [NEW] รหัสอ้างอิงของงานแจ้งซ่อมที่ผู้ใช้เข้าใจง่าย เช่น REP-2026-000123
+  repairNo       String          @unique // รหัสอ้างอิง เช่น REP-2026-000123
   title          String
   description    String          @db.Text
   location       String
@@ -113,12 +127,12 @@ model RepairRequest {
   cancelReason   String?         @db.Text
   expectedFinishAt DateTime?     // เวลาสำหรับ SLA Tracking
   actualFinishAt   DateTime?     // เวลาเสร็จจริงวัดผล KPI
-  slaStatus      String?         // [NEW] บันทึกสถานะ SLA เช่น ON_TIME, WARNING, OVERDUE เพื่อให้เรียกรายงานสถิติง่าย
+  slaStatus      SLAStatus?      // บันทึกสถานะ SLA เช่น ON_TIME, WARNING, OVERDUE เพื่อความแม่นยำในการเรียกดูรายงาน
   assignedAt     DateTime?
   finishedAt     DateTime?
   deletedAt      DateTime?       // Soft Delete Flag
-  deletedBy      String?         // [NEW] ระบุผู้ดำเนินการลบ (Soft Delete)
-  deleteReason   String?         // [NEW] ระบุเหตุผลการลบ
+  deletedBy      String?         // ระบุผู้ดำเนินการลบ (Soft Delete)
+  deleteReason   String?         // ระบุเหตุผลการลบ
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   photos         RepairPhoto[]
@@ -128,7 +142,7 @@ model RepairRequest {
   @@index([assigneeId, status])
   @@index([requesterId, status])
   @@index([updatedAt])
-  @@index([id, version]) // [NEW] ดัชนีรองรับการอัปเดต Concurrency (OCC)
+  @@index([id, version]) // ดัชนีรองรับการอัปเดต Concurrency (OCC)
 }
 
 // ตารางอ้างอิงรูปภาพ
@@ -157,6 +171,7 @@ model RepairRequestArchive {
   urgency        RepairUrgency
   category       RepairCategory
   status         RepairStatus
+  version        Int             // เก็บเวอร์ชัน ณ ตอนที่ย้ายเก็บเป็นจดหมายเหตุจริง
   requesterId    String
   assigneeId     String?
   resolutionNote String?         @db.Text
@@ -165,12 +180,12 @@ model RepairRequestArchive {
   cancelReason   String?         @db.Text
   expectedFinishAt DateTime?
   actualFinishAt   DateTime?
-  slaStatus      String?
+  slaStatus      SLAStatus?
   assignedAt     DateTime?
   finishedAt     DateTime?
   createdAt      DateTime
   updatedAt      DateTime
-  archivedAt     DateTime        @default(now())
+  archivedAt     DateTime        @default(now()) // เวลาที่ถูกเก็บเข้าจดหมายเหตุ
   photos         RepairPhotoArchive[]
 }
 
@@ -188,6 +203,7 @@ model RepairPhotoArchive {
   repair     RepairRequestArchive @relation(fields: [repairId], references: [id], onDelete: Cascade)
 
   @@index([repairId])
+  @@index([storageKey]) // [NEW] ดัชนีในการทำความสะอาด ตรวจเช็คไฟล์กำพร้า หรือการย้ายเซิร์ฟเวอร์
 }
 
 // โมเดลเก็บประบบเดิม เพิ่ม JSON Metadata
@@ -208,6 +224,22 @@ model User {
   requestsCreated  RepairRequest[] @relation("RequestCreatedBy")
   requestsAssigned RepairRequest[] @relation("RequestAssignedTo")
 }
+```
+
+### Custom Migration SQL (นอกเหนือจาก Prisma Schema)
+คำสั่ง SQL ด้านล่างจะถูกเพิ่มในไฟล์ Migration Script ด้วยตนเองหลังจาก Prisma สร้างไฟล์ให้แล้ว:
+```sql
+-- 1. ป้องกันขนาดไฟล์รูปภาพไม่ถูกต้อง
+ALTER TABLE "RepairPhoto" ADD CONSTRAINT repair_photo_filesize_chk CHECK ("fileSize" > 0);
+
+-- 2. ป้องกันค่าใช้จ่ายซ่อมติดลบ
+ALTER TABLE "RepairRequest" ADD CONSTRAINT repair_cost_chk CHECK ("cost" IS NULL OR "cost" >= 0);
+
+-- 3. Partial Index สำหรับ Archiver Candidates (เร็วกว่า full index มาก)
+CREATE INDEX idx_repair_archive_candidates ON "RepairRequest" ("updatedAt") WHERE status IN ('COMPLETED', 'CANCELLED');
+
+-- 4. GIN Index สำหรับค้นหา Audit Log Metadata (JSONB)
+CREATE INDEX idx_systemlog_metadata ON "SystemLog" USING GIN ("metadata");
 ```
 
 ---
@@ -234,8 +266,15 @@ model User {
     throw new Error("งานนี้ได้รับรายงานหรือแก้ไขโดยช่างท่านอื่นแล้ว กรุณารีเฟรชเพื่อรับค่าล่าสุด");
   }
   ```
-- **Audit Logs Type Safety**:
-  จำกัดการพิมพ์ประเภท Log ผิดพลาดด้วยการประกาศประเภท Log เป็น Enum `SystemAction` ภายในชั้น `audit.service.ts`
+- **Thread-Safe ID Generation**:
+  การดึงหมายเลขใบแจ้งซ่อม `repairNo` เพื่อป้องกัน Race Condition จากผู้ใช้หลายคนส่งใบแจ้งซ่อมเข้ามาในเวลาใกล้เคียงกัน จะหลีกเลี่ยงการทำ `SELECT MAX()` นอก Transaction โดยเปลี่ยนมาทำ Atomic Increment บนตาราง `RunningNumber` ภายใน Write Transaction เดียวกัน:
+  ```typescript
+  const running = await tx.runningNumber.update({
+    where: { key: `repair_${currentYear}` },
+    data: { current: { increment: 1 } }
+  });
+  const repairNo = `REP-${currentYear}-${String(running.current).padStart(6, '0')}`;
+  ```
 
 - **การย้ายประวัติด้วยจดหมายเหตุ (ETL Archiving)**:
   ประมวลผลกวาดล้างข้อมูล Completed/Cancelled ที่อายุเกิน 180 วัน:
@@ -249,7 +288,6 @@ model User {
 
 🎫 **[STG-001] Migrate RepairPhoto Storage Configuration**
 - *รายละเอียด*: เฝ้าระวังเนื้อที่บน Object Storage (Supabase/S3) และประสิทธิภาพของ Signed URL
-- *เงื่อนไขกระตุ้น (Trigger)*: เมื่อระบบใช้งานมาเกิน 3 ปี หรือปริมาณรูปภาพมีจำนวนเยอะมากเกินกำหนด
 
 ---
-*(เอกสารการออกแบบฉบับสมบูรณ์ v7.1 ได้รับการปรับปรุงเป็นพิมพ์เขียวระดับองค์กรเรียบร้อย)*
+*(เอกสารการออกแบบฉบับสมบูรณ์ v7.2 ได้รับการปรับปรุงเป็นพิมพ์เขียวระดับองค์กรเรียบร้อย)*
