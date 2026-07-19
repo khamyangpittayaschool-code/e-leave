@@ -1,13 +1,13 @@
-# ระบบแจ้งซ่อม (Repair Request System) Implementation Plan v5.2
+# ระบบแจ้งซ่อม (Repair Request System) Implementation Plan v5.3
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** สร้างระบบแจ้งซ่อมสำหรับโรงเรียนแบบประสิทธิภาพสูง ตามพิมพ์เขียว Master Architecture Blueprint v5.2 โดยรองรับการบันทึกภาพแบบ Binary (BYTEA) จำกัดจำนวน BEFORE 2 รูป และ AFTER 2 รูป ย่อยรูปบน Canvas ฝั่งไคลเอนต์ ควบคุมสิทธิ์ด้วย Capability Permissions และมีระบบจดหมายเหตุย้ายความสัมพันธ์รูปภาพด้วยความปลอดภัยผ่าน Transaction
+**Goal:** สร้างระบบแจ้งซ่อมสำหรับโรงเรียนแบบประสิทธิภาพสูง ตามพิมพ์เขียว Master Architecture Blueprint v5.3 โดยรองรับการบันทึกภาพแบบ Binary (BYTEA) จำกัดจำนวน BEFORE 2 รูป และ AFTER 2 รูป ย่อยรูปบน Canvas ฝั่งไคลเอนต์ ควบคุมสิทธิ์ด้วย Capability Permissions และมีระบบจดหมายเหตุย้ายความสัมพันธ์รูปภาพด้วยความปลอดภัยผ่าน Transaction
 
 **Architecture:** 
 - ตาราง `RepairRequest`, `RepairPhoto` (ไม่มีการเกาะ archiveId, non-nullable repairId เพื่อป้องรูปกำพร้า) และ `RepairArchive`
-- API Stream รูปภาพและแคชถาวร 1 ปี พร้อมระบบดักสิทธิ์เข้าถึง และแคชบัสเตอร์ `?v={createdAt}`
-- Server Action สำหรับย้ายข้อมูลเก่า (>180 วัน) ผ่าน Prisma Transaction สรุปข้อมูลลง JSON payload และลบภาพออกโดย CASCADE
+- API Stream รูปภาพและแคชถาวร 7 วัน พร้อมระบบดักสิทธิ์เข้าถึง และแคชบัสเตอร์ `?v={createdAt}`
+- Server Action สำหรับย้ายข้อมูลเก่า (>180 วัน) ผ่าน Prisma Transaction สรุปข้อมูลลง JSON payload และลบภาพออกโดย CASCADE คิวรีเรียงลำดับตาม `updatedAt: "asc"`
 - สิทธิ์การทำงานอิงตาม Permissions: `repair:view.own`, `repair:view.all`, `repair:create`, `repair:assign`, `repair:update`, `repair:archive`
 
 **Tech Stack:** Next.js (App Router), Prisma, PostgreSQL (BYTEA), Framer Motion, Tailwind CSS, Lucide React
@@ -41,7 +41,7 @@
     requestsCreated  RepairRequest[] @relation("RequestCreatedBy")
     requestsAssigned RepairRequest[] @relation("RequestAssignedTo")
     ```
-  - เพิ่มโมเดลและโครงสร้างตารางแจ้งซ่อมตามสเปก v5.2:
+  - เพิ่มโมเดลและโครงสร้างตารางแจ้งซ่อมตามสเปก v5.3:
     ```prisma
     enum RepairStatus {
       PENDING
@@ -127,7 +127,7 @@
 
 - [ ] **Step 5: Commit changes**
   - Run: `git add prisma/schema.prisma prisma/migrations/`
-  - Run: `git commit -m "db: add tables for Repair engine v5.2"`
+  - Run: `git commit -m "db: add tables for Repair engine v5.3"`
 
 ---
 
@@ -143,11 +143,11 @@
 - Produces: `hasPermission` helper, photo stream GET endpoint, and Server Actions for RepairRequest
 
 - [ ] **Step 1: Write `src/lib/permissions.ts`**
-  - เขียนออบเจกต์และฟังก์ชันตรวจสอบสิทธิ์ `hasPermission` ตามพิมพ์เขียว v5.2
+  - เขียนออบเจกต์และฟังก์ชันตรวจสอบสิทธิ์ `hasPermission` ตามพิมพ์เขียว v5.3
 
 - [ ] **Step 2: Create Photo Streaming API Route**
   - เขียนโค้ดใน `src/app/api/repair/photo/[photoId]/route.ts` เพื่อส่งภาพกลับเป็น Binary Response
-  - บังคับใช้การตรวจสอบสิทธิ์แบบ Ownership และตั้งค่า Cache-Control 1 ปีเต็มตามพิมพ์เขียว
+  - บังคับใช้การตรวจสอบสิทธิ์แบบ Ownership และตั้งค่า Cache-Control 7 วันตามพิมพ์เขียว (`max-age=604800`)
 
 - [ ] **Step 3: Write Server Actions in `src/app/actions/repair.ts`**
   - ฟังก์ชัน `createRepairRequest` เพื่อบันทึกงานใหม่ (จำกัดรูป BEFORE $\le 2$, และเซฟรูปในตาราง `RepairPhoto` แปลงจาก Base64 เป็น Buffer บันทึกรูปในฟิลด์ `imageData` แบบ Binary)
@@ -170,13 +170,13 @@
 
 - [ ] **Step 1: Implement `archiveRepairsJob`**
   - ใช้สิทธิ์ตรวจสอบ `repair:archive`
-  - อ่านใบแจ้งซ่อมที่ซ่อมเสร็จ/ยกเลิก และอายุ > 180 วัน ครั้งละ 200 รายการ
+  - อ่านใบแจ้งซ่อมที่ซ่อมเสร็จ/ยกเลิก และอายุ > 180 วัน ครั้งละ 200 รายการ โดยมีการเรียงลำดับ `orderBy: { updatedAt: "asc" }` เพื่อการย้ายประวัติที่เก่าที่สุดเข้าจดหมายเหตุก่อน
   - เขียนการจัดส่งข้อมูลใน `prisma.$transaction` เพื่อสร้าง `RepairArchive` (เก็บเฉพาะ Metadata/Payload ไม่มีรูปภาพ)
   - ทำลายใบแจ้งซ่อมหลักใน `RepairRequest` (ซึ่งจะ Cascade Delete รูปภาพที่เกี่ยวข้องออกไปโดยอัตโนมัติ) และบันทึก Log ลง `SystemLog`
 
 - [ ] **Step 2: Commit changes**
   - Run: `git add src/app/actions/archive.ts`
-  - Run: `git commit -m "feat: implement transaction-safe ETL Archiver job with cascade photo deletion"`
+  - Run: `git commit -m "feat: implement transaction-safe ETL Archiver job with deterministic ordering"`
 
 ---
 
@@ -224,7 +224,7 @@
    - ตรวจสอบว่าไม่สามารถส่งรูปภาพ BEFORE เกิน 2 รูป และ AFTER เกิน 2 รูป
 2. **การดึงภาพปลอดภัย (Stream API)**:
    - ทดสอบเข้าดู URL `/api/repair/photo/[id]` ของผู้ใช้อื่นที่ไม่ใช่เจ้าของงานและไม่มีสิทธิ์ `repair:view.all` ต้องถูกส่งกลับเป็น 403
-   - ตรวจดู Cache-Control headers ของภาพถ่ายในเครือข่ายเบราว์เซอร์
+   - ตรวจดู Cache-Control headers ของภาพถ่ายในเครือข่ายเบราว์เซอร์ (ต้องแสดงอายุ 7 วัน)
 3. **ETL Archive**:
-   - กดปุ่ม "Archive Now" และตรวจสอบในฐานข้อมูลว่าเรคคอร์ดในตาราง `RepairPhoto` ถูกลบออกถาวร และลบเรคคอร์ด `RepairRequest` ทิ้งสำเร็จอย่างถูกต้อง
+   - กดปุ่ม "Archive Now" และตรวจสอบในฐานข้อมูลว่าประวัติการแจ้งซ่อมที่เก่าที่สุดถูกย้ายก่อนและประวัติตาราง `RepairPhoto` ถูกลบออกถาวรอย่างถูกต้อง
    - ตรวจดูบันทึก SystemLog
