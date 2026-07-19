@@ -96,13 +96,15 @@ export async function uploadRepairPhoto({
 
   // 5. Upload to storage provider
   const storage = getStorageProvider();
-  await storage.upload({ buffer: compressed, mimeType: "image/webp", storageKey });
+  const uploadParams = { buffer: compressed, mimeType: "image/webp", storageKey };
+  await storage.upload(uploadParams);
+  const finalStorageKey = uploadParams.storageKey;
 
   // 6. Persist metadata in DB (count-check inside transaction)
   const photo = await createPhoto({
     repairId,
     photoType,
-    storageKey,
+    storageKey: finalStorageKey,
     mimeType: "image/webp",
     fileSize: compressed.byteLength,
     uploadedById,
@@ -113,7 +115,7 @@ export async function uploadRepairPhoto({
     repairNo: repair.repairNo,
     actorId: uploadedById,
     action: REPAIR_ACTIONS.REPAIR_CREATED, // reuse — Sprint 3 will add PHOTO_UPLOADED action
-    detail: `อัปโหลดรูป ${photoType} (${storageKey})`,
+    detail: `อัปโหลดรูป ${photoType} (${finalStorageKey})`,
   });
 
   return photo;
