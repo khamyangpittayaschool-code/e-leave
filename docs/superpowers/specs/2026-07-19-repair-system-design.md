@@ -6,31 +6,46 @@
 
 ## 1. สรุปความต้องการ (Requirement Summary)
 
-1. **สิทธิ์และการเข้าถึง (Roles & Workflow)**:
-   - **ครู/บุคลากรทั่วไป (User)**: แจ้งซ่อมได้, ดูประวัติการแจ้งซ่อมของตนเองได้
-   - **แอดมิน (Admin)**: ดูใบแจ้งซ่อมทั้งหมด, มอบหมายงานให้ช่าง/ผู้รับผิดชอบ, แก้ไขข้อมูล, และจัดการการเก็บข้อมูลถาวร (Archive)
-   - **ผู้รับผิดชอบงาน/ช่าง (Assigned Technician)**: เมื่อได้รับมอบหมายงาน จะสามารถดูรายละเอียด และอัปเดตสถานะงาน (กำลังดำเนินการ, ซ่อมเสร็จสิ้น) บันทึกรายละเอียดการซ่อม อัปโหลดภาพหลังซ่อม และระบุค่าใช้จ่ายได้
+1. **สิทธิ์และการเข้าถึง (Permissions & Access Control)**:
+   - สอดคล้องกับระบบสิทธิ์เดิมของ eLeave โดยเพิ่มคีย์สิทธิ์ลงในโครงสร้างสิทธิ์ของระบบดังนี้:
+     - `repair:view`: สิทธิ์ในการดูหน้าจอด้านการแจ้งซ่อมและรายงาน (ครู, ช่าง, แอดมิน)
+     - `repair:create`: สิทธิ์ในการกดแจ้งซ่อมใหม่ (ครูทุกคน, แอดมิน)
+     - `repair:assign`: สิทธิ์ในการมอบหมายงานให้ช่าง (แอดมิน, เจ้าหน้าที่พัสดุ)
+     - `repair:update`: สิทธิ์ในการอัปเดตงาน เช่น เริ่มงาน, ปิดงาน, แนบภาพหลังซ่อม, ระบุค่าซ่อม (ช่างผู้รับผิดชอบ, แอดมิน)
+     - `repair:archive`: สิทธิ์ในการดำเนินงานเก็บถาวรและล้างข้อมูลเก่า (แอดมินเท่านั้น)
 2. **รูปภาพประวัติการซ่อม (Before & After Photos)**:
    - อัปโหลดรูปภาพ "ก่อนซ่อม" (โดยผู้แจ้ง) และ "หลังซ่อม" (โดยช่างผู้ดำเนินการ)
+   - **ข้อจำกัด (Validation Limits)**:
+     - อัปโหลดรูปภาพได้สูงสุด **5 รูป** ต่อใบแจ้งซ่อม (`MAX_PHOTOS = 5`)
+     - ขนาดของไฟล์รูปภาพรวมกันทั้งหมดต้องไม่เกิน **500 KB** ต่อใบแจ้งซ่อม (`MAX_TOTAL_SIZE = 500KB`)
    - **การบีบอัดฝั่งไคลเอนต์ (Client-Side Resizing & Compression)**:
      - ใช้ HTML5 Canvas ย่อขนาดภาพให้มีความกว้าง/สูงไม่เกิน **800px**
      - บีบอัดไฟล์ในรูปแบบ **JPEG** ด้วยความละเอียด **Quality = 0.7**
-     - ตรวจสอบความถูกต้องฝั่งไคลเอนต์ (Client-Side Validation) ให้ขนาดไฟล์ **ไม่เกิน 100 KB** ต่อรูปภาพ
-   - **การเก็บข้อมูล (Storage)**: บันทึกรูปภาพในรูปแบบ Binary (`Bytes` / `BYTEA` ใน PostgreSQL) เพื่อหลีกเลี่ยง Overhead (+33%) ของ Base64
+     - ตรวจสอบความถูกต้องฝั่งไคลเอนต์ (Client-Side Validation) ให้ขนาดไฟล์ **ไม่เกิน 100 KB** ต่อหนึ่งรูปภาพ
+   - **การเก็บข้อมูล (Storage)**: บันทึกรูปภาพในรูปแบบ Binary (`Bytes` / `BYTEA` ใน PostgreSQL) เพื่อหลีกเลี่ยง Base64 Overhead (+33%)
 3. **การแสดงผลภาพขนาดเล็ก (Thumbnail Mode)**:
-   - ในหน้ารายการ (List/Table Views) และตัวอย่างเบื้องต้น จะไม่ดึงรูปภาพเต็มรูปแบบ
-   - หากจำเป็นต้องแสดงภาพในส่วนใด ให้ครอบด้วยขนาด **120 x 120 pixels** เพื่อลดการใช้ RAM ของเบราว์เซอร์
-   - แสดงผลภาพเต็มขนาด (Full-size image) เฉพาะเมื่อผู้ใช้คลิกที่รูปภาพเท่านั้น
-4. **ระบบจดหมายเหตุ (Archive Policy)**:
-   - **Auto-Archive**: ระบบจะย้ายข้อมูลใบแจ้งซ่อมที่มีสถานะเสร็จสิ้น (Completed) หรือยกเลิก (Cancelled) ที่มีอายุมากกว่า **180 วัน** เข้าสู่ระบบจดหมายเหตุอัตโนมัติ (ผ่านระบบตรวจเช็คอัตโนมัติ หรือ Server-side hook)
-   - **Manual Archive**: แอดมินสามารถกดปุ่ม "Archive Now" ในหน้าตั้งค่าเพื่อเลือกดึงข้อมูลประวัติเก่าเข้าระบบจดหมายเหตุได้ทันที
-   - การทำ Archive จะย้ายข้อมูลรูปภาพและรายการแจ้งซ่อมแปลงเป็นก้อน JSON และบันทึกในตาราง `RepairArchive` พร้อมล้างข้อมูลรายการในตารางหลัก
+   - ในหน้ารายการหลัก (List View) จะไม่มีการดึงข้อมูล `photos` มาเลย
+   - หากจำเป็นต้องแสดงภาพในส่วนใด (เช่น ส่วนดูข้อมูลย่อ) ให้ครอบด้วยขนาด **120 x 120 pixels** เพื่อลดการใช้ RAM ของเบราว์เซอร์
+   - แสดงผลภาพเต็มขนาด (Full-size image) เฉพาะเมื่อผู้ใช้คลิกที่รูปภาพเท่านั้น (LightBox / Modal Zoom)
+4. **ระบบบันทึกประวัติการดำเนินงาน (Audit Log Integration)**:
+   - ทุกครั้งที่มีการเปลี่ยนแปลงสถานะหรือปรับปรุงข้อมูลใบแจ้งซ่อม ระบบจะบันทึก Log ไปยังตาราง `SystemLog` ด้วยรหัสประเภทกิจกรรม:
+     - `REPAIR_CREATED`: เมื่อสร้างใบแจ้งซ่อมสำเร็จ
+     - `REPAIR_ASSIGNED`: เมื่อมอบหมายช่างผู้รับผิดชอบสำเร็จ
+     - `REPAIR_STARTED`: เมื่อช่างกดเริ่มงาน (เปลี่ยนสถานะเป็น `IN_PROGRESS`)
+     - `REPAIR_COMPLETED`: เมื่อซ่อมแซมเสร็จสิ้น (เปลี่ยนสถานะเป็น `COMPLETED`)
+     - `REPAIR_CANCELLED`: เมื่อแอดมินหรือผู้แจ้งยกเลิกคำขอ (เปลี่ยนสถานะเป็น `CANCELLED`)
+     - `REPAIR_ARCHIVED`: เมื่อประวัติถูกโอนเข้าสู่ระบบจดหมายเหตุ
+5. **ระบบจดหมายเหตุและการกู้คืน (Archive Policy)**:
+   - **Soft Delete ก่อน Archive**: ข้อมูลที่จะถูกบีบอัดเก็บถาวรจะต้องระบุวันเวลา `archivedAt` ในตารางหลักเพื่อทำเครื่องหมายว่าถูก Soft Delete ก่อนป้องกันปัญหาค้างคา
+   - **Archive Transaction**: การสร้างเอกสารเก็บถาวร (`RepairArchive`) และการลบข้อมูลต้นทางออกจากตารางหลัก (`RepairRequest` และ `RepairPhoto`) จะถูกหุ้มอยู่ภายใน **Prisma Transaction** เดียวกันเสมอ เพื่อป้องกันปัญหาข้อมูลสูญหายหรือสถานะผิดเพี้ยนหากระบบขัดข้องระหว่างทาง (Server Crash)
+   - **Auto-Archive**: ระบบจะโอนข้อมูลใบแจ้งซ่อมที่ซ่อมเสร็จ/ยกเลิก และมีอายุมากกว่า **180 วัน** เข้าสู่ระบบจดหมายเหตุอัตโนมัติ
+   - **Manual Archive**: แอดมินสามารถกดย้ายและทำลายประวัติแจ้งซ่อมเก่าได้ทันทีผ่านหน้าต่างตั้งค่า
 
 ---
 
 ## 2. โครงสร้างฐานข้อมูล (Database Schema)
 
-เพิ่มโมเดลใน [schema.prisma](file:///C:/dev/eLeave/prisma/schema.prisma):
+เพิ่มหรือปรับปรุงโมเดลใน [schema.prisma](file:///C:/dev/eLeave/prisma/schema.prisma):
 
 ```prisma
 enum RepairStatus {
@@ -41,35 +56,47 @@ enum RepairStatus {
   CANCELLED    // ยกเลิกรายการ
 }
 
+enum RepairUrgency {
+  NORMAL       // ปกติ
+  URGENT       // ด่วน
+  URGENT_MOST  // ด่วนที่สุด
+}
+
+enum RepairPhotoType {
+  BEFORE       // ก่อนซ่อม
+  AFTER        // หลังซ่อม
+}
+
 // ตารางหลักสำหรับการแจ้งซ่อม
 model RepairRequest {
-  id             String         @id @default(cuid())
-  title          String         // เรื่อง/รายการแจ้งซ่อม (เช่น เครื่องปรับอากาศไม่เย็น)
-  description    String         @db.Text // รายละเอียดปัญหา
-  location       String         // สถานที่ (อาคาร/ห้อง)
-  urgency        String         @default("NORMAL") // NORMAL (ปกติ), URGENT (ด่วน), URGENT_MOST (ด่วนที่สุด)
-  status         RepairStatus   @default(PENDING)
+  id             String          @id @default(cuid())
+  title          String          // เรื่อง/รายการแจ้งซ่อม (เช่น เครื่องปรับอากาศไม่เย็น)
+  description    String          @db.Text // รายละเอียดปัญหา
+  location       String          // สถานที่ (อาคาร/ห้อง)
+  urgency        RepairUrgency   @default(NORMAL)
+  status         RepairStatus    @default(PENDING)
   
   // ผู้แจ้งซ่อม
   requesterId    String
-  requester      User           @relation("RequestCreatedBy", fields: [requesterId], references: [id], onDelete: Cascade)
+  requester      User            @relation("RequestCreatedBy", fields: [requesterId], references: [id], onDelete: Cascade)
   
   // ผู้รับผิดชอบ (ช่าง/เจ้าหน้าที่)
   assigneeId     String?
-  assignee       User?          @relation("RequestAssignedTo", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assignee       User?           @relation("RequestAssignedTo", fields: [assigneeId], references: [id], onDelete: SetNull)
   
   // ข้อมูลการดำเนินการซ่อม
-  resolutionNote String?        @db.Text // รายละเอียดการแก้ไข
-  cost           Float?         @default(0.0) // ค่าใช้จ่าย (ถ้ามี)
-  materialsUsed  String?        @db.Text // วัสดุ/อุปกรณ์ที่ใช้
+  resolutionNote String?         @db.Text // รายละเอียดการแก้ไข
+  cost           Decimal?        @db.Decimal(10, 2) // ค่าใช้จ่ายเพื่อความแม่นยำทางการเงิน
+  materialsUsed  String?         @db.Text // วัสดุ/อุปกรณ์ที่ใช้
   
-  cancelReason   String?        @db.Text // เหตุผลที่ยกเลิกการแจ้งซ่อม
+  cancelReason   String?         @db.Text // เหตุผลที่ยกเลิกการแจ้งซ่อม
   
   // วันเวลาที่เกี่ยวข้อง
   assignedAt     DateTime?
   finishedAt     DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  archivedAt     DateTime?       // Soft Delete State ก่อนโอนย้ายเข้าจดหมายเหตุถาวร
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   // ความสัมพันธ์กับรูปภาพ
   photos         RepairPhoto[]
@@ -81,24 +108,24 @@ model RepairRequest {
 
 // ตารางเก็บภาพในรูปแบบ Binary (BYTEA)
 model RepairPhoto {
-  id             String         @id @default(cuid())
+  id             String          @id @default(cuid())
   repairId       String
-  photoType      String         // BEFORE (ก่อนซ่อม), AFTER (หลังซ่อม)
-  mimeType       String         // เช่น image/jpeg
-  imageData      Bytes          // ข้อมูลไบนารีรูปภาพ (BYTEA ใน PostgreSQL)
-  createdAt      DateTime       @default(now())
+  photoType      RepairPhotoType
+  mimeType       String          // เช่น image/jpeg
+  imageData      Bytes           // ข้อมูลไบนารีรูปภาพ (BYTEA ใน PostgreSQL)
+  createdAt      DateTime        @default(now())
 
-  repair         RepairRequest  @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  repair         RepairRequest   @relation(fields: [repairId], references: [id], onDelete: Cascade)
 
   @@index([repairId])
 }
 
 // ตารางจดหมายเหตุเก็บประวัติเก่าในรูปของ Json
 model RepairArchive {
-  id             String         @id @default(cuid())
-  archivedAt     DateTime       @default(now())
+  id             String          @id @default(cuid())
+  archivedAt     DateTime        @default(now())
   itemCount      Int
-  payload        Json           // ข้อมูลรายการแจ้งซ่อมทั้งหมดที่ถูกบีบอัดแบบ JSON
+  payload        Json            // ข้อมูลรายการแจ้งซ่อมทั้งหมดที่ถูกบีบอัดแบบ JSON
 }
 ```
 
@@ -118,9 +145,9 @@ model User {
 ### A. ไหล่ของข้อมูลภาพ (BYTEA Data Flow)
 1. **ฝั่งส่ง (Client -> Server)**:
    - ผู้ใช้อัปโหลดรูปภาพผ่านหน้าเว็บ เบราว์เซอร์ประมวลผลย่อและบีบอัดภาพด้วย Canvas
-   - ตรวจเช็คขนาดว่าขนาด Base64 Data URL ไม่เกินขีดจำกัด (คำนวณย้อนกลับแล้วต้องไม่เกิน 100 KB)
+   - ตรวจเช็คขนาดของภาพรวม (ต้องมีจำนวน $\le 5$ รูป และขนาด Base64 รวมแล้วคำนวณย้อนกลับไม่เกิน 500 KB)
    - ส่งสายอักขระ Base64 ไปยัง Server Action
-   - Server Action ถอดรหัสเป็น Buffer และเขียนลงฟิลด์ `imageData` ของ `RepairPhoto`
+   - Server Action ตรวจสอบความปลอดภัยฝั่งเซิร์ฟเวอร์ ถอดรหัสเป็น Buffer และเขียนลงฟิลด์ `imageData` ของ `RepairPhoto`
 2. **ฝั่งรับ (Server -> Client)**:
    - ในหน้ารายการหลัก (List View) จะไม่มีการดึงข้อมูล `photos` มาเลย
    - ในหน้าแสดงรายละเอียดของรายการเดียว (Detail View) Server Action จะอ่าน `imageData` (Buffer) และแปลงเป็น Base64 Data URL ส่งกลับไปเป็น JSON เพื่อแสดงผลบน `<img>`
@@ -149,7 +176,7 @@ const compressImage = (file, maxWidth = 800, quality = 0.7) => {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
 
-        // บีบอัดเป็น JPEG พร้อมระบุคุณภาพ
+        // บีบอัดเป็น JPEG พร้อมระบุคุณภาพ 0.7
         canvas.toBlob(
           (blob) => {
             if (blob.size > 100 * 1024) {
@@ -180,19 +207,29 @@ const compressImage = (file, maxWidth = 800, quality = 0.7) => {
 ## 4. โครงสร้างเส้นทางและ UI (Routes & UI Components)
 
 1. **เมนูข้าง (Sidebar)**:
-   - เพิ่มรายการ "ระบบแจ้งซ่อม" (Repair Request) ใต้กลุ่มเมนู "งานทั่วไป" ใน `src/app/(app)/layout.tsx` โดยแสดงผลหาก `enableRepair` เป็นจริง (หรือแอดมินเข้าถึงได้ตลอด)
+   - โหลดการตั้งค่า `enableRepair` และแสดงเมนู "ระบบแจ้งซ่อม" ใต้ "งานทั่วไป" ใน `src/app/(app)/layout.tsx` โดยอิงตามสิทธิ์ในการเข้าถึง `repair:view`
    - ใช้ไอคอน `Wrench`
 2. **หน้าจอหลักของระบบแจ้งซ่อม (`src/app/(app)/repair/page.tsx`)**:
-   - สรุปตัวเลขสถิติของสถานะต่างๆ (การ์ดสถิติแบบยกลอยตัว `.stat-card` ตามดีไซน์)
-   - รายการแจ้งซ่อมทั้งหมด (ตัวกรองสถานะ, ค้นหา)
-   - สำหรับแอดมิน: มีปุ่มมอบหมายงานเปิดหน้าต่างเลือกผู้รับผิดชอบ
-   - สำหรับบุคลากรทั่วไป: มีปุ่มสร้างใบแจ้งซ่อมใหม่
+   - สรุปตัวเลขสถิติของสถานะต่างๆ (PENDING, IN_PROGRESS, COMPLETED)
+   - ตารางแสดงรายการพร้อมระบบการกรองค้นหา โดยแสดงผลสิทธิ์และการกรองตามเงื่อนไข:
+     - แอดมิน: ดูและจัดการได้ทั้งหมด
+     - ช่าง: ดูงานที่ได้รับมอบหมายและรายงานของตนเองได้
+     - ครูทั่วไป: ดูเฉพาะรายการแจ้งซ่อมของตนเองได้
+   - ปุ่มกดแจ้งซ่อมใหม่ (อิงตามสิทธิ์ `repair:create`)
+   - ปุ่มเลือกผู้รับผิดชอบงานสำหรับแอดมิน (อิงตามสิทธิ์ `repair:assign`)
 3. **หน้าจอส่งแจ้งซ่อมใหม่ (`src/app/(app)/repair/new/page.tsx`)**:
-   - กรอกเรื่อง, รายละเอียด, สถานที่, และระดับความเร็วเร่งด่วน พร้อมแนบรูปภาพก่อนซ่อม
+   - ฟอร์มระบุชื่อเรื่อง, คำอธิบาย, สถานที่, และระดับความเร่งด่วน พร้อมการอัปโหลดและย่อภาพทันที
 4. **หน้าจอดำเนินการซ่อม (สำหรับช่าง/แอดมิน)**:
-   - ระบุรายละเอียดการซ่อมแซม, บันทึกวัสดุที่ใช้, แนบภาพหลังซ่อมเสร็จ, และค่าใช้จ่าย
+   - ส่วนบันทึกการทำงาน, ระบุค่าใช้จ่าย (Decimal), วัสดุอุปกรณ์ และภาพหลังซ่อม
 5. **หน้าตั้งค่า Archive (`src/app/(app)/settings/page.tsx`)**:
-   - แถบระบบแจ้งซ่อม: เพิ่มปุ่มสลับเปิด/ปิดระบบแจ้งซ่อม และส่วนจัดการการล้างข้อมูล Archive (อัตโนมัติ 180 วัน / กดยกเลิกและ Archive ทันที)
+   - เพิ่มปุ่มสลับเปิด/ปิดระบบแจ้งซ่อม `enableRepair`
+   - เพิ่มคอลัมน์การทำ Archive ซึ่งหุ้มด้วย Transaction:
+     1. ค้นหาใบแจ้งซ่อมที่ซ่อมเสร็จ/ยกเลิกที่ถึงเวลา (หรือกด Manual)
+     2. อัปเดตตารางหลักตั้งค่า `archivedAt = new Date()` (Soft Delete)
+     3. ดึงรายการเหล่านั้นมาจัดรูป JSON Payload
+     4. บันทึกข้อมูลเข้าตาราง `RepairArchive`
+     5. ลบตารางหลัก (`RepairRequest` และ `RepairPhoto`)
+     6. เขียน SystemLog บันทึกกิจกรรม `REPAIR_ARCHIVED`
 
 ---
 
@@ -200,13 +237,14 @@ const compressImage = (file, maxWidth = 800, quality = 0.7) => {
 
 1. **Database Migration**:
    - รันคำสั่งตรวจทานการเปลี่ยนแปลงตามขั้นตอนใน `MIGRATION_SAFETY.md`
-   - `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script` เพื่อตรวจสอบความปลอดภัยของ SQL
+   - `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script`
    - ทำคำสั่งสร้าง Migration: `npx prisma migrate dev --create-only --name add_repair_system`
    - ตรวจความถูกต้องของไฟล์ `.sql` แล้วจึงรัน `npx prisma migrate dev`
 2. **การทดสอบระบบ (Manual Testing)**:
-   - ทดสอบการย่อขนาดรูปภาพฝั่งไคลเอนต์และตรวจสอบขนาดจริงบนระบบก่อนอัปโหลด
-   - ทดสอบสิทธิ์การอัปเดตรายการเฉพาะแอดมินและช่างที่ได้รับมอบหมาย
-   - ทดสอบการทำ Archive ทั้งแบบกำหนดเวลาอิงจากประวัติต่างๆ และการเรียกย้ายประวัติเก่าทั้งหมดทันที
+   - ทดสอบจำกัดสิทธิ์ภาพอัปโหลดสูงสุด 5 รูป และขนาดไฟล์รวม < 500 KB
+   - ทดสอบการย่อภาพ Canvas บนมือถือและเดสก์ท็อปให้ไม่เกิน 100 KB ต่อรูป
+   - ทดสอบสิทธิ์การเข้าถึงข้อมูลและการอัปเดตงานตามระบบสิทธิ์ (Permissions Check)
+   - ทดสอบระบบจัดเก็บ Archive (ทั้งระบบ Auto 180 วัน และ Manual ปุ่มกด) และตรวจสอบว่าข้อมูลประวัติถูกย้ายอย่างถูกต้องและปลอดภัยแบบ atomic transaction
 
 ---
 *(กรุณาตรวจสอบเอกสารการออกแบบนี้ หากมีส่วนใดต้องการแก้ไขเพิ่มเติมแจ้งได้ทันที และเมื่อเห็นพ้องต้องกันแล้ว เราจะใช้คำสั่งเพื่อเข้าสู่แผนการเขียนแผนการทำงาน Implementation Plan ต่อไป)*
