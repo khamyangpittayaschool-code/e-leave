@@ -60,6 +60,10 @@ model User {
 
   templates        DocumentTemplate[]
 
+  requestsCreated  RepairRequest[] @relation("RequestCreatedBy")
+
+  requestsAssigned RepairRequest[] @relation("RequestAssignedTo")
+
 
 
   // Attendance & Face Scan Additions
@@ -288,6 +292,7 @@ model SystemSettings {
 
   enableAdvancedKPI    Boolean  @default(true)
   iappApiKey           String   @default("")
+  enableRepair         Boolean  @default(false)
 
 
 
@@ -328,6 +333,8 @@ model SystemLog {
   description String
 
   userId      String
+
+  metadata    Json?    // เก็บข้อมูลดิบในรูปโครงสร้าง JSON เพื่อระบบแดชบอร์ดสรุปผลวิเคราะห์
 
   createdAt   DateTime @default(now())
 
@@ -908,6 +915,142 @@ model AMSSCredentials {
   updatedAt   DateTime  @updatedAt
 
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum RepairStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RepairUrgency {
+  NORMAL
+  URGENT
+  URGENT_MOST
+}
+
+enum RepairPhotoType {
+  BEFORE
+  AFTER
+}
+
+enum RepairCategory {
+  ELECTRICAL
+  PLUMBING
+  BUILDING
+  IT
+  EQUIPMENT
+  OTHER
+}
+
+enum SLAStatus {
+  ON_TIME
+  WARNING
+  OVERDUE
+}
+
+model RunningNumber {
+  key     String @id
+  year    Int
+  current Int
+}
+
+model RepairRequest {
+  id             String          @id @default(cuid())
+  repairNo       String          @unique
+  title          String
+  description    String          @db.Text
+  location       String
+  urgency        RepairUrgency   @default(NORMAL)
+  category       RepairCategory  @default(OTHER)
+  status         RepairStatus    @default(PENDING)
+  version        Int             @default(1)
+  requesterId    String
+  requester      User            @relation("RequestCreatedBy", fields: [requesterId], references: [id], onDelete: Cascade)
+  assigneeId     String?
+  assignee       User?           @relation("RequestAssignedTo", fields: [assigneeId], references: [id], onDelete: SetNull)
+  resolutionNote String?         @db.Text
+  cost           Decimal?        @db.Decimal(10, 2)
+  materialsUsed  String?         @db.Text
+  cancelReason   String?         @db.Text
+  expectedFinishAt DateTime?
+  actualFinishAt   DateTime?
+  slaStatus      SLAStatus?
+  assignedAt     DateTime?
+  finishedAt     DateTime?
+  deletedAt      DateTime?
+  deletedBy      String?
+  deleteReason   String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  photos         RepairPhoto[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([status, updatedAt])
+  @@index([assigneeId, status])
+  @@index([requesterId, status])
+  @@index([updatedAt])
+  @@index([id, version])
+}
+
+model RepairPhoto {
+  id         String          @id @default(cuid())
+  repairId   String
+  photoType  RepairPhotoType
+  mimeType   String
+  fileSize   Int
+  storageKey String
+  createdAt  DateTime        @default(now())
+  
+  repair     RepairRequest   @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([repairId])
+  @@index([repairId, photoType])
+}
+
+model RepairRequestArchive {
+  id             String          @id
+  repairNo       String          @unique
+  title          String
+  description    String          @db.Text
+  location       String
+  urgency        RepairUrgency
+  category       RepairCategory
+  status         RepairStatus
+  version        Int
+  requesterId    String
+  assigneeId     String?
+  resolutionNote String?         @db.Text
+  cost           Decimal?        @db.Decimal(10, 2)
+  materialsUsed  String?         @db.Text
+  cancelReason   String?         @db.Text
+  expectedFinishAt DateTime?
+  actualFinishAt   DateTime?
+  slaStatus      SLAStatus?
+  assignedAt     DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime
+  updatedAt      DateTime
+  archivedAt     DateTime        @default(now())
+  photos         RepairPhotoArchive[]
+}
+
+model RepairPhotoArchive {
+  id         String               @id
+  repairId   String
+  photoType  RepairPhotoType
+  mimeType   String
+  fileSize   Int
+  storageKey String
+  createdAt  DateTime
+  archivedAt DateTime             @default(now())
+  
+  repair     RepairRequestArchive @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([repairId])
+  @@index([storageKey])
 }
 
 
