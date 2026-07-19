@@ -1,4 +1,4 @@
-# ระบบแจ้งซ่อม (Repair Request System) — Design Specification v5.1 (Master Architecture Blueprint)
+# ระบบแจ้งซ่อม (Repair Request System) — Design Specification v5.2 (Master Architecture Blueprint)
 
 เอกสารนี้กำหนดการออกแบบและโครงสร้างของ **ระบบแจ้งซ่อม** ซึ่งเป็นระบบย่อยเพิ่มเติมในกลุ่มงานทั่วไป (ต่อจากระบบเอกสาร) สำหรับระบบ **eLeave & School OS** โดยมุ่งเน้นความเป็นระเบียบ ความปลอดภัย และความคุ้มค่าของพื้นที่เก็บข้อมูล (Zero Dependency + Database-backed BYTEA Storage + Archiving)
 
@@ -29,7 +29,6 @@
 ### B. การจัดส่งรูปภาพประสิทธิภาพสูง (API Secure Streaming)
 จัดทำเส้นทาง API ใน [src/app/api/repair/photo/[photoId]/route.ts](file:///C:/dev/eLeave/src/app/api/repair/photo/%5BphotoId%5D/route.ts) เพื่อดึงข้อมูลรูปภาพแบบ Binary Stream ด้วยความปลอดภัยสูง:
 - ตรวจสอบเซสชันผู้ใช้งานและสิทธิ์ หากไม่มีสิทธิ์ `repair:view.all` และไม่ได้เป็นเจ้าของใบงาน (Requester / Assignee) จะส่งกลับ 403 Forbidden
-- ในกรณีรูปของใบงานเก่าที่ถูกลบและย้ายเข้าคลังประวัติศาสตร์แล้ว (`photo.repair` เป็น null) จะอนุญาตให้เฉพาะผู้มีสิทธิ์ `repair:view.all` เข้าดูเท่านั้น
 - ตั้งแคชระยะยาว 1 ปีด้วยความมั่นใจ `"Cache-Control": "public, max-age=31536000, immutable"` เนื่องจากระบบฝั่ง UI จะใช้โครงสร้าง URL Versioning (`?v={timestamp}`) ในการล้างแคชตามเวลาการสร้างรูปภาพจริง
 
 ---
@@ -53,6 +52,12 @@ enum RepairUrgency {
   URGENT_MOST
 }
 
+enum RepairPhotoType {
+  BEFORE
+  AFTER
+}
+
+// ตารางหลักสำหรับการแจ้งซ่อม
 model RepairRequest {
   id             String          @id @default(cuid())
   title          String
@@ -81,22 +86,21 @@ model RepairRequest {
   @@index([requesterId, status])
 }
 
+// ตารางเก็บภาพในรูปแบบ Binary (BYTEA)
 model RepairPhoto {
   id        String          @id @default(cuid())
-  repairId  String?         // Nullable: เพื่อให้รูปคงอยู่เมื่อลบใบงานหลักเพื่อ Archive
-  archiveId String?         // Nullable: ชี้หาตารางคลังเมื่อใบงานถูก Archive
-  photoType String          // "BEFORE" | "AFTER"
+  repairId  String          // Non-nullable: ป้องกันปัญหารูปภาพกำพร้า (Orphan Photo)
+  photoType RepairPhotoType // กำหนดเป็น Enum ป้องกันการพิมพ์ผิด
   mimeType  String          // e.g., "image/jpeg"
   imageData Bytes           // เก็บ Raw Binary (BYTEA) ขนาดคอมเพรสแล้ว <100KB
   createdAt DateTime        @default(now())
   
-  repair    RepairRequest?  @relation(fields: [repairId], references: [id], onDelete: SetNull)
-  archive   RepairArchive?  @relation(fields: [archiveId], references: [id], onDelete: Cascade)
+  repair    RepairRequest   @relation(fields: [repairId], references: [id], onDelete: Cascade)
 
   @@index([repairId])
-  @@index([archiveId])
 }
 
+// ตารางจดหมายเหตุเก็บประวัติเก่าในรูปของ Json (ไม่เก็บรูปภาพเพื่อรักษาขนาดพื้นที่เก็บข้อมูล)
 model RepairArchive {
   id             String        @id @default(cuid())
   archivedAt     DateTime      @default(now())
@@ -105,7 +109,6 @@ model RepairArchive {
   cancelledCount Int
   totalCost      Decimal?      @db.Decimal(12, 2)
   payload        Json          // Native JSONB เก็บเนื้อหาใบแจ้งซ่อมดิบ ค้นหาสะดวก
-  photos         RepairPhoto[] // ความสัมพันธ์กลับมาหาภาพเก่าที่สลับมาเกาะที่นี่
 }
 ```
 
@@ -125,11 +128,10 @@ model User {
 ประวัติการแจ้งซ่อมที่ได้รับการซ่อมเสร็จสิ้น (`COMPLETED`) หรือยกเลิก (`CANCELLED`) ที่มีอายุอัปเดตย้อนหลังมากกว่า **180 วัน** จะถูกกวาดและโอนเข้าตารางประวัติศาสตร์ทีละ **200 เรคคอร์ด (Chunk Size = 200)** ภายใต้กระบวนการของไฟล์ [src/app/actions/archive.ts](file:///C:/dev/eLeave/src/app/actions/archive.ts):
 
 1. **Transaction Isolation**: การรันกระบวนการย้ายข้อมูลทั้งหมดจะอยู่ภายใต้ `prisma.$transaction` เพื่อให้แน่ใจว่าหากมีข้อผิดพลาดข้อมูลจะไม่ตกหล่นหรือหายไป
-2. **สลับสายรูปภาพ (Atomic Re-linking)**: 
-   - ระบบจะ **ไม่ทำซ้ำภาพ** หรือคัดลอกไฟล์รูปภาพใหม่
-   - ใช้การปรับปรุงค่าคีย์อ้างอิง `updateMany` เพื่อสั่งให้ `RepairPhoto` ปลดจากการเชื่อมกับ `repairId` ปัจจุบัน (set `repairId = null`) และเปลี่ยนไปจับกับ `archiveId` ของคลังจดหมายเหตุชุดประวัติศาสตร์โดยตรง
-3. **Hard Delete**: เมื่อสลับสายรูปภาพเรียบร้อยแล้ว ใบงานหลักในตาราง `RepairRequest` จะถูกลบทิ้งถาวรจากตารางทำงานประจำวัน
-4. **Audit Logs**: มีระบบบันทึกความปลอดภัยของประวัติผ่าน `SystemLog` ทุกครั้งที่มีการเคลื่อนไหวของสถานะใบงานซ่อมแซม
+2. **การล้างรูปภาพ (Metadata-Only Archiving)**: 
+   - ระบบจะแปลงข้อมูลเฉพาะเนื้อหาของใบแจ้งซ่อมหลักรวมถึงรายละเอียดผลการดำเนินการซ่อมและค่าใช้จ่ายเก็บเข้าฟิลด์ `payload` ในรูป JSON
+   - การลบเรคคอร์ด `RepairRequest` ด้วยคำสั่ง delete จะทำให้รูปภาพที่เกี่ยวข้องทั้งหมดในตาราง `RepairPhoto` ถูกลบออกถาวรโดยอัตโนมัติผ่านข้อกำหนด `onDelete: Cascade` ทำให้ขนาดพื้นที่เก็บข้อมูลของระบบเป็นสัดส่วนที่ต่ำมาก
+3. **Audit Logs**: มีระบบบันทึกความปลอดภัยของประวัติผ่าน `SystemLog` ทุกครั้งที่มีการล้างประวัติงานแจ้งซ่อมแซมสำเร็จในกิจกรรม `REPAIR_ARCHIVED`
 
 ---
-*(เอกสารการออกแบบฉบับสมบูรณ์ v5.1 ได้รับการปรับปรุงเพื่อเป็นพิมพ์เขียวการโค้ดเรียบร้อย)*
+*(เอกสารการออกแบบฉบับสมบูรณ์ v5.2 ได้รับการปรับปรุงเพื่อเป็นพิมพ์เขียวการโค้ดเรียบร้อย)*

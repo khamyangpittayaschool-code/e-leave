@@ -1,13 +1,13 @@
-# ระบบแจ้งซ่อม (Repair Request System) Implementation Plan v5.1
+# ระบบแจ้งซ่อม (Repair Request System) Implementation Plan v5.2
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** สร้างระบบแจ้งซ่อมสำหรับโรงเรียนแบบประสิทธิภาพสูง ตามพิมพ์เขียว Master Architecture Blueprint v5.1 โดยรองรับการบันทึกภาพแบบ Binary (BYTEA) จำกัดจำนวน BEFORE 2 รูป และ AFTER 2 รูป ย่อยรูปบน Canvas ฝั่งไคลเอนต์ ควบคุมสิทธิ์ด้วย Capability Permissions และมีระบบจดหมายเหตุย้ายความสัมพันธ์รูปภาพด้วยความปลอดภัยผ่าน Transaction
+**Goal:** สร้างระบบแจ้งซ่อมสำหรับโรงเรียนแบบประสิทธิภาพสูง ตามพิมพ์เขียว Master Architecture Blueprint v5.2 โดยรองรับการบันทึกภาพแบบ Binary (BYTEA) จำกัดจำนวน BEFORE 2 รูป และ AFTER 2 รูป ย่อยรูปบน Canvas ฝั่งไคลเอนต์ ควบคุมสิทธิ์ด้วย Capability Permissions และมีระบบจดหมายเหตุย้ายความสัมพันธ์รูปภาพด้วยความปลอดภัยผ่าน Transaction
 
 **Architecture:** 
-- ตาราง `RepairRequest`, `RepairPhoto` และ `RepairArchive`
+- ตาราง `RepairRequest`, `RepairPhoto` (ไม่มีการเกาะ archiveId, non-nullable repairId เพื่อป้องรูปกำพร้า) และ `RepairArchive`
 - API Stream รูปภาพและแคชถาวร 1 ปี พร้อมระบบดักสิทธิ์เข้าถึง และแคชบัสเตอร์ `?v={createdAt}`
-- Server Action สำหรับย้ายข้อมูลเก่า (>180 วัน) ผ่าน Prisma Transaction และสลับสายความสัมพันธ์รูปภาพ
+- Server Action สำหรับย้ายข้อมูลเก่า (>180 วัน) ผ่าน Prisma Transaction สรุปข้อมูลลง JSON payload และลบภาพออกโดย CASCADE
 - สิทธิ์การทำงานอิงตาม Permissions: `repair:view.own`, `repair:view.all`, `repair:create`, `repair:assign`, `repair:update`, `repair:archive`
 
 **Tech Stack:** Next.js (App Router), Prisma, PostgreSQL (BYTEA), Framer Motion, Tailwind CSS, Lucide React
@@ -32,7 +32,7 @@
 - Create: Migration files via Prisma CLI
 
 **Interfaces:**
-- Produces: `RepairStatus`, `RepairUrgency` enums, `RepairRequest`, `RepairPhoto`, and `RepairArchive` models.
+- Produces: `RepairStatus`, `RepairUrgency`, `RepairPhotoType` enums, `RepairRequest`, `RepairPhoto`, and `RepairArchive` models.
 
 - [ ] **Step 1: Edit `schema.prisma`**
   - เพิ่มฟิลด์ `enableRepair Boolean @default(false)` ในตาราง `SystemSettings`
@@ -41,7 +41,7 @@
     requestsCreated  RepairRequest[] @relation("RequestCreatedBy")
     requestsAssigned RepairRequest[] @relation("RequestAssignedTo")
     ```
-  - เพิ่มโมเดลและโครงสร้างตารางแจ้งซ่อมตามสเปก v5.1:
+  - เพิ่มโมเดลและโครงสร้างตารางแจ้งซ่อมตามสเปก v5.2:
     ```prisma
     enum RepairStatus {
       PENDING
@@ -55,6 +55,11 @@
       NORMAL
       URGENT
       URGENT_MOST
+    }
+
+    enum RepairPhotoType {
+      BEFORE
+      AFTER
     }
 
     model RepairRequest {
@@ -86,18 +91,15 @@
 
     model RepairPhoto {
       id        String          @id @default(cuid())
-      repairId  String?
-      archiveId String?
-      photoType String
+      repairId  String
+      photoType RepairPhotoType
       mimeType  String
       imageData Bytes
       createdAt DateTime        @default(now())
       
-      repair    RepairRequest?  @relation(fields: [repairId], references: [id], onDelete: SetNull)
-      archive   RepairArchive?  @relation(fields: [archiveId], references: [id], onDelete: Cascade)
+      repair    RepairRequest   @relation(fields: [repairId], references: [id], onDelete: Cascade)
 
       @@index([repairId])
-      @@index([archiveId])
     }
 
     model RepairArchive {
@@ -108,7 +110,6 @@
       cancelledCount Int
       totalCost      Decimal?      @db.Decimal(12, 2)
       payload        Json
-      photos         RepairPhoto[]
     }
     ```
 
@@ -126,7 +127,7 @@
 
 - [ ] **Step 5: Commit changes**
   - Run: `git add prisma/schema.prisma prisma/migrations/`
-  - Run: `git commit -m "db: add tables for Repair engine v5.1"`
+  - Run: `git commit -m "db: add tables for Repair engine v5.2"`
 
 ---
 
@@ -142,7 +143,7 @@
 - Produces: `hasPermission` helper, photo stream GET endpoint, and Server Actions for RepairRequest
 
 - [ ] **Step 1: Write `src/lib/permissions.ts`**
-  - เขียนออบเจกต์และฟังก์ชันตรวจสอบสิทธิ์ `hasPermission` ตามพิมพ์เขียว v5.1
+  - เขียนออบเจกต์และฟังก์ชันตรวจสอบสิทธิ์ `hasPermission` ตามพิมพ์เขียว v5.2
 
 - [ ] **Step 2: Create Photo Streaming API Route**
   - เขียนโค้ดใน `src/app/api/repair/photo/[photoId]/route.ts` เพื่อส่งภาพกลับเป็น Binary Response
@@ -170,13 +171,12 @@
 - [ ] **Step 1: Implement `archiveRepairsJob`**
   - ใช้สิทธิ์ตรวจสอบ `repair:archive`
   - อ่านใบแจ้งซ่อมที่ซ่อมเสร็จ/ยกเลิก และอายุ > 180 วัน ครั้งละ 200 รายการ
-  - เขียนการจัดส่งข้อมูลใน `prisma.$transaction` เพื่อสร้าง `RepairArchive`
-  - สลับคีย์ความสัมพันธ์รูปภาพ ย้ายมาเกาะ `archiveId` และล้างคีย์ `repairId`
-  - ทำลายใบแจ้งซ่อมหลักใน `RepairRequest` และบันทึก Log ลง `SystemLog`
+  - เขียนการจัดส่งข้อมูลใน `prisma.$transaction` เพื่อสร้าง `RepairArchive` (เก็บเฉพาะ Metadata/Payload ไม่มีรูปภาพ)
+  - ทำลายใบแจ้งซ่อมหลักใน `RepairRequest` (ซึ่งจะ Cascade Delete รูปภาพที่เกี่ยวข้องออกไปโดยอัตโนมัติ) และบันทึก Log ลง `SystemLog`
 
 - [ ] **Step 2: Commit changes**
   - Run: `git add src/app/actions/archive.ts`
-  - Run: `git commit -m "feat: implement transaction-safe ETL Archiver job"`
+  - Run: `git commit -m "feat: implement transaction-safe ETL Archiver job with cascade photo deletion"`
 
 ---
 
@@ -226,5 +226,5 @@
    - ทดสอบเข้าดู URL `/api/repair/photo/[id]` ของผู้ใช้อื่นที่ไม่ใช่เจ้าของงานและไม่มีสิทธิ์ `repair:view.all` ต้องถูกส่งกลับเป็น 403
    - ตรวจดู Cache-Control headers ของภาพถ่ายในเครือข่ายเบราว์เซอร์
 3. **ETL Archive**:
-   - กดปุ่ม "Archive Now" และตรวจสอบในฐานข้อมูลว่าเรคคอร์ดในตาราง `RepairPhoto` เปลี่ยนมาจับกับ `archiveId` และลบเรคคอร์ด `RepairRequest` ทิ้งสำเร็จอย่างถูกต้อง
+   - กดปุ่ม "Archive Now" และตรวจสอบในฐานข้อมูลว่าเรคคอร์ดในตาราง `RepairPhoto` ถูกลบออกถาวร และลบเรคคอร์ด `RepairRequest` ทิ้งสำเร็จอย่างถูกต้อง
    - ตรวจดูบันทึก SystemLog
