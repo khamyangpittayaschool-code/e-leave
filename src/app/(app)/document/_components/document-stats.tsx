@@ -83,37 +83,32 @@ export default function DocumentStats({
             key={c.title}
             whileHover={{ y: -4 }}
             onClick={() => onCardClick(c.key)}
-            className={`cursor-pointer rounded-2xl p-5 border bg-white dark:bg-slate-900 transition-all flex justify-between items-center relative overflow-hidden group shadow-sm ${
+            className={`cursor-pointer rounded-2xl p-5 border bg-white dark:bg-slate-900 transition-all flex items-center gap-4 relative overflow-hidden group shadow-sm ${
               isActive
                 ? `${c.activeBorder} ring-2 ${c.ringColor}`
                 : "border-slate-100 dark:border-slate-800/80 hover:border-slate-300"
             }`}
           >
-            <div className={`absolute inset-0 bg-gradient-to-br ${c.gradient} opacity-40 group-hover:opacity-60 transition-opacity`} />
+            <div className={`absolute inset-0 bg-gradient-to-br ${c.gradient} opacity-20 group-hover:opacity-30 transition-opacity`} />
             
-            <div className="relative z-10 space-y-1.5">
-              <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold block">{c.title}</span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-slate-950 dark:text-white leading-none">{c.count}</span>
-                <span className="text-[11px] text-slate-500 font-medium">รายการ</span>
-              </div>
-              
-              <div className="flex items-center gap-1 mt-2">
-                {c.warning ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                    <AlertCircle className="w-2.5 h-2.5" />
-                    {c.desc}
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">
-                    {c.desc}
-                  </span>
-                )}
-              </div>
+            {/* Left side: Icon Container */}
+            <div className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${c.iconBg}`}>
+              <Icon className="w-5 h-5" />
             </div>
 
-            <div className={`relative z-10 w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${c.iconBg}`}>
-              <Icon className="w-6 h-6" />
+            {/* Right side: Text details */}
+            <div className="relative z-10 flex flex-col justify-center space-y-1">
+              <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold block">
+                {c.title}
+              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">
+                  {c.count}
+                </span>
+                <span className="text-xs text-slate-500 font-medium">
+                  {c.key === "inbound" || c.key === "outbound" || c.key === "command" ? "ฉบับ" : "รายการ"}
+                </span>
+              </div>
             </div>
           </motion.div>
         );

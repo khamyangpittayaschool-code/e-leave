@@ -527,3 +527,48 @@ export async function getDocumentActivities(): Promise<ActionResponse> {
     return handleActionError(err, "getDocumentActivities");
   }
 }
+
+export async function getDocumentTrendStats(): Promise<ActionResponse> {
+  try {
+    const currentYear = new Date().getFullYear();
+    const docs = await prisma.documentRecord.findMany({
+      where: {
+        createdAt: {
+          gte: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+          lte: new Date(`${currentYear}-12-31T23:59:59.999Z`)
+        }
+      },
+      select: {
+        docType: true,
+        createdAt: true
+      }
+    });
+
+    const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    
+    const monthlyStats = thaiMonths.map((m) => ({
+      month: m,
+      memo: 0,
+      outgoing: 0,
+      command: 0
+    }));
+
+    docs.forEach((doc) => {
+      const monthIndex = doc.createdAt.getMonth();
+      if (monthIndex >= 0 && monthIndex < 12) {
+        const type = doc.docType;
+        if (type === "MEMO") {
+          monthlyStats[monthIndex].memo++;
+        } else if (type === "OUTGOING" || type === "OUTGOING_NORMAL" || type === "OUTGOING_CIRCULAR") {
+          monthlyStats[monthIndex].outgoing++;
+        } else if (type === "COMMAND" || type === "ANNOUNCEMENT") {
+          monthlyStats[monthIndex].command++;
+        }
+      }
+    });
+
+    return { success: true, data: monthlyStats };
+  } catch (err: any) {
+    return handleActionError(err, "getDocumentTrendStats");
+  }
+}
