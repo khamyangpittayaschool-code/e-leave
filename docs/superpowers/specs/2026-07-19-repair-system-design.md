@@ -1,44 +1,67 @@
-# ระบบแจ้งซ่อม (Repair Request System) — Design Specification v6.0 (Master Architecture Blueprint)
+# ระบบแจ้งซ่อม (Repair Request System) — Design Specification v7.0 (Production-Scale Blueprint)
 
-เอกสารนี้กำหนดการออกแบบและโครงสร้างของ **ระบบแจ้งซ่อม** ซึ่งเป็นระบบย่อยเพิ่มเติมในกลุ่มงานทั่วไป (ต่อจากระบบเอกสาร) สำหรับระบบ **eLeave & School OS** โดยมุ่งเน้นความเป็นระเบียบ ความปลอดภัย และความคุ้มค่าของพื้นที่เก็บข้อมูล (Zero Dependency + Database-backed BYTEA Storage + Archiving)
+เอกสารนี้กำหนดสถาปัตยกรรมระดับองค์กร (Production-Scale Enterprise Architecture) ของ **ระบบแจ้งซ่อม** ซึ่งเป็นระบบย่อยเพิ่มเติมในกลุ่มงานทั่วไปสำหรับระบบ **eLeave & School OS** เพื่อรองรับการทำงานในระยะยาว (5-10 ปี) โดยไม่มีปัญหาฐานข้อมูลบวม ทำการแบ็คอัพง่าย ป้องกันปัญหาสิทธิ์เข้าถึงข้อมูลด้านงบประมาณการเงิน และโครงสร้างที่ลดความผูกมัดทางเทคโนโลยี (Decoupled Layer Architecture)
 
 ---
 
-## 1. โครงสร้างสิทธิ์การเข้าใช้งาน (Centralized Permission Matrix)
+## 1. โครงสร้างสิทธิ์การเข้าใช้งานแบบขยาย (Expanded Centralized Permission Matrix)
 
-ระบบควบคุมสิทธิ์จะย้ายจากการเช็คบทบาทแบบ Hardcode ไปใช้แบบ Capability-Based Permission Matrix แทน ซึ่งจะถูกจัดเก็บในไฟล์ [src/lib/permissions.ts](file:///C:/dev/eLeave/src/lib/permissions.ts) มีรายละเอียดดังนี้ (จะไม่มีสิทธิ์ชื่อ `repair:view` เพื่อลดความซ้ำซ้อน):
+เพื่อจำกัดการมองเห็นข้อมูลค่าใช้จ่ายและงบประมาณการซ่อมซึ่งมีความละเอียดอ่อน รวมทั้งการรองรับการนำออกและการลบอย่างปลอดภัย ระบบจะใช้สิทธิ์การใช้งานดังนี้ (จัดเก็บในไฟล์ `src/lib/permissions.ts`):
 
 - `repair:create`: สิทธิ์ในการส่งใบแจ้งซ่อมใหม่ (สำหรับครูและแอดมิน)
-- `repair:view.own`: สิทธิ์ดูรายการแจ้งซ่อมและรายงานประวัติที่ตนเองเป็นผู้สร้าง (สำหรับครูและแอดมิน)
-- `repair:view.all`: สิทธิ์ดูรายการแจ้งซ่อมทั้งหมดในระบบโรงเรียน (สำหรับช่างและแอดมิน)
+- `repair:view.own`: สิทธิ์ดูรายการแจ้งซ่อมย้อนหลังที่ตนเองสร้าง (สำหรับครูและแอดมิน)
+- `repair:view.all`: สิทธิ์ดูรายการแจ้งซ่อมทั้งหมดในระบบ (สำหรับช่างและแอดมิน)
+- `repair:view.cost`: สิทธิ์ดูรายละเอียดค่าใช้จ่ายและงบประมาณวัสดุการเงิน (จำกัดสำหรับแอดมินเท่านั้น ครูและช่างทั่วไปไม่เห็นข้อมูลค่าใช้จ่ายนี้)
 - `repair:assign`: สิทธิ์ในการมอบหมายงานให้ช่างผู้รับผิดชอบ (สำหรับแอดมิน)
 - `repair:update`: สิทธิ์อัปเดตสถานะการทำงาน บันทึกวัสดุ และบันทึกรูปภาพงานหลังดำเนินการซ่อม (สำหรับช่างผู้รับผิดชอบและแอดมิน)
+- `repair:export`: สิทธิ์ในการส่งออกรายงาน Excel/PDF สรุปผลงานซ่อมและค่าใช้จ่าย (สำหรับแอดมินเท่านั้น)
+- `repair:delete`: สิทธิ์ในการทำ Soft Delete รายการแจ้งซ่อมที่มีปัญหา (สำหรับแอดมินเท่านั้น)
 - `repair:archive`: สิทธิ์ล้างข้อมูลเก่าและทำระบบจดหมายเหตุย้ายข้อมูลประวัติศาสตร์ (สำหรับแอดมินเท่านั้น)
 
 ---
 
-## 2. รูปภาพประวัติการซ่อมและการจัดเก็บ (Photo Constraints & Storage)
+## 2. โครงสร้างสถาปัตยกรรมรูปภาพและการจัดเก็บ (Decoupled Storage Architecture)
 
-### A. ขีดจำกัดและการประมวลผลรูปภาพ
-- **ปริมาณความจุสูงสุด**: จำกัดให้แนบรูปภาพก่อนซ่อม (BEFORE) ได้สูงสุด **2 รูป** และรูปภาพหลังซ่อม (AFTER) ได้สูงสุด **2 รูป** รวมทั้งหมดไม่เกิน **4 รูปต่อหนึ่งรายการใบงาน**
-- **การย่อภาพและบีบอัดไร้รอยต่อ (Client Compression)**:
-  - **ไม่จำกัดขนาดไฟล์รูปต้นฉบับ**: อนุญาตให้ผู้ใช้เลือกภาพขนาดเต็ม (3-15 MB) จากมือถือได้โดยตรง
-  - **Auto Resize & Auto Recompress**: ไคลเอนต์จะประมวลผลผ่าน HTML5 Canvas ย่อให้ด้านยาวสุดของภาพไม่เกิน **800px** บีบอัดเป็น **JPEG (Quality = 0.7)** และหากขนาดรูปยังคงเกิน **100 KB** จะทำการลดคุณภาพความละเอียดลงมาที่ 0.5 อัตโนมัติ เพื่อการันตีปลายทางขนาดรูป $\le 100\text{ KB}$ เสมอก่อนส่งไปยัง Server Action
-- **สถาปัตยกรรมการจัดเก็บ**: บันทึกรูปภาพในรูปแบบ Raw Binary (`Bytes` หรือ `BYTEA` ในฐานข้อมูล PostgreSQL) เพื่อหลีกเลี่ยง Overhead (+33%) ของ Base64
+ย้ายจากการเก็บรูปภาพแบบ Raw Binary (BYTEA) ใน PostgreSQL ไปใช้การเก็บแบบอ้างอิงตำแหน่งบน Object Storage (เช่น Neon Storage หรือ S3-compatible service) หรือ Local Disk Storage ในกรณีทดสอบ/รันบนเครื่องเซิร์ฟเวอร์โรงเรียนโดยตรง:
 
-### B. การจัดส่งรูปภาพประสิทธิภาพสูง (API Secure Streaming with ETag)
-จัดทำเส้นทาง API ใน [src/app/api/repair/photo/[photoId]/route.ts](file:///C:/dev/eLeave/src/app/api/repair/photo/%5BphotoId%5D/route.ts) เพื่อดึงข้อมูลรูปภาพแบบ Binary Stream ด้วยความปลอดภัยสูง:
-- ตรวจสอบเซสชันผู้ใช้งานและสิทธิ์ หากไม่มีสิทธิ์ `repair:view.all` และไม่ได้เป็นเจ้าของใบงาน (Requester / Assignee) จะส่งกลับ 403 Forbidden
-- **ETag & Cache Integration**:
-  - คำนวณค่า ETag จาก ID และเวลาสร้าง: `const etag = `W/"${photo.id}-${photo.createdAt.getTime()}"``
-  - หากพบ Header `If-None-Match` ตรงกับ ETag ดังกล่าว ให้ตอบกลับด้วย **`304 Not Modified`** ทันทีโดยไม่ต้องประมวลผลหรือดาวน์โหลดข้อมูลภาพเพื่อประหยัดแบนด์วิดท์อย่างคุ้มค่าสูงสุด
-  - ตั้งแคชระยะกลาง 7 วัน `"Cache-Control": "public, max-age=604800, immutable"`
+- **ขีดจำกัดรูปภาพ**: แนบรูปก่อนซ่อม (BEFORE) ได้สูงสุด **2 รูป** และหลังซ่อม (AFTER) ได้สูงสุด **2 รูป** (รวมสูงสุด 4 รูปต่อใบงาน)
+- **การบีบอัดรูปภาพ (Image Policy)**: 
+  - ขนาดความกว้างสูงสุด 800px บีบอัดด้วย JPEG (Quality = 0.7)
+  - ขนาดเป้าหมายหลังบีบอัด **100 KB - 300 KB** (เพื่อให้รูปภาพมีความละเอียดและรายละเอียดความคมชัดเพียงพอที่จะดูร่องรอยการซ่อมจริงได้ แทนการบีบเค้นจนเบลอ)
+  - เก็บรูปภาพต้นฉบับเฉพาะกรณีจำเป็น (ขึ้นอยู่กับคอนฟิกูเรชัน)
+- **ฟิลด์ข้อมูลตารางรูปภาพ**:
+  - `storageKey`: รหัสคีย์เฉพาะสำหรับการดึงไฟล์จาก Storage Bucket (เช่น `repairs/cuid-before-1.jpg`)
+  - `url`: ลิงก์สาธารณะหรือ Endpoint สำหรับแสดงผลรูปภาพผ่านเบราว์เซอร์
+  - `mimeType`: ประเภทคอนเทนต์ของไฟล์ภาพ เช่น `image/jpeg`
+  - `fileSize`: ขนาดจริงของไฟล์รูปในระบบเพื่อความสะดวกในการวิเคราะห์ดิสก์และมอนิเตอร์
 
 ---
 
-## 3. โครงสร้างฐานข้อมูล (Database Schema)
+## 3. สถาปัตยกรรมการแยกเลเยอร์ (Decoupled Layer Architecture)
 
-โมเดลสำหรับโมดูลแจ้งซ่อมใน [schema.prisma](file:///C:/dev/eLeave/prisma/schema.prisma):
+เพื่อลดความหนาแน่นและความหนาแน่นของ Server Actions และช่วยให้การแก้ไขทดสอบโค้ดทำได้ง่าย (Maintainability) โค้ดจะถูกแบ่งออกเป็น 3 ชั้นหลัก:
+
+### A. Repositories Layer (`src/repositories/`)
+- เป็นชั้นเดียวที่เรียกใช้งาน `prisma` โดยตรงเพื่อเข้าถึงและเขียนข้อมูลตารางฐานข้อมูลแจ้งซ่อม
+- ตัวอย่างไฟล์: `repair.repository.ts`
+
+### B. Services Layer (`src/services/`)
+- ทำหน้าที่จัดการ Business Logic, การคำนวณข้อมูล, สิทธิ์, Validation, ระบบความปลอดภัย และการบันทึก Audit Logs
+- ตัวอย่างไฟล์:
+  - `repair.service.ts`: ควบคุมการทำงาน CRUD และสถานะงานซ่อม
+  - `photo.service.ts`: ควบคุมการอัปโหลดไฟล์ภาพ การสร้าง storageKey และลบไฟล์บน Storage (Neon/S3/Disk)
+  - `archive.service.ts`: ทำงาน ETL ย้ายข้อมูลเก่าเข้าตารางคลังประวัติศาสตร์
+  - `audit.service.ts`: ควบคุมความสอดคล้องและการบันทึก Log กิจกรรมระบบแจ้งซ่อม
+
+### C. Actions Layer (`src/app/actions/repair/`)
+- เป็นตัวกลางรับคำขอจาก Client Components เช็คสิทธิ์เบื้องต้น และเรียกใช้บริการจากเลเยอร์ Services
+- ตัวอย่างไฟล์: `create.ts`, `update.ts`, `assign.ts`, `archive.ts`
+
+---
+
+## 4. โครงสร้างฐานข้อมูลอัปเกรด (Database Schema v7.0)
+
+โมเดลสำหรับโมดูลแจ้งซ่อมเพิ่มเติมใน [schema.prisma](file:///C:/dev/eLeave/prisma/schema.prisma):
 
 ```prisma
 enum RepairStatus {
@@ -60,14 +83,25 @@ enum RepairPhotoType {
   AFTER
 }
 
-// ตารางหลักสำหรับการแจ้งซ่อม
+enum RepairCategory {
+  ELECTRICAL   // ไฟฟ้า
+  PLUMBING     // ประปา
+  BUILDING     // อาคารสถานที่
+  IT           // คอมพิวเตอร์/สารสนเทศ
+  EQUIPMENT    // ครุภัณฑ์การศึกษา
+  OTHER        // อื่นๆ
+}
+
+// ตารางหลักสำหรับการแจ้งซ่อม (ใช้งานปกติประจำวัน)
 model RepairRequest {
   id             String          @id @default(cuid())
   title          String
   description    String          @db.Text
   location       String
   urgency        RepairUrgency   @default(NORMAL)
+  category       RepairCategory  @default(OTHER)  // [NEW] หมวดหมู่งานซ่อมเพื่อวิเคราะห์สถิติ
   status         RepairStatus    @default(PENDING)
+  version        Int             @default(1)      // [NEW] Optimistic Concurrency Lock Version
   requesterId    String
   requester      User            @relation("RequestCreatedBy", fields: [requesterId], references: [id], onDelete: Cascade)
   assigneeId     String?
@@ -76,47 +110,79 @@ model RepairRequest {
   cost           Decimal?        @db.Decimal(10, 2) // ข้อมูลการเงินเที่ยงตรง ปลอดภัยจากปัญหาปัดเศษสะสม
   materialsUsed  String?         @db.Text
   cancelReason   String?         @db.Text
+  expectedFinishAt DateTime?     // [NEW] แผนกำหนดเสร็จสำหรับ SLA Tracking
+  actualFinishAt   DateTime?     // [NEW] วันที่ซ่อมจริงเสร็จสิ้นเพื่อวัดผล KPI
   assignedAt     DateTime?
   finishedAt     DateTime?
+  deletedAt      DateTime?       // [NEW] Soft Delete Flag
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   photos         RepairPhoto[]
 
-  // Composite Indexes สำหรับความเร็วในการค้นหาหน้ารายงานและแดชบอร์ดตามพฤติกรรมจริง
   @@index([status, createdAt(sort: Desc)])
   @@index([status, updatedAt])
   @@index([assigneeId, status])
   @@index([requesterId, status])
-  @@index([updatedAt]) // เพื่อประสิทธิภาพสูงสุดของ ETL Job ค้นหาและเรียงลำดับ updatedAt
+  @@index([updatedAt])
 }
 
-// ตารางเก็บภาพในรูปแบบ Binary (BYTEA) พร้อมสถิติขนาดไฟล์
+// ตารางเก็บข้อมูลอ้างอิงรูปภาพที่เก็บใน Object Storage
 model RepairPhoto {
-  id        String          @id @default(cuid())
-  repairId  String          // Non-nullable: ป้องกันปัญหารูปภาพกำพร้า (Orphan Photo)
-  photoType RepairPhotoType // กำหนดเป็น Enum ป้องกันการพิมพ์ผิด
-  mimeType  String          // e.g., "image/jpeg"
-  fileSize  Int             // ขนาดไฟล์รูปภาพจริงในหน่วย Bytes ช่วยในการมอนิเตอร์และวิเคราะห์ดิสก์
-  imageData Bytes           // เก็บ Raw Binary (BYTEA) ขนาดคอมเพรสแล้ว <100KB
-  createdAt DateTime        @default(now())
+  id         String          @id @default(cuid())
+  repairId   String          // Non-nullable: ป้องกันปัญหารูปภาพกำพร้า (Orphan Photo)
+  photoType  RepairPhotoType
+  mimeType   String          // e.g., "image/jpeg"
+  fileSize   Int             // ขนาดไฟล์จริงในหน่วย Bytes
+  storageKey String          // ตำแหน่ง Path/Key บน Neon Storage / S3 / Disk เช่น "repairs/cuid-xxx.jpg"
+  url        String          // ลิงก์สำหรับเรียกดูรูปภาพสาธารณะหรือเซิร์ฟเวอร์
+  createdAt  DateTime        @default(now())
   
-  repair    RepairRequest   @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  repair     RepairRequest   @relation(fields: [repairId], references: [id], onDelete: Cascade)
 
   @@index([repairId])
-  @@index([repairId, photoType]) // ดึงรูปภาพแยกตามประเภทงาน BEFORE/AFTER อย่างมีประสิทธิภาพลดปัญหาการสแกนตารางแบบ N+1
+  @@index([repairId, photoType])
 }
 
-// ตารางจดหมายเหตุเก็บประวัติเก่าในรูปของ Json (ไม่เก็บรูปภาพเพื่อรักษาขนาดพื้นที่เก็บข้อมูล)
-model RepairArchive {
-  id             String        @id @default(cuid())
-  archivedAt     DateTime      @default(now())
-  itemCount      Int
-  completedCount Int
-  cancelledCount Int
-  totalCost      Decimal?      @db.Decimal(12, 2)
-  oldestRecordAt DateTime?
-  newestRecordAt DateTime?
-  payload        Json          // Native JSONB เก็บเนื้อหาใบแจ้งซ่อมดิบ ค้นหาสะดวก
+// ตารางจดหมายเหตุหลัก (กระจกส่องข้อมูลประวัติศาสตร์ ค้นหาย้อนหลังง่าย ไม่ต้องพึ่งพา JSON ในอนาคต)
+model RepairRequestArchive {
+  id             String          @id
+  title          String
+  description    String          @db.Text
+  location       String
+  urgency        RepairUrgency
+  category       RepairCategory
+  status         RepairStatus
+  requesterId    String
+  assigneeId     String?
+  resolutionNote String?         @db.Text
+  cost           Decimal?        @db.Decimal(10, 2)
+  materialsUsed  String?         @db.Text
+  cancelReason   String?         @db.Text
+  expectedFinishAt DateTime?
+  actualFinishAt   DateTime?
+  assignedAt     DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime
+  updatedAt      DateTime
+  archivedAt     DateTime        @default(now()) // เวลาที่ถูกเก็บเข้าจดหมายเหตุ
+  photos         RepairPhotoArchive[]
+}
+
+// ตารางจดหมายเหตุรูปภาพ (เก็บลิงก์รูปภาพประวัติศาสตร์ไว้โดยไม่ลบหากต้องการประวัติครบถ้วน)
+model RepairPhotoArchive {
+  id         String               @id
+  repairId   String
+  photoType  RepairPhotoType
+  mimeType   String
+  fileSize   Int
+  storageKey String
+  url        String
+  createdAt  DateTime
+  archivedAt DateTime             @default(now())
+  
+  repair     RepairRequestArchive @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([repairId])
 }
 
 // โมเดลสำหรับเก็บ Log เดิมของระบบ โดยเพิ่มฟิลด์เก็บข้อมูล JSON (Optional)
@@ -125,111 +191,47 @@ model SystemLog {
   actionType  String
   description String
   userId      String
-  metadata    Json?    // [NEW] เก็บข้อมูลดิบในรูปโครงสร้าง JSON เพื่อระบบแดชบอร์ดสรุปผลวิเคราะห์ในอนาคต
+  metadata    Json?    // เก็บข้อมูลดิบในรูปโครงสร้าง JSON เพื่อระบบแดชบอร์ดสรุปผลวิเคราะห์
   createdAt   DateTime @default(now())
 }
 ```
 
-และเพิ่มความสัมพันธ์กลับในโมเดล `User`:
-```prisma
-model User {
-  // ... (ฟิลด์เดิม)
-  requestsCreated  RepairRequest[] @relation("RequestCreatedBy")
-  requestsAssigned RepairRequest[] @relation("RequestAssignedTo")
-}
-```
-
-### Custom Migration SQL (นอกเหนือจาก Prisma Schema)
-คำสั่ง SQL ด้านล่างจะถูกเพิ่มในไฟล์ Migration Script ด้วยตนเองหลังจาก Prisma สร้างไฟล์ให้แล้ว:
-```sql
--- 1. ป้องกันขนาดไฟล์รูปภาพไม่ถูกต้อง
-ALTER TABLE "RepairPhoto" ADD CONSTRAINT repair_photo_filesize_chk CHECK ("fileSize" > 0);
-
--- 2. ป้องกันค่าใช้จ่ายซ่อมติดลบ
-ALTER TABLE "RepairRequest" ADD CONSTRAINT repair_cost_chk CHECK ("cost" IS NULL OR "cost" >= 0);
-
--- 3. Partial Index สำหรับ Archiver Candidates (เร็วกว่า full index มาก)
-CREATE INDEX idx_repair_archive_candidates ON "RepairRequest" ("updatedAt") WHERE status IN ('COMPLETED', 'CANCELLED');
-
--- 4. GIN Index สำหรับค้นหา Audit Log Metadata (JSONB)
-CREATE INDEX idx_systemlog_metadata ON "SystemLog" USING GIN ("metadata");
-```
-
 ---
 
-## 4. ระบบการคลังจดหมายเหตุย้อนหลัง (Pragmatic ETL Archiver Engine)
+## 5. การจัดการ Concurrency & Logic ชั้นสูง (Compare-And-Swap & Locks)
 
-ประวัติการแจ้งซ่อมที่ได้รับการซ่อมเสร็จสิ้น (`COMPLETED`) หรือยกเลิก (`CANCELLED`) ที่มีอายุอัปเดตย้อนหลังมากกว่า **180 วัน** จะถูกกวาดและโอนเข้าตารางประวัติศาสตร์ทีละ **200 เรคคอร์ด (Chunk Size = 200)** ภายใต้กระบวนการของไฟล์ [src/app/actions/archive.ts](file:///C:/dev/eLeave/src/app/actions/archive.ts):
-
-1. **Transaction Isolation & Timeout**: 
-   - การรันกระบวนการย้ายข้อมูลทั้งหมดจะอยู่ภายใต้ `prisma.$transaction`
-   - กำหนดเวลาการประมวลผลสูงสุด **30 วินาที (timeout: 30000)** เพื่อรับประกันความปลอดภัยของระบบฐานข้อมูลกรณีติดล็อกการทำรายการ (Deadlock) หรือเครื่องทำงานหนัก
-2. **Idempotency Guard (Locking)**: 
-   - ใช้ระบบล็อคทางเลือกของ PostgreSQL (Advisory Lock) ผ่านคิวรี `SELECT pg_advisory_xact_lock(45729);` เป็นคำสั่งแรกใน Transaction
-   - ข้อดี: จะทำการต่อคิวหรือสลัดยกเลิกหากมีการเรียกใช้ Archiver ซ้ำซ้อนกันในเสี้ยววินาทีเดียว และระบบฐานข้อมูลจะทำการปลดล็อคโดยอัตโนมัติหากจบการทำงานสำเร็จหรือเกิดปัญหา Error (Resilient to Crash)
-3. **Deterministic Processing**: การคิวรีดึงข้อมูลใบแจ้งซ่อมเก่าจะใช้การเรียงลำดับล่วงหน้า `orderBy: { updatedAt: "asc" }` เพื่อให้ประวัติที่อัปเดตเก่าที่สุดได้รับการจัดเก็บเข้าคลังก่อน ทำงานอย่างเป็นระบบ และดีบักง่าย
-4. **Infinite Loop Protection**: มีการกำหนดจำนวนลูปประมวลผลสูงสุด `const MAX_BATCHES = 100` เพื่อรับประกันว่า Job จะไม่มีการรันค้างเป็นวงลูปไม่สิ้นสุดกรณีมีข้อมูลผิดปกติ
-5. **Range Metadata**: ระบุเวลาสร้างเอกสารที่เก่าที่สุด (`oldestRecordAt`) และใหม่ที่สุด (`newestRecordAt`) ใน Batch นั้นๆ ลงตาราง `RepairArchive` เพื่อให้ตรวจสอบขอบเขตวันของชุดประวัติศาสตร์ได้โดยไม่ต้องเปิดแยกก้อน JSON payload
-6. **Schema Evolution Support**: โครงสร้างฟิลด์ `payload` ในตาราง `RepairArchive` จะถูกบันทึกด้วยรูปแบบ Schema Versioning หุ้มอาร์เรย์รายการเพื่อรองรับการขยายโครงสร้างฐานข้อมูลในอนาคต:
-   ```json
-   {
-     "version": 1,
-     "records": [...]
-   }
-   ```
-7. **การล้างรูปภาพ (Metadata-Only Archiving)**: 
-   - ระบบจะแปลงข้อมูลเฉพาะเนื้อหาของใบแจ้งซ่อมหลักรวมถึงรายละเอียดผลการดำเนินการซ่อมและค่าใช้จ่ายเก็บเข้าโครงสร้าง payload ในรูป JSON
-   - การลบเรคคอร์ด `RepairRequest` ด้วยคำสั่ง delete จะทำให้รูปภาพที่เกี่ยวข้องทั้งหมดในตาราง `RepairPhoto` ถูกลบออกถาวรโดยอัตโนมัติผ่านข้อกำหนด `onDelete: Cascade` ทำให้ขนาดพื้นที่เก็บข้อมูลของระบบเป็นสัดส่วนที่ต่ำมาก
-8. **Audit Logs**: มีระบบบันทึกความปลอดภัยของประวัติผ่าน `SystemLog` ทุกครั้งที่มีการล้างประวัติงานแจ้งซ่อมสำเร็จในกิจกรรม `REPAIR_ARCHIVED` พร้อมบันทึก JSON metadata
-
----
-
-## 5. การจัดการสิทธิ์และการบันทึก Log แบบโครงสร้าง (Data Safety & Concurrency Control)
-
-- **Database-level Constraint on Photo Count**: เพื่อป้องกันข้อมูลรูปภาพมีปริมาณเกินขอบเขตจำกัดระดับฐานข้อมูล การดำเนินการสร้าง `RepairPhoto` ใหม่ใน Server Action จะต้องนับภาพผ่าน Query `count()` ใน Transaction เดียวกันก่อนการเขียนภาพลงตาราง:
-  ```typescript
-  const count = await tx.repairPhoto.count({
-    where: { repairId, photoType }
-  });
-  if (count >= 2) {
-    throw new Error(`สามารถแนบรูปภาพประเภท ${photoType} ได้สูงสุด 2 รูปเท่านั้น`);
-  }
-  ```
-- **Atomic Compare-And-Swap Concurrency Control**: เพื่อป้องกันปัญหาการแก้ไขงานทับซ้อนกัน (Lost Update) โดยผู้รับผิดชอบงานหรือผู้ดูแลระบบหลายคน การเปลี่ยนสถานะงานแจ้งซ่อมจะหลีกเลี่ยงรูปแบบ `Read -> Check -> Write` นอก Transaction โดยเปลี่ยนไปทำ **Compare-And-Swap** บนคิวรีฐานข้อมูลโดยตรงผ่านคำสั่ง `updateMany` ในลักษณะของ SQL Constraint Checking:
+- **Optimistic Concurrency Control (OCC)**:
+  เมื่อมีการเปลี่ยนสถานะของใบแจ้งซ่อม ระบบจะใช้ฟิลด์ `version` ในโมเดล `RepairRequest` เพื่อตรวจสอบและบันทึกข้อมูลอย่างปลอดภัย (Atomic CAS):
   ```typescript
   const result = await prisma.repairRequest.updateMany({
     where: {
       id: repairId,
-      status: expectedPreviousStatus // ตรวจสอบสถานะก่อนหน้าให้อยู่ในสภาวะที่ยอมรับได้
+      status: expectedPreviousStatus,
+      version: currentVersion,
+      deletedAt: null // ทำการแก้ไขเฉพาะรายการที่ยังไม่ได้ถูก Soft Delete
     },
     data: {
       status: nextStatus,
+      version: { increment: 1 },
       ...
     }
   });
 
   if (result.count === 0) {
-    throw new Error("สถานะงานมีการเปลี่ยนแปลงหรือบันทึกทับโดยผู้ใช้งานอื่น กรุณารีเฟรชหน้าจอใหม่อีกครั้ง");
+    throw new Error("สถานะงานซ่อมนี้มีการปรับปรุงโดยผู้ใช้อื่น หรือเวอร์ชันข้อมูลไม่ตรงกัน กรุณารีเฟรชหน้าร้าน");
   }
   ```
-- **Decimal Cost Serialization**: เพื่อป้องกันปัญหา Next.js Server Actions พังเนื่องจากข้อจำกัดการรับส่งออบเจกต์ Decimal ข้อมูลฟิลด์ `cost` จะต้องถูกแปลงเป็นตัวเลข JavaScript หรือ string เสมอก่อนส่งออกไปยังส่วนประกอบไคลเอนต์:
-  ```typescript
-  cost: record.cost ? record.cost.toNumber() : null
-  ```
-- **Structured Audit Logs**: ทุกกิจกรรมที่เกิดขึ้นในระบบแจ้งซ่อมจะถูกระบุด้วยคีย์กิจกรรมและจัดเก็บในรูปโครงสร้างที่มีเครื่องหมายระบุเพื่อการแยกแยะทำรายงานในอนาคต:
-  ```text
-  [REPAIR_ID:${repairId}][ACTOR_ID:${userId}][ACTION:${action}] รายละเอียดกิจกรรม...
-  ```
-  และจะเซฟข้อมูลโครงสร้างระบุ ID ต่างๆ ลงฟิลด์ `metadata` ของ `SystemLog`
+- **Audit Logs Type Safety**:
+  จำกัดความผิดพลาดจากการพิมพ์ประเภท Log ผิดด้วยการรวบรวมรหัสประเภท Log ทั้งหมดเป็น Enum `SystemAction` ภายในชั้น `audit.service.ts`:
+  - `REPAIR_CREATED`, `REPAIR_ASSIGNED`, `REPAIR_STARTED`, `REPAIR_COMPLETED`, `REPAIR_CANCELLED`, `REPAIR_DELETED`, `REPAIR_ARCHIVED`.
+
+- **การย้ายประวัติโดยปลอดภัย (ETL Archiving)**:
+  ในการกวาดล้างข้อมูล Completed/Cancelled ที่เกิน 180 วัน:
+  1. การรันทั้งหมดรันภายใต้ `prisma.$transaction(..., { timeout: 30000 })` พร้อมการล็อคด้วย PostgreSQL advisory lock `SELECT pg_advisory_xact_lock(45729);`
+  2. กวาดข้อมูลทีละ 200 รายการเรียงตาม `updatedAt: "asc"`
+  3. บันทึกข้อมูลเข้าตาราง `RepairRequestArchive` และ `RepairPhotoArchive` เพื่อให้สามารถทำรายงานสถิติย้อนหลัง 5-10 ปีได้ด้วยการ Query SQL ปกติ
+  4. ทำการลบ `RepairRequest` ต้นทาง ซึ่งจะมีผลให้ `RepairPhoto` ถูกลบตามแบบอัตโนมัติ (Cascade)
+  5. ไฟล์ภาพบน Neon/S3 จะยังคงถูกเก็บไว้ (ไม่โดนลบ) เนื่องจากในตาราง `RepairPhotoArchive` ยังมีข้อมูล url และ storageKey อ้างอิงภาพจริงอยู่ แต่หากโรงเรียนต้องการเคลียร์ไฟล์ภาพเก่าเพื่อเคลียร์สเปซ สามารถรัน Script แยกต่างหากเพื่อสลัดลบไฟล์ใน Storage ตามข้อมูลในตาราง Archive ได้โดยอิสระ
 
 ---
-
-## 6. แบ็คล็อกการเฝ้าระวังและการปรับปรุงหลังขึ้นระบบจริง (Post-Go-Live Operations)
-
-🎫 **[STG-001] Migrate RepairPhoto.imageData from BYTEA to S3 Compatible Storage**
-- *รายละเอียด*: เฝ้าระวังและบันทึกปริมาณพื้นที่ตารางรูปภาพ `RepairPhoto` (ใช้ฟิลด์ `fileSize` ในการหาผลสรุปและประเมินประสิทธิภาพขนาดได้ทันที)
-- *เงื่อนไขกระตุ้น (Trigger)*: เมื่อฐานข้อมูลมีขนาดใหญ่เกินกว่า **5 GB**
-- *แนวทางแก้ไข*: ทำการสร้างถังเก็บข้อมูลคลาวด์ภายนอกที่รองรับ S3 (เช่น AWS S3, MinIO, หรือ Cloudflare R2) แล้วทำการย้ายฟิลด์ไบนารี `imageData` ออกไป และเก็บเป็นลิงก์ URL แทน โดยในปัจจุบันระยะ 1-3 ปีแรกให้ใช้โครงสร้างแบบ BYTEA บนระบบ PostgreSQL ของ eLeave ต่อเนื่องอย่างสมบูรณ์
-
----
-*(เอกสารการออกแบบฉบับสมบูรณ์ v6.0 ได้รับการปรับปรุงเพื่อเป็นพิมพ์เขียวการโค้ดเรียบร้อย)*
+*(เอกสารการออกแบบฉบับสมบูรณ์ v7.0 ได้รับการปรับปรุงเป็นพิมพ์เขียวระดับองค์กรเรียบร้อย)*
