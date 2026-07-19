@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import RepairDetailPage from "../../_components/RepairDetailPage";
+import RepairDetailPage from "../_components/RepairDetailPage";
 
 export const metadata: Metadata = {
   title: "รายละเอียดการซ่อม | e-Leave",
