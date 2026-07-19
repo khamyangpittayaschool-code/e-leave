@@ -30,8 +30,10 @@ import {
   BookOpen,
   Plus,
   Clock,
-  ClipboardList
+  ClipboardList,
+  Wrench
 } from "lucide-react";
+import { hasRepairPermission } from "@/lib/permissions";
 
 function ToolbarButtons({ isAdmin, isApprover }: { isAdmin: boolean; isApprover: boolean }) {
   const { theme, setTheme } = useTheme();
@@ -305,6 +307,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [pendingDocsCount, setPendingDocsCount] = useState(0);
   const [enableAttendance, setEnableAttendance] = useState(false);
   const [enableDocument, setEnableDocument] = useState(false);
+  const [enableRepair, setEnableRepair] = useState(false);
   const [brandSubheader, setBrandSubheader] = useState("ระบบจัดการการลา");
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
@@ -330,12 +333,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
       const storedLogoUrl = localStorage.getItem("eleave_logoUrl");
       const storedEnableAttendance = localStorage.getItem("eleave_enableAttendance");
       const storedEnableDocument = localStorage.getItem("eleave_enableDocument");
+      const storedEnableRepair = localStorage.getItem("eleave_enableRepair");
 
       if (storedSchoolName) setBrandName(storedSchoolName);
       if (storedSubheader) setBrandSubheader(storedSubheader);
       if (storedLogoUrl) setBrandLogo(storedLogoUrl);
       if (storedEnableAttendance) setEnableAttendance(storedEnableAttendance === "true");
       if (storedEnableDocument) setEnableDocument(storedEnableDocument === "true");
+      if (storedEnableRepair) setEnableRepair(storedEnableRepair === "true");
       
       // If we loaded cached data, we can mark settings loading as finished to bypass default splash page
       if (storedSchoolName || storedLogoUrl) {
@@ -350,12 +355,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
         const finalLogoUrl = s.logoUrl || null;
         const finalEnableAttendance = s.enableAttendance === true;
         const finalEnableDocument = s.enableDocument === true;
+        const finalEnableRepair = (s as any).enableRepair === true;
 
         setBrandName(finalSchoolName);
         setBrandLogo(finalLogoUrl);
         setBrandSubheader(finalSubheader);
         setEnableAttendance(finalEnableAttendance);
         setEnableDocument(finalEnableDocument);
+        setEnableRepair(finalEnableRepair);
         
         if (s.finalApproverUserIds && session?.user?.id) {
           const allowedIds = s.finalApproverUserIds.split(",").map((id: string) => id.trim()).filter(Boolean);
@@ -379,6 +386,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }
           localStorage.setItem("eleave_enableAttendance", String(finalEnableAttendance));
           localStorage.setItem("eleave_enableDocument", String(finalEnableDocument));
+          localStorage.setItem("eleave_enableRepair", String(finalEnableRepair));
         }
 
         setIsLoadingSettings(false);
@@ -503,9 +511,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const activePermissions = rolePermissions || DEFAULT_PERMISSIONS;
 
   const showDocument = enableDocument || isAdmin;
+  const showRepair = enableRepair || isAdmin;
   const generalNavItems = [];
   if (showDocument) {
     generalNavItems.push({ href: "/document", label: lang === "en" ? "Documents" : "ระบบเอกสาร", icon: ClipboardList, badge: pendingDocsCount });
+  }
+  if (showRepair && (hasRepairPermission(user, "repair:view.own") || hasRepairPermission(user, "repair:view.all"))) {
+    generalNavItems.push({ href: "/repair", label: lang === "en" ? "Repair" : "ระบบแจ้งซ่อม", icon: Wrench });
   }
 
   const showAttendance = enableAttendance || isAdmin;
@@ -581,6 +593,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
     const activePerms = rolePermissions || DEFAULT_PERMISSIONS;
     if (path.startsWith("/attendance") && !enableAttendance && !isAdmin) return false;
     if (path.startsWith("/document") && !enableDocument && !isAdmin) return false;
+    if (path.startsWith("/repair") && !enableRepair && !isAdmin) return false;
+    if (path.startsWith("/repair") && !hasRepairPermission(user, "repair:view.own") && !hasRepairPermission(user, "repair:view.all")) return false;
     if (path.startsWith("/reports") && !activePerms.reports?.includes(key)) return false;
     if (path.startsWith("/approvals") && !activePerms.approvals?.includes(key)) return false;
     if (path.startsWith("/logs") && !activePerms.logs?.includes(key)) return false;
