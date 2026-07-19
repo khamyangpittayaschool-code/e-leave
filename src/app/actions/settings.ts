@@ -133,6 +133,7 @@ export async function getSystemSettings() {
       iappApiKey: (safeSettings as any).iappApiKey || "",
       enableAttendance: (safeSettings as any).enableAttendance ?? false,
       enableDocument: (safeSettings as any).enableDocument ?? false,
+      enableRepair: (safeSettings as any).enableRepair ?? false,
 
       // Ensure new fields have defaults even if DB column doesn't exist yet
 
@@ -171,6 +172,7 @@ export async function getSystemSettings() {
           iappApiKey: row.iappApiKey || "",
           enableAttendance: row.enableAttendance ?? false,
           enableDocument: row.enableDocument ?? false,
+          enableRepair: row.enableRepair ?? false,
 
           pdfFont: row.pdfFont || "Prompt",
 
@@ -243,6 +245,7 @@ export async function getSystemSettings() {
       iappApiKey: "",
       enableAttendance: false,
       enableDocument: false,
+      enableRepair: false,
 
       updatedAt: new Date(),
 
@@ -377,6 +380,7 @@ export async function updateSystemSettings(data: {
   iappApiKey?: string;
   enableAttendance?: boolean;
   enableDocument?: boolean;
+  enableRepair?: boolean;
 
 }) {
 
@@ -439,6 +443,7 @@ export async function updateSystemSettings(data: {
       iappApiKey: data.iappApiKey !== undefined ? data.iappApiKey : undefined,
       enableAttendance: data.enableAttendance !== undefined ? data.enableAttendance : undefined,
       enableDocument: data.enableDocument !== undefined ? data.enableDocument : undefined,
+      enableRepair: data.enableRepair !== undefined ? data.enableRepair : undefined,
 
     },
 
@@ -500,7 +505,8 @@ export async function updateSystemSettings(data: {
 
       iappApiKey: data.iappApiKey || "",
       enableAttendance: data.enableAttendance !== undefined ? data.enableAttendance : false,
-      enableDocument: data.enableDocument !== undefined ? data.enableDocument : false
+      enableDocument: data.enableDocument !== undefined ? data.enableDocument : false,
+      enableRepair: data.enableRepair !== undefined ? data.enableRepair : false
 
     }
 
