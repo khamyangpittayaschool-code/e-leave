@@ -112,7 +112,7 @@ export default function DocumentPage() {
   }, [originalShowToast]);
 
   const [activeTab, setActiveTab] = useState<"outbound" | "inbound">("outbound");
-  const [view, setView] = useState<"menu" | "outbound" | "inbound" | "cert">("menu");
+  const [view, setView] = useState<"menu" | "outbound" | "inbound" | "cert" | "issue" | "history">("menu");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear() + 543);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocType, setSelectedDocType] = useState("");
@@ -456,165 +456,111 @@ export default function DocumentPage() {
       animate="show"
       className="space-y-6 max-w-7xl mx-auto px-1"
     >
-      {/* ── Header ────────────────────────────────────────────── */}
-      <motion.div variants={itemVariants} className="flex justify-between items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          {view !== "menu" ? (
-            <button
-              onClick={() => {
-                setView("menu");
-                setSelectedDocType("");
-                setSearchQuery("");
-                setSelectedStatus("");
-              }}
-              className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shrink-0 shadow-sm cursor-pointer animate-in fade-in zoom-in duration-200"
-              title="กลับไปหน้าเมนู"
-            >
-              <ArrowLeft className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-            </button>
-          ) : (
-            <Link
-              href="/dashboard"
-              className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shrink-0 shadow-sm"
-              title="กลับบอร์ดหน้าแรก"
-            >
-              <ArrowLeft className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-            </Link>
-          )}
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
-              <ClipboardList className="w-7 h-7 text-orange-500" />
-              ระบบงานสารบรรณ
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-5">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            ระบบงานสารบรรณ (Sarabun System)
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            ขอออกเลขทะเบียนหนังสือส่ง บันทึกข้อความ คำสั่ง และตรวจสอบประวัติทะเบียนคุมหนังสือรับ-ส่ง
+          </p>
+        </div>
+        
+        {/* Page-level back button to main overview */}
+        <Link
+          href="/dashboard"
+          className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm"
+          title="กลับหน้าหลัก"
+        >
+          <ArrowLeft className="w-4 h-4 text-slate-700 dark:text-slate-305" />
+        </Link>
+      </div>
+
+      {/* ── Sub Navigation Tabs ── */}
+      <div className="flex border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/20 p-1 rounded-2xl gap-1 shadow-sm max-w-sm">
+        <button
+          onClick={() => {
+            setView("menu");
+            setSearchQuery("");
+            setSelectedStatus("");
+            setSelectedDocType("");
+          }}
+          className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            view === "menu"
+              ? "bg-slate-900 text-white dark:bg-slate-850 shadow-sm"
+              : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
+          }`}
+        >
+          ภาพรวม
+        </button>
+        <button
+          onClick={() => {
+            setView("issue");
+            setActiveTab("outbound");
+          }}
+          className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            view === "issue"
+              ? "bg-slate-900 text-white dark:bg-slate-850 shadow-sm"
+              : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
+          }`}
+        >
+          ขอเลขเอกสาร
+        </button>
+        <button
+          onClick={() => {
+            setView("history");
+            setActiveTab("outbound");
+            setSelectedStatus("");
+            setSelectedDocType("");
+          }}
+          className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            view === "history"
+              ? "bg-slate-900 text-white dark:bg-slate-850 shadow-sm"
+              : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
+          }`}
+        >
+          ประวัติเอกสาร
+        </button>
+      </div>
+
+      {/* ── View switcher ── */}
+      {view === "cert" ? (
+        <CertGenerator onBack={() => setView("menu")} />
+      ) : view === "menu" ? (
+        /* ───────────────── DASHBOARD VIEW ───────────────── */
+        <div className="w-full space-y-6 animate-in fade-in duration-200">
+          
+          {/* Header Filters (Matching picture: Year as พ.ศ., no round-current, no purple badge) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-4">
+            <h2 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">
+              สถิติและสถานะระบบประจำปี
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              รับ-ส่งหนังสือราชการ บันทึกข้อความ คำสั่ง ประกาศ เกียรติบัตร
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 border border-orange-100 dark:border-orange-900/30 text-xs font-bold shadow-sm">
-            <Calendar className="w-3.5 h-3.5 ml-1.5" />
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="bg-transparent border-none text-orange-700 dark:text-orange-400 font-bold outline-none cursor-pointer pr-3 py-1 text-xs"
-            >
-              <option value={2569}>ปีปฏิทิน พ.ศ. 2569</option>
-              <option value={2568}>ปีปฏิทิน พ.ศ. 2568</option>
-              <option value={2567}>ปีปฏิทิน พ.ศ. 2567</option>
-              <option value={2566}>ปีปฏิทิน พ.ศ. 2566</option>
-            </select>
-          </div>
-          <button
-            onClick={loadData}
-            className="flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-655 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </motion.div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-extrabold rounded-xl shadow-sm outline-none cursor-pointer">
+                <option>ภาพรวมโรงเรียน</option>
+              </select>
+              
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-extrabold rounded-xl shadow-sm outline-none cursor-pointer focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value={2569}>ปี พ.ศ. 2569</option>
+                <option value={2568}>ปี พ.ศ. 2568</option>
+                <option value={2567}>ปี พ.ศ. 2567</option>
+              </select>
 
-      {/* ── AMSS Sync Toolbar (Inbound Only) ────────────────────── */}
-      {view === "inbound" && (
-        <div className="flex justify-end items-center gap-3 flex-wrap">
-          {/* ── Credential Health Badge & Last Sync Time ── */}
-          <div className="flex flex-col items-end sm:items-start">
-            {amssCredsExist !== null && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                amssCredsExist
-                  ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30"
-                  : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30"
-              }`}>
-                {amssCredsExist ? "🟢 เชื่อมต่อแล้ว" : "🟡 ยังไม่ได้ตั้งค่า"}
-              </span>
-            )}
-            {lastSyncAt && (
-              <span className="text-[9px] text-slate-400 dark:text-slate-550 font-bold mt-0.5">
-                ซิงค์ล่าสุด: {lastSyncAt.toLocaleDateString("th-TH", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit"
-                })} น.
-              </span>
-            )}
-          </div>
-
-          {/* ── Auto Sync Button ── */}
-          <button
-            onClick={handleAmssAutoSync}
-            disabled={amssSyncing}
-            className="text-xs bg-indigo-650 hover:bg-indigo-700 text-white font-extrabold px-4.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50 shrink-0"
-          >
-            {amssSyncing ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-            )}
-            {amssSyncing ? "กำลังซิงค์..." : "ดึงข้อมูลจาก AMSS++ อัตโนมัติ"}
-          </button>
-
-          {/* ── Settings Link ── */}
-          <button
-            onClick={() => setShowAmssCredentialsModal(true)}
-            className="text-xs text-indigo-650 dark:text-indigo-400 hover:underline font-bold cursor-pointer shrink-0"
-          >
-            ตั้งค่าเชื่อมต่อ
-          </button>
-
-          {/* ── Fallback manual import link ── */}
-          <button
-            onClick={() => setShowAmssImportModal(true)}
-            className="text-xs text-slate-500 hover:underline font-medium cursor-pointer shrink-0"
-          >
-            นำเข้าแบบวางโค้ด
-          </button>
-        </div>
-      )}
-
-      {/* ── Dashboard Header Area (Matches Main Dashboard) ── */}
-      {view === "menu" && (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5 mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              ภาพรวมระบบสารบรรณ (Sarabun Overview)
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              สรุปข้อมูลการออกเลขทะเบียน ทะเบียนหนังสือรับ และกิจกรรมงานสารบรรณทั้งหมด
-            </p>
-            <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/50 dark:border-indigo-900/30 text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400">
-              ปีงบประมาณล่าสุด รอบปัจจุบัน (1 ต.ค. {selectedYear - 1} - 30 ก.ย. {selectedYear})
+              <button
+                onClick={loadData}
+                className="flex items-center justify-center w-8.5 h-8.5 rounded-xl border border-slate-200 dark:border-slate-805 bg-white dark:bg-slate-900 text-slate-600 hover:bg-slate-50 transition cursor-pointer shadow-sm"
+                title="รีเฟรชข้อมูล"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
-          {/* Header Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <select className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-extrabold rounded-xl shadow-sm outline-none cursor-pointer">
-              <option>ภาพรวมโรงเรียน</option>
-            </select>
-            
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-extrabold rounded-xl shadow-sm outline-none cursor-pointer focus:border-indigo-550 focus:ring-1 focus:ring-indigo-500"
-            >
-              <option value={2569}>ปีงบประมาณ 2569</option>
-              <option value={2568}>ปีงบประมาณ 2568</option>
-              <option value={2567}>ปีงบประมาณ 2567</option>
-            </select>
-
-            <select className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-extrabold rounded-xl shadow-sm outline-none cursor-pointer">
-              <option>รอบปัจจุบัน (Current)</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* ── Dashboard Menu Modules (Simplified Layout: 4 Cards Full-Width) ── */}
-      {view === "menu" && (
-        <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-250">
-          
-          {/* Stats Summary Grid (Wrapped in Widget Engine) */}
+          {/* Stats Summary Grid */}
           <WidgetContainer widget={{ id: "document-stats", type: "summary", componentName: "DocumentStats" }}>
             <DocumentStats
               inboundTotal={filteredInboundDocs.length}
@@ -625,22 +571,22 @@ export default function DocumentPage() {
               onCardClick={(key) => {
                 if (key === "inbound") {
                   setActiveTab("inbound");
-                  setView("inbound");
+                  setView("history");
                   setSelectedDocType("");
                   setSelectedStatus("");
                 } else if (key === "outbound") {
                   setActiveTab("outbound");
-                  setView("outbound");
+                  setView("history");
                   setSelectedDocType("OUTGOING");
                   setSelectedStatus("");
                 } else if (key === "pending") {
                   setActiveTab("inbound");
-                  setView("inbound");
+                  setView("history");
                   setSelectedDocType("");
                   setSelectedStatus("PENDING");
                 } else if (key === "command") {
                   setActiveTab("outbound");
-                  setView("outbound");
+                  setView("history");
                   setSelectedDocType("COMMAND");
                   setSelectedStatus("");
                 }
@@ -648,13 +594,11 @@ export default function DocumentPage() {
             />
           </WidgetContainer>
 
-          {/* Main Dashboard Layout Split Columns: Left Menu, Right Chart & Logs */}
+          {/* Split layout columns */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* Left Column (col-span-4): Menu Actions & Watchlist */}
+            {/* Left Column: Menu Actions & Connections */}
             <div className="lg:col-span-4 space-y-6">
-              
-              {/* Menu Actions Card (Registry style) */}
               <WidgetContainer widget={{ id: "document-menu-grid", type: "custom", componentName: "MenuGrid" }}>
                 <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
                   <div>
@@ -669,11 +613,8 @@ export default function DocumentPage() {
                     <div
                       onClick={() => {
                         setActiveTab("outbound");
-                        setView("outbound");
-                        setSelectedDocType("");
-                        setSelectedStatus("");
+                        setView("issue");
                       }}
-                      data-track-id="menu-card-outbound-issue"
                       className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-50 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/50 hover:border-slate-200 cursor-pointer transition-all duration-300 group"
                     >
                       <div className="flex items-center gap-3">
@@ -682,7 +623,7 @@ export default function DocumentPage() {
                         </div>
                         <div>
                           <h4 className="text-xs font-bold text-slate-800 dark:text-white">ออกเลขทะเบียนเอกสาร</h4>
-                          <p className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">ขอเลขบันทึกข้อความ / ส่งนอก / คำสั่ง</p>
+                          <p className="text-[10px] text-slate-450 dark:text-slate-550 font-medium">ขอเลขบันทึกข้อความ / ส่งนอก / คำสั่ง</p>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
@@ -692,11 +633,8 @@ export default function DocumentPage() {
                     <div
                       onClick={() => {
                         setActiveTab("inbound");
-                        setView("inbound");
-                        setSelectedDocType("");
-                        setSelectedStatus("");
+                        setView("history");
                       }}
-                      data-track-id="menu-card-inbound-registry"
                       className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-50 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/50 hover:border-slate-200 cursor-pointer transition-all duration-300 group"
                     >
                       <div className="flex items-center gap-3">
@@ -705,7 +643,7 @@ export default function DocumentPage() {
                         </div>
                         <div>
                           <h4 className="text-xs font-bold text-slate-800 dark:text-white">หนังสือรับ (AMSS++)</h4>
-                          <p className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">ทะเบียนหนังสือรับเข้าล่าสุดของโรงเรียน</p>
+                          <p className="text-[10px] text-slate-450 dark:text-slate-550 font-medium">ทะเบียนหนังสือรับเข้าล่าสุดของโรงเรียน</p>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
@@ -715,11 +653,9 @@ export default function DocumentPage() {
                     <div
                       onClick={() => {
                         setActiveTab("inbound");
-                        setView("inbound");
-                        setSelectedDocType("");
+                        setView("history");
                         setSelectedStatus("PENDING");
                       }}
-                      data-track-id="menu-card-pending-registry"
                       className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-50 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/50 hover:border-slate-200 cursor-pointer transition-all duration-300 group relative"
                     >
                       <div className="flex items-center gap-3">
@@ -733,7 +669,7 @@ export default function DocumentPage() {
                         </div>
                         <div>
                           <h4 className="text-xs font-bold text-slate-800 dark:text-white">รอดำเนินการ</h4>
-                          <p className="text-[10px] text-slate-455 dark:text-slate-500 font-medium">เอกสารรับ AMSS++ ที่ค้างรอดำเนินการ</p>
+                          <p className="text-[10px] text-slate-455 dark:text-slate-550 font-medium">เอกสารรับ AMSS++ ที่ค้างรอดำเนินการ</p>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
@@ -741,10 +677,7 @@ export default function DocumentPage() {
 
                     {/* Item 4: ออกเกียรติบัตร */}
                     <div
-                      onClick={() => {
-                        setView("cert");
-                      }}
-                      data-track-id="menu-card-cert"
+                      onClick={() => setView("cert")}
                       className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-50 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/50 hover:border-slate-200 cursor-pointer transition-all duration-300 group"
                     >
                       <div className="flex items-center gap-3">
@@ -753,7 +686,7 @@ export default function DocumentPage() {
                         </div>
                         <div>
                           <h4 className="text-xs font-bold text-slate-800 dark:text-white">ออกเกียรติบัตร</h4>
-                          <p className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">ระบบสร้างและพิมพ์เกียรติบัตร QR Code</p>
+                          <p className="text-[10px] text-slate-450 dark:text-slate-550 font-medium">ระบบสร้างและพิมพ์เกียรติบัตร QR Code</p>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
@@ -762,7 +695,7 @@ export default function DocumentPage() {
                 </div>
               </WidgetContainer>
 
-              {/* Watchlist / Settings status */}
+              {/* Status Connections */}
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
                 <div>
                   <h3 className="text-xs font-bold text-slate-850 dark:text-white uppercase tracking-wider">
@@ -811,15 +744,12 @@ export default function DocumentPage() {
               </div>
             </div>
 
-            {/* Right Column (col-span-8): Recharts line trend and Activities Timeline */}
+            {/* Right Column: Chart & Activities */}
             <div className="lg:col-span-8 space-y-6">
-              
-              {/* Document monthly trend chart */}
               <WidgetContainer widget={{ id: "document-trend-chart", type: "chart", componentName: "DocumentTrendChart" }}>
                 <DocumentTrendChart data={trendData} />
               </WidgetContainer>
 
-              {/* Recent Activities Timeline */}
               <WidgetContainer widget={{ id: "document-recent-activities", type: "recent_activity", componentName: "RecentActivityTimeline" }}>
                 <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                   <RecentActivityTimeline />
@@ -828,56 +758,75 @@ export default function DocumentPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── Sub Views Rendering (Form at Top, Table at Bottom) ── */}
-      {view === "cert" ? (
-        <CertGenerator onBack={() => setView("menu")} />
-      ) : view !== "menu" ? (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-250">
-          
-          {/* Header Action Row */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setView("menu")}
-              className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4 text-slate-700 dark:text-slate-350" />
-            </button>
-            <h2 className="text-base font-extrabold text-slate-850 dark:text-white">
-              {activeTab === "outbound" 
-                ? "ออกเลขทะเบียนเอกสาร (หนังสือออก)" 
-                : selectedStatus === "PENDING"
-                  ? "หนังสือรับรอดำเนินการ (AMSS++)"
-                  : "ทะเบียนหนังสือรับเข้า (AMSS++)"}
+      ) : view === "issue" ? (
+        /* ───────────────── REQUEST DOCUMENT NUMBER VIEW ───────────────── */
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              ขอเลขทะเบียนเอกสารใหม่
             </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              กรอกข้อมูลเพื่อออกเลขทะเบียนส่ง/บันทึกข้อความ หรือลงทะเบียนรับหนังสือเข้า
+            </p>
           </div>
 
-          {/* Top Panel: Form Card */}
-          {!(activeTab === "inbound" && selectedStatus === "PENDING") && (
-            <div className="w-full">
-              {activeTab === "outbound" ? (
-                <OutboundForm
-                  sections={sections}
-                  issuing={issuing}
-                  onSubmit={handleFormIssue}
-                  username={session?.user?.name || ""}
-                  department={(session?.user as any)?.subjectGroup || ""}
-                />
-              ) : (
-                <InboundForm
-                  sections={sections}
-                  users={users}
-                  savingReceive={savingReceive}
-                  scraping={scraping}
-                  onScrape={handleFormScrape}
-                  onSubmit={handleFormRegisterReceive}
-                />
-              )}
-            </div>
-          )}
+          {/* Form Switcher */}
+          <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl max-w-sm">
+            <button
+              onClick={() => setActiveTab("outbound")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "outbound"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              📝 ขอเลขเอกสาร (หนังสือออก)
+            </button>
+            <button
+              onClick={() => setActiveTab("inbound")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "inbound"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              📥 ลงทะเบียนรับหนังสือ
+            </button>
+          </div>
 
-          {/* Bottom Panel: Logs Table */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+            {activeTab === "outbound" ? (
+              <OutboundForm
+                sections={sections}
+                issuing={issuing}
+                onSubmit={handleFormIssue}
+                username={session?.user?.name || ""}
+                department={(session?.user as any)?.subjectGroup || ""}
+              />
+            ) : (
+              <InboundForm
+                sections={sections}
+                users={users}
+                savingReceive={savingReceive}
+                scraping={scraping}
+                onScrape={handleFormScrape}
+                onSubmit={handleFormRegisterReceive}
+              />
+            )}
+          </div>
+        </div>
+      ) : view === "history" ? (
+        /* ───────────────── HISTORY VIEW ───────────────── */
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              ประวัติและรายงานการขอเลข
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              ตรวจสอบประวัติ ค้นหา คัดกรอง และดำเนินการกับเลขทะเบียนหนังสือรับ-ส่ง
+            </p>
+          </div>
+
           <div className="w-full">
             <DocumentTable
               activeTab={activeTab}
