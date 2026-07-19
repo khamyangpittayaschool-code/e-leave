@@ -2,7 +2,8 @@
  * Storage Provider Factory
  *
  * Returns the correct provider based on STORAGE_PROVIDER env var.
- *   "neon"     → NeonStorageProvider    (production — Neon Object Storage, S3-compatible)
+ *   "r2"       → R2StorageProvider       (production — Cloudflare R2, zero egress, free 10GB)
+ *   "neon"     → NeonStorageProvider    (production — Neon Object Storage, branch-aware)
  *   "supabase" → SupabaseStorageProvider
  *   "local"    → LocalStorageProvider   (dev fallback)
  *
@@ -22,7 +23,10 @@ export function getStorageProvider(): StorageProvider {
 
   const provider = process.env.STORAGE_PROVIDER ?? "local";
 
-  if (provider === "neon") {
+  if (provider === "r2") {
+    const { R2StorageProvider } = require("./r2.provider");
+    _instance = new R2StorageProvider();
+  } else if (provider === "neon") {
     const { NeonStorageProvider } = require("./neon.provider");
     _instance = new NeonStorageProvider();
   } else if (provider === "supabase") {
