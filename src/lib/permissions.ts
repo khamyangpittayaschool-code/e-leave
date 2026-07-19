@@ -22,6 +22,7 @@ export type RepairPermission =
   | "repair:view.own"
   | "repair:view.all"
   | "repair:view.cost"
+  | "repair:dashboard"
   | "repair:assign"
   | "repair:update"
   | "repair:export"
@@ -33,13 +34,14 @@ type RepairRole = "TEACHER" | "TECHNICIAN" | "HEAD" | "ADMIN";
 /** Static permission matrix — change role capabilities here, not in component/action code */
 const REPAIR_PERMISSION_MATRIX: Record<RepairRole, RepairPermission[]> = {
   TEACHER: ["repair:create", "repair:view.own"],
-  TECHNICIAN: ["repair:view.all", "repair:update"],
-  HEAD: ["repair:view.all", "repair:assign", "repair:view.cost"],
+  TECHNICIAN: ["repair:view.all", "repair:update", "repair:dashboard"],
+  HEAD: ["repair:view.all", "repair:assign", "repair:view.cost", "repair:dashboard"],
   ADMIN: [
     "repair:create",
     "repair:view.own",
     "repair:view.all",
     "repair:view.cost",
+    "repair:dashboard",
     "repair:assign",
     "repair:update",
     "repair:export",

@@ -15,8 +15,8 @@ export async function getRepairDashboardStatsAction() {
     position: (session.user as any).position ?? null,
   };
 
-  // เฉพาะ Admin หรือหัวหน้าหมวดเท่านั้นที่มีสิทธิ์ดู Dashboard วิเคราะห์และสถิติค่าซ่อม
-  assertRepairPermission(actor, "repair:view.cost");
+  // เฉพาะผู้ได้รับอนุญาตเท่านั้นที่มีสิทธิ์ดู Dashboard วิเคราะห์และสถิติการแจ้งซ่อม
+  assertRepairPermission(actor, "repair:dashboard");
 
   return getRepairDashboardStats();
 }
