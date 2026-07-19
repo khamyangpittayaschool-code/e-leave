@@ -1,4 +1,4 @@
-# ระบบแจ้งซ่อม (Repair Request System) — Design Specification v5.3 (Master Architecture Blueprint)
+# ระบบแจ้งซ่อม (Repair Request System) — Design Specification v5.4 (Master Architecture Blueprint)
 
 เอกสารนี้กำหนดการออกแบบและโครงสร้างของ **ระบบแจ้งซ่อม** ซึ่งเป็นระบบย่อยเพิ่มเติมในกลุ่มงานทั่วไป (ต่อจากระบบเอกสาร) สำหรับระบบ **eLeave & School OS** โดยมุ่งเน้นความเป็นระเบียบ ความปลอดภัย และความคุ้มค่าของพื้นที่เก็บข้อมูล (Zero Dependency + Database-backed BYTEA Storage + Archiving)
 
@@ -6,7 +6,7 @@
 
 ## 1. โครงสร้างสิทธิ์การเข้าใช้งาน (Centralized Permission Matrix)
 
-ระบบควบคุมสิทธิ์จะย้ายจากการเช็คบทบาทแบบ Hardcode ไปใช้แบบ Capability-Based Permission Matrix แทน ซึ่งจะถูกจัดเก็บในไฟล์ [src/lib/permissions.ts](file:///C:/dev/eLeave/src/lib/permissions.ts) มีรายละเอียดดังนี้:
+ระบบควบคุมสิทธิ์จะย้ายจากการเช็คบทบาทแบบ Hardcode ไปใช้แบบ Capability-Based Permission Matrix แทน ซึ่งจะถูกจัดเก็บในไฟล์ [src/lib/permissions.ts](file:///C:/dev/eLeave/src/lib/permissions.ts) มีรายละเอียดดังนี้ (จะไม่มีสิทธิ์ชื่อ `repair:view` เพื่อลดความซ้ำซ้อน):
 
 - `repair:create`: สิทธิ์ในการส่งใบแจ้งซ่อมใหม่ (สำหรับครูและแอดมิน)
 - `repair:view.own`: สิทธิ์ดูรายการแจ้งซ่อมและรายงานประวัติที่ตนเองเป็นผู้สร้าง (สำหรับครูและแอดมิน)
@@ -84,6 +84,7 @@ model RepairRequest {
   @@index([status, updatedAt])
   @@index([assigneeId, status])
   @@index([requesterId, status])
+  @@index([updatedAt]) // เพื่อประสิทธิภาพสูงสุดของ ETL Job ค้นหาและเรียงลำดับ updatedAt
 }
 
 // ตารางเก็บภาพในรูปแบบ Binary (BYTEA)
@@ -115,7 +116,7 @@ model RepairArchive {
 และเพิ่มความสัมพันธ์กลับในโมเดล `User`:
 ```prisma
 model User {
-  // ... (ฟิลด์เดิม)
+  // ... (ฟิลฎ์เดิม)
   requestsCreated  RepairRequest[] @relation("RequestCreatedBy")
   requestsAssigned RepairRequest[] @relation("RequestAssignedTo")
 }
@@ -129,10 +130,24 @@ model User {
 
 1. **Transaction Isolation**: การรันกระบวนการย้ายข้อมูลทั้งหมดจะอยู่ภายใต้ `prisma.$transaction` เพื่อให้แน่ใจว่าหากมีข้อผิดพลาดข้อมูลจะไม่ตกหล่นหรือหายไป
 2. **Deterministic Processing**: การคิวรีดึงข้อมูลใบแจ้งซ่อมเก่าจะใช้การเรียงลำดับล่วงหน้า `orderBy: { updatedAt: "asc" }` เพื่อให้ประวัติที่อัปเดตเก่าที่สุดได้รับการจัดเก็บเข้าคลังก่อน ทำงานอย่างเป็นระบบ และดีบักง่าย
-3. **การล้างรูปภาพ (Metadata-Only Archiving)**: 
+3. **Infinite Loop Protection**: มีการกำหนดจำนวนลูปประมวลผลสูงสุด `const MAX_BATCHES = 100` เพื่อรับประกันว่า Job จะไม่มีการรันค้างเป็นวงลูปไม่สิ้นสุดกรณีมีข้อมูลผิดปกติ
+4. **การล้างรูปภาพ (Metadata-Only Archiving)**: 
    - ระบบจะแปลงข้อมูลเฉพาะเนื้อหาของใบแจ้งซ่อมหลักรวมถึงรายละเอียดผลการดำเนินการซ่อมและค่าใช้จ่ายเก็บเข้าฟิลด์ `payload` ในรูป JSON
    - การลบเรคคอร์ด `RepairRequest` ด้วยคำสั่ง delete จะทำให้รูปภาพที่เกี่ยวข้องทั้งหมดในตาราง `RepairPhoto` ถูกลบออกถาวรโดยอัตโนมัติผ่านข้อกำหนด `onDelete: Cascade` ทำให้ขนาดพื้นที่เก็บข้อมูลของระบบเป็นสัดส่วนที่ต่ำมาก
-4. **Audit Logs**: มีระบบบันทึกความปลอดภัยของประวัติผ่าน `SystemLog` ทุกครั้งที่มีการล้างประวัติงานแจ้งซ่อมสำเร็จในกิจกรรม `REPAIR_ARCHIVED`
+5. **Audit Logs**: มีระบบบันทึกความปลอดภัยของประวัติผ่าน `SystemLog` ทุกครั้งที่มีการล้างประวัติงานแจ้งซ่อมสำเร็จในกิจกรรม `REPAIR_ARCHIVED`
 
 ---
-*(เอกสารการออกแบบฉบับสมบูรณ์ v5.3 ได้รับการปรับปรุงเพื่อเป็นพิมพ์เขียวการโค้ดเรียบร้อย)*
+
+## 5. การแปลงข้อมูลและจัดเก็บ Log แบบโครงสร้าง (Data Conversion & Structured Logs)
+
+- **Decimal Cost Serialization**: เพื่อป้องกันปัญหา Next.js Server Actions พังเนื่องจากข้อจำกัดการรับส่งออบเจกต์ Decimal ข้อมูลฟิลด์ `cost` จะต้องถูกแปลงเป็นตัวเลข JavaScript หรือ string เสมอก่อนส่งออกไปยังส่วนประกอบไคลเอนต์:
+  ```typescript
+  cost: record.cost ? record.cost.toNumber() : null
+  ```
+- **Structured Audit Logs**: ทุกกิจกรรมที่เกิดขึ้นในระบบแจ้งซ่อมจะถูกระบุด้วยคีย์กิจกรรมและจัดเก็บในรูปโครงสร้างที่มีเครื่องหมายระบุเพื่อการแยกแยะทำรายงานในอนาคต:
+  ```text
+  [REPAIR_ID:${repairId}][ACTOR_ID:${userId}][ACTION:${action}] รายละเอียดกิจกรรม...
+  ```
+
+---
+*(เอกสารการออกแบบฉบับสมบูรณ์ v5.4 ได้รับการปรับปรุงเพื่อเป็นพิมพ์เขียวการโค้ดเรียบร้อย)*
