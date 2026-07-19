@@ -20,7 +20,9 @@ function getClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     throw new Error(
-      "Supabase storage not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+      "Supabase Storage ยังไม่ได้ตั้งค่า\n" +
+      "ต้องการ: SUPABASE_URL และ SUPABASE_SERVICE_ROLE_KEY\n" +
+      "ดู Project Settings → API ใน Supabase Dashboard"
     );
   }
   // Dynamic import so the package is not bundled when not used
