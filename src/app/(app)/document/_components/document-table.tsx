@@ -242,7 +242,18 @@ export default function DocumentTable({
                       </td>
                       <td className="py-3 px-4">
                         {d.docType === "MEMO" ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/20 dark:text-blue-450 dark:border-transparent">
+                          <span
+                            className="px-2 py-0.5 rounded text-[10px] font-bold border"
+                            style={d.memoSection?.color ? {
+                              backgroundColor: `${d.memoSection.color}15`,
+                              color: d.memoSection.color,
+                              borderColor: `${d.memoSection.color}30`,
+                            } : {
+                              backgroundColor: 'rgb(239 246 255)',
+                              color: 'rgb(37 99 235)',
+                              borderColor: 'rgb(219 234 254)',
+                            }}
+                          >
                             บันทึกข้อความ {d.memoSection ? `(${d.memoSection.code})` : ""}
                           </span>
                         ) : d.docType === "COMMAND" ? (
