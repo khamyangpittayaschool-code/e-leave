@@ -1,14 +1,15 @@
-# ระบบแจ้งซ่อม (Repair Request System) Implementation Plan v5.4
+# ระบบแจ้งซ่อม (Repair Request System) Implementation Plan v5.5
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** สร้างระบบแจ้งซ่อมสำหรับโรงเรียนแบบประสิทธิภาพสูง ตามพิมพ์เขียว Master Architecture Blueprint v5.4 โดยรองรับการบันทึกภาพแบบ Binary (BYTEA) จำกัดจำนวน BEFORE 2 รูป และ AFTER 2 รูป ย่อยรูปบน Canvas ฝั่งไคลเอนต์ ควบคุมสิทธิ์ด้วย Capability Permissions และมีระบบจดหมายเหตุย้ายความสัมพันธ์รูปภาพด้วยความปลอดภัยผ่าน Transaction
+**Goal:** สร้างระบบแจ้งซ่อมสำหรับโรงเรียนแบบประสิทธิภาพสูง ตามพิมพ์เขียว Master Architecture Blueprint v5.5 โดยรองรับการบันทึกภาพแบบ Binary (BYTEA) จำกัดจำนวน BEFORE 2 รูป และ AFTER 2 รูป ย่อยรูปบน Canvas ฝั่งไคลเอนต์ ควบคุมสิทธิ์ด้วย Capability Permissions และมีระบบจดหมายเหตุย้ายความสัมพันธ์รูปภาพด้วยความปลอดภัยผ่าน Transaction
 
 **Architecture:** 
-- ตาราง `RepairRequest`, `RepairPhoto` (ไม่มีการเกาะ archiveId, non-nullable repairId เพื่อป้องรูปกำพร้า) และ `RepairArchive`
+- ตาราง `RepairRequest`, `RepairPhoto` (ไม่มีการเกาะ archiveId, non-nullable repairId เพื่อป้องรูปกำพร้า, index คู่ repairId & photoType) และ `RepairArchive`
 - API Stream รูปภาพและแคชถาวร 7 วัน พร้อมระบบดักสิทธิ์เข้าถึง และแคชบัสเตอร์ `?v={createdAt}`
-- Server Action สำหรับย้ายข้อมูลเก่า (>180 วัน) ผ่าน Prisma Transaction สรุปข้อมูลลง JSON payload และลบภาพออกโดย CASCADE คิวรีเรียงลำดับตาม `updatedAt: "asc"` และมีลิมิต `MAX_BATCHES = 100` ในการประมวลผล
+- Server Action สำหรับย้ายข้อมูลเก่า (>180 วัน) ผ่าน Prisma Transaction สรุปข้อมูลลง JSON payload หุ้มด้วย `{ version: 1, records: [...] }` และลบภาพออกโดย CASCADE คิวรีเรียงลำดับตาม `updatedAt: "asc"` และมีลิมิต `MAX_BATCHES = 100` ในการประมวลผลพร้อม timeout 30 วินาที
 - สิทธิ์การทำงานอิงตาม Permissions: `repair:view.own`, `repair:view.all`, `repair:create`, `repair:assign`, `repair:update`, `repair:archive`
+- ระบบตรวจสอบและอัปเดตข้อมูลแบบป้องกัน Lost Update โดยระบุสถานะก่อนหน้าที่ยอมรับ (Expected State Constraint Checking) ในคำสั่ง WHERE
 
 **Tech Stack:** Next.js (App Router), Prisma, PostgreSQL (BYTEA), Framer Motion, Tailwind CSS, Lucide React
 
@@ -41,7 +42,7 @@
     requestsCreated  RepairRequest[] @relation("RequestCreatedBy")
     requestsAssigned RepairRequest[] @relation("RequestAssignedTo")
     ```
-  - เพิ่มโมเดลและโครงสร้างตารางแจ้งซ่อมตามสเปก v5.4:
+  - เพิ่มโมเดลและโครงสร้างตารางแจ้งซ่อมตามสเปก v5.5:
     ```prisma
     enum RepairStatus {
       PENDING
@@ -101,6 +102,7 @@
       repair    RepairRequest   @relation(fields: [repairId], references: [id], onDelete: Cascade)
 
       @@index([repairId])
+      @@index([repairId, photoType])
     }
 
     model RepairArchive {
@@ -128,7 +130,7 @@
 
 - [ ] **Step 5: Commit changes**
   - Run: `git add prisma/schema.prisma prisma/migrations/`
-  - Run: `git commit -m "db: add tables for Repair engine v5.4"`
+  - Run: `git commit -m "db: add tables for Repair engine v5.5"`
 
 ---
 
@@ -144,7 +146,7 @@
 - Produces: `hasPermission` helper, photo stream GET endpoint, and Server Actions for RepairRequest
 
 - [ ] **Step 1: Write `src/lib/permissions.ts`**
-  - เขียนออบเจกต์และฟังก์ชันตรวจสอบสิทธิ์ `hasPermission` ตามพิมพ์เขียว v5.4 (มีเฉพาะ `repair:view.own` และ `repair:view.all` สำหรับสิทธิ์ในการมองเห็น)
+  - เขียนออบเจกต์และฟังก์ชันตรวจสอบสิทธิ์ `hasPermission` ตามพิมพ์เขียว v5.5 (มีเฉพาะ `repair:view.own` และ `repair:view.all` สำหรับสิทธิ์ในการมองเห็น)
 
 - [ ] **Step 2: Create Photo Streaming API Route**
   - เขียนโค้ดใน `src/app/api/repair/photo/[photoId]/route.ts` เพื่อส่งภาพกลับเป็น Binary Response
@@ -156,11 +158,18 @@
   - ฟังก์ชัน `getRepairRequestDetails` ดึงข้อมูลเดี่ยวแสดงผล (ต้องทำการ Serialize ฟิลด์ `cost` ในออบเจกต์ด้วยคำสั่ง `cost.toNumber()` ก่อนส่งออก)
   - ฟังก์ชัน `assignRepairRequest` สำหรับมอบหมายช่าง
   - ฟังก์ชัน `updateRepairStatus` อัปเดตงานสำหรับช่าง (รวมบันทึกรายละเอียดซ่อม, แนบรูปภาพ AFTER $\le 2$, บันทึกค่าซ่อมแปลงเป็น `Decimal` และ Serialize `cost.toNumber()` ขากลับ)
+  - **การป้องกัน Lost Update**: ในการอัปเดตข้อมูลทุกครั้ง ให้ตรวจสอบสถานะปัจจุบันของเรคคอร์ดในข้อกำหนดการอัปเดต หรือคัดกรองก่อนทำการเปลี่ยนแปลง โดยใช้เงื่อนไขตรวจสอบเช่น:
+    ```typescript
+    const current = await prisma.repairRequest.findUnique({ where: { id } });
+    if (current.status !== expectedPreviousStatus) {
+       throw new Error("สถานะงานมีการเปลี่ยนแปลงโดยผู้ใช้อื่น กรุณารีเฟรชหน้าจอ");
+    }
+    ```
   - แทรกคำสั่งสร้าง Audit Logs ในตาราง `SystemLog` ในรูปแบบโครงสร้าง `[REPAIR_ID:${repairId}][ACTOR_ID:${userId}][ACTION:${action}] ...` เสมอในแต่ละขั้นตอน
 
 - [ ] **Step 4: Commit changes**
   - Run: `git add src/lib/permissions.ts src/app/api/repair/photo/ src/app/actions/repair.ts`
-  - Run: `git commit -m "feat: add permissions helper, secure photo streaming API, and repair actions"`
+  - Run: `git commit -m "feat: add permissions helper, secure photo streaming API, and repair actions with concurrency checks"`
 
 ---
 
@@ -173,12 +182,22 @@
   - ใช้สิทธิ์ตรวจสอบ `repair:archive`
   - อ่านใบแจ้งซ่อมที่ซ่อมเสร็จ/ยกเลิก และอายุ > 180 วัน ครั้งละ 200 รายการ โดยมีการเรียงลำดับ `orderBy: { updatedAt: "asc" }`
   - จำกัดลูปประมวลผลสูงสุด `for (let batchNo = 0; batchNo < 100; batchNo++)` เพื่อป้องกันลูปอินฟินิตี้
-  - เขียนการจัดส่งข้อมูลใน `prisma.$transaction` เพื่อสร้าง `RepairArchive` (เก็บเฉพาะ Metadata/Payload ไม่มีรูปภาพ, Serialize ค่าเงินเป็นตัวเลขธรรมดาก่อนเก็บ)
+  - เขียนการจัดส่งข้อมูลใน `prisma.$transaction` เพื่อสร้าง `RepairArchive` (เก็บเฉพาะ Metadata/Payload ไม่มีรูปภาพ, Serialize ค่าเงินเป็นตัวเลขธรรมดาก่อนเก็บ) โดยกำหนดค่า timeout เป็น **30000**
+    ```typescript
+    await prisma.$transaction(async (tx) => { ... }, { timeout: 30000 });
+    ```
   - ทำลายใบแจ้งซ่อมหลักใน `RepairRequest` (ซึ่งจะ Cascade Delete รูปภาพที่เกี่ยวข้องออกไปโดยอัตโนมัติ) และบันทึก Log ลง `SystemLog` ในรูปแบบโครงสร้าง
+  - จัดโครงสร้าง JSON ในฟิลด์ `payload` ให้อยู่ในฟอร์แมต Schema Evolution:
+    ```typescript
+    const payload = {
+      version: 1,
+      records: sanitizedPayload
+    }
+    ```
 
 - [ ] **Step 2: Commit changes**
   - Run: `git add src/app/actions/archive.ts`
-  - Run: `git commit -m "feat: implement transaction-safe ETL Archiver job with deterministic ordering and batch limit"`
+  - Run: `git commit -m "feat: implement transaction-safe ETL Archiver job with deterministic ordering, batch limit, versioned payload, and 30s timeout"`
 
 ---
 
@@ -230,3 +249,5 @@
 3. **ETL Archive**:
    - กดปุ่ม "Archive Now" และตรวจสอบในฐานข้อมูลว่าประวัติการแจ้งซ่อมที่เก่าที่สุดถูกย้ายก่อนและประวัติตาราง `RepairPhoto` ถูกลบออกถาวรอย่างถูกต้อง
    - ตรวจดูบันทึก SystemLog ว่าขึ้นข้อมูลที่มีโครงสร้างสมบูรณ์และถูกต้อง
+4. **Lost Update Protection**:
+   - เปิดหน้าแก้ไขงานแจ้งซ่อมเดียวกันในเบราว์เซอร์ 2 แท็บ (หรือ 2 บัญชี) แท็บแรกกดยืนยันปิดงาน แท็บที่สองกดอัปเดตเป็นดำเนินการ แท็บที่สองต้องแสดงความผิดพลาดและปฏิเสธไม่ให้บันทึกทับข้อมูลเดิม
