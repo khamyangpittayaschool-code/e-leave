@@ -41,8 +41,14 @@ export async function uploadRepairPhotoAction(formData: FormData) {
   const repair = await findRepairById(repairId);
   if (!repair) throw new Error("ไม่พบรายการแจ้งซ่อม");
 
+  // ตรวจสอบความปลอดภัยเพิ่มเติม: ผู้แจ้ง (ไม่มีสิทธิ์ update) สามารถอัปโหลดได้เฉพาะรายการของตนเอง
+  const isTechnicianOrAdmin = hasRepairPermission(actor, "repair:update");
+  if (!isTechnicianOrAdmin && repair.requesterId !== actor.id) {
+    throw new Error("ไม่มีสิทธิ์อัปโหลดรูปภาพในรายการของผู้อื่น");
+  }
+
   // ผู้แจ้งอัปโหลดได้เฉพาะ BEFORE, ช่างอัปโหลดได้ทั้ง BEFORE/AFTER
-  if (photoType === "AFTER" && !hasRepairPermission(actor, "repair:update")) {
+  if (photoType === "AFTER" && !isTechnicianOrAdmin) {
     throw new Error("เฉพาะช่างเท่านั้นที่สามารถอัปโหลดรูปภาพ AFTER ได้");
   }
 
@@ -71,6 +77,8 @@ export async function deleteRepairPhotoAction(photoId: string, repairId: string)
   if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
   const actor = getActor(session.user as any);
   const isAdmin = actor.role === "ADMIN" || actor.position === "แอดมิน";
+  const isTechnician = actor.position === "ช่าง";
+  const canOverride = isAdmin || isTechnician;
 
-  return deleteRepairPhoto(photoId, actor.id, isAdmin, repairId);
+  return deleteRepairPhoto(photoId, actor.id, canOverride, repairId);
 }
