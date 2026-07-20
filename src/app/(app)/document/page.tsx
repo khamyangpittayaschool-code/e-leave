@@ -41,7 +41,6 @@ import CertGenerator from "./_components/cert-generator";
 // Import atomic components
 import DocumentStats from "./_components/document-stats";
 import OutboundForm from "./_components/forms/outbound-form";
-import InboundForm from "./_components/forms/inbound-form";
 import DocumentTable from "./_components/document-table";
 import DocumentTrendChart from "./_components/document-trend-chart";
 import { WidgetContainer } from "./_components/widget-container";
@@ -553,53 +552,18 @@ function DocumentPageContent() {
               ขอเลขทะเบียนเอกสารใหม่
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              กรอกข้อมูลเพื่อออกเลขทะเบียนส่ง/บันทึกข้อความ หรือลงทะเบียนรับหนังสือเข้า
+              กรอกข้อมูลเพื่อขอออกเลขทะเบียนหนังสือส่ง บันทึกข้อความ หรือคำสั่งโรงเรียน
             </p>
           </div>
 
-          {/* Form Switcher */}
-          <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl max-w-sm">
-            <button
-              onClick={() => setActiveTab("outbound")}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "outbound"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              📝 ขอเลขเอกสาร (หนังสือออก)
-            </button>
-            <button
-              onClick={() => setActiveTab("inbound")}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "inbound"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              📥 ลงทะเบียนรับหนังสือ
-            </button>
-          </div>
-
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-            {activeTab === "outbound" ? (
-              <OutboundForm
-                sections={sections}
-                issuing={issuing}
-                onSubmit={handleFormIssue}
-                username={session?.user?.name || ""}
-                department={(session?.user as any)?.subjectGroup || ""}
-              />
-            ) : (
-              <InboundForm
-                sections={sections}
-                users={users}
-                savingReceive={savingReceive}
-                scraping={scraping}
-                onScrape={handleFormScrape}
-                onSubmit={handleFormRegisterReceive}
-              />
-            )}
+            <OutboundForm
+              sections={sections}
+              issuing={issuing}
+              onSubmit={handleFormIssue}
+              username={session?.user?.name || ""}
+              department={(session?.user as any)?.subjectGroup || ""}
+            />
           </div>
         </div>
       ) : view === "history" ? (
@@ -671,38 +635,7 @@ function DocumentPageContent() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showReceiveModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full border border-slate-100 dark:border-slate-800 shadow-2xl p-6 md:p-8 space-y-6 overflow-y-auto max-h-[90vh]"
-            >
-              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  ลงทะเบียนรับหนังสือราชการ
-                </h3>
-                <button
-                  onClick={() => setShowReceiveModal(false)}
-                  className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <InboundForm
-                sections={sections}
-                users={users}
-                savingReceive={savingReceive}
-                scraping={scraping}
-                onScrape={handleFormScrape}
-                onSubmit={handleFormRegisterReceive}
-              />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
 
       {/* ── CANCEL DOCUMENT MODAL (OUTBOUND) ─────────────────────── */}
       <AnimatePresence>
