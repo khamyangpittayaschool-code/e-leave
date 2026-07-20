@@ -69,7 +69,7 @@ export async function upsertMemoSection(
     await prisma.documentConfig.upsert({
       where: { memoSectionId: updated.id },
       update: {
-        prefix: prefix !== undefined ? prefix : `สราลีฟ ${codeUpper}`,
+        prefix: prefix !== undefined ? prefix : `${codeUpper}`,
         useThaiNumerals: useThaiNumerals !== undefined ? useThaiNumerals : true,
         paddingDigits: paddingDigits !== undefined ? paddingDigits : 1,
         yearFormat: yearFormat !== undefined ? yearFormat : "TH_BE"
@@ -77,7 +77,7 @@ export async function upsertMemoSection(
       create: {
         docType: "MEMO",
         memoSectionId: updated.id,
-        prefix: prefix !== undefined ? prefix : `สราลีฟ ${codeUpper}`,
+        prefix: prefix !== undefined ? prefix : `${codeUpper}`,
         useThaiNumerals: useThaiNumerals !== undefined ? useThaiNumerals : true,
         paddingDigits: paddingDigits !== undefined ? paddingDigits : 1,
         yearFormat: yearFormat !== undefined ? yearFormat : "TH_BE"
@@ -95,7 +95,7 @@ export async function upsertMemoSection(
       data: {
         docType: "MEMO",
         memoSectionId: created.id,
-        prefix: prefix !== undefined ? prefix : `สราลีฟ ${codeUpper}`,
+        prefix: prefix !== undefined ? prefix : `${codeUpper}`,
         useThaiNumerals: useThaiNumerals !== undefined ? useThaiNumerals : true,
         paddingDigits: paddingDigits !== undefined ? paddingDigits : 1,
         yearFormat: yearFormat !== undefined ? yearFormat : "TH_BE"
