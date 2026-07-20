@@ -24,21 +24,18 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 const URGENCY_CONFIG: Record<string, { label: string; dot: string }> = {
-  LOW:      { label: "ปกติ",    dot: "bg-slate-400" },
-  MEDIUM:   { label: "ปานกลาง", dot: "bg-amber-400" },
-  HIGH:     { label: "เร่งด่วน", dot: "bg-orange-500" },
-  CRITICAL: { label: "วิกฤต",   dot: "bg-red-500" },
+  NORMAL:      { label: "ปกติ",    dot: "bg-slate-400" },
+  URGENT:      { label: "เร่งด่วน", dot: "bg-orange-500" },
+  URGENT_MOST: { label: "เร่งด่วนมาก", dot: "bg-red-500" },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  ELECTRICAL:   "ไฟฟ้า",
-  PLUMBING:     "ประปา",
-  HVAC:         "แอร์/พัดลม",
-  STRUCTURAL:   "โครงสร้าง",
-  FURNITURE:    "เฟอร์นิเจอร์",
-  IT_EQUIPMENT: "อุปกรณ์ IT",
-  GROUNDS:      "พื้นที่/สนาม",
-  OTHER:        "อื่น ๆ",
+  ELECTRICAL: "ไฟฟ้า",
+  PLUMBING:   "ประปา",
+  BUILDING:   "อาคาร/โครงสร้าง",
+  IT:         "อุปกรณ์ IT",
+  EQUIPMENT:  "ครุภัณฑ์/เฟอร์นิเจอร์",
+  OTHER:      "อื่น ๆ",
 };
 
 const FILTER_STATUSES = ["ทั้งหมด", "PENDING", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];

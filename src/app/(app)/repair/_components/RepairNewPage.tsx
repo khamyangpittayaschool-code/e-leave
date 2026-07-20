@@ -33,7 +33,7 @@ export default function RepairNewPage() {
     title: "",
     description: "",
     location: "",
-    urgency: "MEDIUM" as RepairUrgency,
+    urgency: "NORMAL" as RepairUrgency,
     category: "OTHER" as RepairCategory,
     expectedFinishAt: "",
   });

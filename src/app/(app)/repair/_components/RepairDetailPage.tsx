@@ -32,16 +32,18 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 const URGENCY_LABELS: Record<string, { label: string; cls: string }> = {
-  LOW:      { label: "ปกติ",    cls: "text-slate-500 bg-slate-100 dark:bg-slate-800" },
-  MEDIUM:   { label: "ปานกลาง", cls: "text-amber-600 bg-amber-50 dark:bg-amber-500/10" },
-  HIGH:     { label: "เร่งด่วน", cls: "text-orange-600 bg-orange-50 dark:bg-orange-500/10" },
-  CRITICAL: { label: "วิกฤต!",  cls: "text-red-600 bg-red-50 dark:bg-red-500/10 font-extrabold" },
+  NORMAL:      { label: "ปกติ",    cls: "text-slate-500 bg-slate-100 dark:bg-slate-800" },
+  URGENT:      { label: "เร่งด่วน", cls: "text-orange-600 bg-orange-50 dark:bg-orange-500/10" },
+  URGENT_MOST: { label: "เร่งด่วนมาก", cls: "text-red-600 bg-red-50 dark:bg-red-500/10 font-extrabold" },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  ELECTRICAL: "ไฟฟ้า", PLUMBING: "ประปา", HVAC: "แอร์/พัดลม",
-  STRUCTURAL: "โครงสร้าง", FURNITURE: "เฟอร์นิเจอร์", IT_EQUIPMENT: "อุปกรณ์ IT",
-  GROUNDS: "พื้นที่/สนาม", OTHER: "อื่น ๆ",
+  ELECTRICAL: "ไฟฟ้า",
+  PLUMBING:   "ประปา",
+  BUILDING:   "อาคาร/โครงสร้าง",
+  IT:         "อุปกรณ์ IT",
+  EQUIPMENT:  "ครุภัณฑ์/เฟอร์นิเจอร์",
+  OTHER:      "อื่น ๆ",
 };
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
