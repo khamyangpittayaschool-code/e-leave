@@ -1,3 +1,5 @@
+import http from "http";
+import https from "https";
 import { toThaiNumerals } from "./document-utils";
 
 export const AMSS_HEADERS = {
@@ -19,6 +21,101 @@ interface AMSSBookDetails {
 }
 
 /**
+ * Native HTTP/HTTPS implementation of fetch to bypass Next.js patched fetch
+ * and work around Cloudflare bot-detection heuristics (JA3/JA4).
+ */
+export function nativeFetch(
+  urlStr: string,
+  options: any = {},
+  redirectCount = 0
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    if (redirectCount > 5) {
+      reject(new Error("Too many redirects"));
+      return;
+    }
+    const url = new URL(urlStr);
+    const isHttps = url.protocol === "https:";
+    const lib = isHttps ? https : http;
+
+    const reqOptions: any = {
+      method: options.method || "GET",
+      headers: options.headers || {},
+      rejectUnauthorized: options.rejectUnauthorized !== false,
+    };
+
+    if (options.signal) {
+      reqOptions.signal = options.signal;
+    }
+
+    const req = lib.request(urlStr, reqOptions, (res) => {
+      const statusCode = res.statusCode || 0;
+      if (options.redirect !== "manual" && [301, 302, 303, 307, 308].includes(statusCode)) {
+        const location = res.headers.location;
+        if (location) {
+          const resolvedUrl = new URL(location, urlStr).toString();
+          const nextOptions = { ...options };
+          if ([301, 302, 303].includes(statusCode)) {
+            nextOptions.method = "GET";
+            delete nextOptions.body;
+          }
+          resolve(nativeFetch(resolvedUrl, nextOptions, redirectCount + 1));
+          return;
+        }
+      }
+
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk) => {
+        chunks.push(chunk);
+      });
+      res.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        const headerMap = {
+          get(name: string) {
+            const val = res.headers[name.toLowerCase()];
+            if (Array.isArray(val)) return val.join(", ");
+            return val || null;
+          },
+          getSetCookie() {
+            const val = res.headers["set-cookie"];
+            if (Array.isArray(val)) return val;
+            if (val) return [val];
+            return [];
+          },
+        };
+
+        const mockResponse = {
+          ok: statusCode >= 200 && statusCode < 300,
+          status: statusCode,
+          statusText: res.statusMessage || "",
+          headers: headerMap,
+          text: async () => buffer.toString("utf-8"),
+          arrayBuffer: async () => {
+            const arrayBuf = new ArrayBuffer(buffer.length);
+            const view = new Uint8Array(arrayBuf);
+            for (let i = 0; i < buffer.length; ++i) {
+              view[i] = buffer[i];
+            }
+            return arrayBuf;
+          },
+        };
+
+        resolve(mockResponse as unknown as Response);
+      });
+    });
+
+    req.on("error", (err) => {
+      reject(err);
+    });
+
+    if (options.body) {
+      req.write(options.body);
+    }
+    req.end();
+  });
+}
+
+/**
  * Parses AMSS++ book details page to extract metadata.
  * Uses HTTP fetch and RegExp parsing to avoid heavy libraries like Cheerio or JSDOM.
  */
@@ -28,7 +125,7 @@ export async function fetchWithTlsFallback(url: string | URL, init?: RequestInit
     ...(init?.headers || {})
   };
   try {
-    return await fetch(url, { ...init, headers: mergedHeaders });
+    return await nativeFetch(url.toString(), { ...init, headers: mergedHeaders });
   } catch (error: any) {
     const isTlsError = 
       error.code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
@@ -42,13 +139,11 @@ export async function fetchWithTlsFallback(url: string | URL, init?: RequestInit
       ));
     
     if (isTlsError) {
-      // NOTE: Temporarily disabling TLS validation is asynchronous-safe but shares the global Node process variable.
-      // In a single-threaded server, concurrent requests during this execution window will also bypass TLS checks.
       console.warn(`TLS certificate error detected for ${url.toString()}. Retrying with Reject Unauthorized disabled.`);
       const originalVal = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
       try {
-        return await fetch(url, { ...init, headers: mergedHeaders });
+        return await nativeFetch(url.toString(), { ...init, headers: mergedHeaders });
       } finally {
         if (originalVal === undefined) {
           delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
@@ -105,9 +200,9 @@ export async function parseAMSSUrl(urlStr: string, cookieHeader?: string): Promi
 
     // Extract fields using Regex matching common AMSS++ patterns
     // 1. Subject / Title
-    // Match something like: <td><strong>เรื่อง :</strong></td> <td>...</td> or <td>เรื่อง : ...</td>
     let subject = "";
-    const subjectMatch = html.match(/เรื่อง\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
+    const subjectMatch = html.match(/เรื่อง\s*[:：]?\s*<\/font>\s*<font[^>]*>(.*?)<\/font>/i) ||
+                         html.match(/เรื่อง\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
                          html.match(/เรื่อง\s*[:：]\s*(.*?)(?:\r?\n|<br|\s*<\/td>)/i);
     if (subjectMatch) {
       subject = cleanHtmlText(subjectMatch[1]);
@@ -115,15 +210,18 @@ export async function parseAMSSUrl(urlStr: string, cookieHeader?: string): Promi
 
     // 2. Book Number (เลขที่หนังสือ)
     let bookNo = "";
-    const bookNoMatch = html.match(/(?:เลขที่หนังสือ|ที่)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
-                        html.match(/(?:เลขที่หนังสือ|ที่)\s*[:：]\s*(.*?)(?:\r?\n|<br|\s*<\/td>)/i);
+    const bookNoMatch = html.match(/รายละเอียดหนังสือ\s*([^\r\n<]+)/i) ||
+                        html.match(/(?<!วัน)(?:ที่|เลขที่หนังสือ)\s*[:：]?\s*<\/font>\s*<font[^>]*>(.*?)<\/font>/i) ||
+                        html.match(/(?<!วัน)(?:เลขที่หนังสือ|ที่)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
+                        html.match(/(?<!วัน)(?:เลขที่หนังสือ|ที่)\s*[:：]\s*(.*?)(?:\r?\n|<br|\s*<\/td>)/i);
     if (bookNoMatch) {
       bookNo = cleanHtmlText(bookNoMatch[1]);
     }
 
     // 3. Register No (เลขทะเบียนรับ)
     let registerNo = "";
-    const registerNoMatch = html.match(/(?:ทะเบียนรับ|เลขรับที่)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
+    const registerNoMatch = html.match(/(?:เลขทะเบียนหนังสือรับ|ทะเบียนรับ|เลขรับที่)\s*[:：]?\s*<\/font>\s*<font[^>]*>(.*?)<\/font>/i) ||
+                            html.match(/(?:ทะเบียนรับ|เลขรับที่)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
                             html.match(/(?:ทะเบียนรับ|เลขรับที่)\s*[:：]\s*(.*?)(?:\r?\n|<br|\s*<\/td>)/i);
     if (registerNoMatch) {
       registerNo = cleanHtmlText(registerNoMatch[1]);
@@ -131,7 +229,8 @@ export async function parseAMSSUrl(urlStr: string, cookieHeader?: string): Promi
 
     // 4. From (จาก)
     let fromVal = "";
-    const fromMatch = html.match(/(?:จาก|หน่วยงานผู้ส่ง|ผู้ส่ง)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
+    const fromMatch = html.match(/(?:ส่งโดย|จาก|หน่วยงานผู้ส่ง|ผู้ส่ง)\s*[:：]?\s*<\/font>\s*<font[^>]*>(.*?)<\/font>/i) ||
+                      html.match(/(?:จาก|หน่วยงานผู้ส่ง|ผู้ส่ง)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
                       html.match(/(?:จาก|หน่วยงานผู้ส่ง|ผู้ส่ง)\s*[:：]\s*(.*?)(?:\r?\n|<br|\s*<\/td>)/i);
     if (fromMatch) {
       fromVal = cleanHtmlText(fromMatch[1]);
@@ -139,7 +238,8 @@ export async function parseAMSSUrl(urlStr: string, cookieHeader?: string): Promi
 
     // 5. To (ถึง)
     let toVal = "";
-    const toMatch = html.match(/(?:ถึง|เรียน|หน่วยงานผู้รับ)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
+    const toMatch = html.match(/(?:ถึง|เรียน|หน่วยงานผู้รับ)\s*[:：]?\s*<\/font>\s*<font[^>]*>(.*?)<\/font>/i) ||
+                    html.match(/(?:ถึง|เรียน|หน่วยงานผู้รับ)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) || 
                     html.match(/(?:ถึง|เรียน|หน่วยงานผู้รับ)\s*[:：]\s*(.*?)(?:\r?\n|<br|\s*<\/td>)/i);
     if (toMatch) {
       toVal = cleanHtmlText(toMatch[1]);
@@ -157,7 +257,8 @@ export async function parseAMSSUrl(urlStr: string, cookieHeader?: string): Promi
 
     // 7. Date of Document (ลงวันที่)
     let docDate: Date | undefined;
-    const dateMatch = html.match(/(?:ลงวันที่|วันที่)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) ||
+    const dateMatch = html.match(/(?:หนังสือลงวันที่|ลงวันที่|วันที่)\s*[:：]?\s*<\/font>\s*<font[^>]*>(.*?)<\/font>/i) ||
+                      html.match(/(?:ลงวันที่|วันที่)\s*[:：]?\s*(?:<\/strong>)?\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/i) ||
                       html.match(/(?:ลงวันที่|วันที่)\s*[:：]\s*(.*?)(?:\r?\n|<br|\s*<\/td>)/i);
     if (dateMatch) {
       const parsedDate = parseThaiDateStr(cleanHtmlText(dateMatch[1]));
@@ -226,7 +327,11 @@ function parseThaiDateStr(dateStr: string): Date | undefined {
     const monthName = textParts[1].trim();
     monthIdx = thaiMonths.findIndex(m => m === monthName);
     if (monthIdx === -1) {
-      monthIdx = thaiShortMonths.findIndex(m => monthName.startsWith(m.replace(".", "")));
+      monthIdx = thaiShortMonths.findIndex(m => {
+        const cleanM = m.replace(/\./g, "");
+        const cleanName = monthName.replace(/\./g, "");
+        return cleanName.startsWith(cleanM) || cleanM.startsWith(cleanName);
+      });
     }
 
     let year = parseInt(textParts[2]);

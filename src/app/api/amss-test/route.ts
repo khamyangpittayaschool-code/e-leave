@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { loginToAMSS, AMSS_HEADERS } from "@/lib/amss-parser";
+import { loginToAMSS, AMSS_HEADERS, fetchWithTlsFallback } from "@/lib/amss-parser";
 import { decrypt } from "@/lib/crypto";
 
 export async function POST(req: Request) {
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     // 1. Session check
     let user: any = null;
     if (process.env.BYPASS_AUTH === "true") {
-      user = await prisma.user.findFirst();
+      user = await prisma.user.findUnique({ where: { id: "NCtfppV4YeHKGmNOt2aefmBx5TI3A7Cp" } }) || await prisma.user.findFirst();
       if (!user) {
         user = await prisma.user.create({
           data: {
@@ -104,48 +104,12 @@ export async function POST(req: Request) {
     const initUrl = targetUrl;
     let initRes: Response;
     let cookies = "";
-    let tlsBypassUsed = false;
 
     try {
-      initRes = await fetch(initUrl, {
-        headers: AMSS_HEADERS
-      });
+      initRes = await fetchWithTlsFallback(initUrl);
     } catch (err: any) {
-      const isTlsError = 
-        err.code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
-        err.code === "DEPTH_ZERO_SELF_SIGNED_CERT" ||
-        err.code === "CERT_HAS_EXPIRED" ||
-        (err.message && (
-          err.message.includes("certificate") ||
-          err.message.includes("TLS") ||
-          err.message.includes("ssl") ||
-          err.message.includes("self-signed")
-        ));
-
-      if (isTlsError) {
-        logs.push({ step: "HTTP_HANDSHAKE", status: "warning", message: `TLS certificate error encountered: ${err.message || err.code}. Retrying with Reject Unauthorized disabled...` });
-        const originalVal = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-        process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-        try {
-          initRes = await fetch(initUrl, {
-            headers: AMSS_HEADERS
-          });
-          tlsBypassUsed = true;
-          logs.push({ step: "HTTP_HANDSHAKE", status: "warning", message: "Handshake succeeded using TLS certificate bypass." });
-        } catch (retryErr: any) {
-          logs.push({ step: "HTTP_HANDSHAKE", status: "error", message: `Handshake failed after TLS bypass: ${retryErr.message}` });
-          return NextResponse.json({ success: false, logs });
-        } finally {
-          if (originalVal === undefined) {
-            delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-          } else {
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalVal;
-          }
-        }
-      } else {
-        logs.push({ step: "HTTP_HANDSHAKE", status: "error", message: `Network connection failed: ${err.message}` });
-        return NextResponse.json({ success: false, logs });
-      }
+      logs.push({ step: "HTTP_HANDSHAKE", status: "error", message: `Network connection failed: ${err.message}` });
+      return NextResponse.json({ success: false, logs });
     }
 
     if (!initRes.ok) {
@@ -196,14 +160,10 @@ export async function POST(req: Request) {
     });
 
     let loginRes: Response;
-    if (tlsBypassUsed) {
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-    }
     try {
-      loginRes = await fetch(postUrl, {
+      loginRes = await fetchWithTlsFallback(postUrl, {
         method: "POST",
         headers: {
-          ...AMSS_HEADERS,
           "Content-Type": "application/x-www-form-urlencoded",
           "Cookie": cookies,
         },
@@ -213,10 +173,6 @@ export async function POST(req: Request) {
     } catch (err: any) {
       logs.push({ step: "LOGIN_POST", status: "error", message: `Login post request failed: ${err.message}` });
       return NextResponse.json({ success: false, logs });
-    } finally {
-      if (tlsBypassUsed) {
-        delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      }
     }
 
     const postCookies = loginRes.headers.getSetCookie ? loginRes.headers.getSetCookie() : [loginRes.headers.get("set-cookie")].filter(Boolean) as string[];
@@ -235,29 +191,30 @@ export async function POST(req: Request) {
     const checkUrls = [
       `${basePath}modules/document/receive_sch.php`,
       `${basePath}document/receive_sch.php`,
-      `${basePath}receive_sch.php`
+      `${basePath}receive_sch.php`,
+      `${basePath}index.php?option=book&task=main/receive`
     ];
 
     logs.push({ step: "SESSION_VERIFICATION", status: "info", message: "Verifying authenticated session access..." });
     let authHtml = "";
     let verifiedUrl = "";
 
-    if (tlsBypassUsed) {
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-    }
     try {
       for (const checkUrl of checkUrls) {
         logs.push({ step: "SESSION_VERIFICATION", status: "info", message: `Trying to fetch: ${checkUrl}` });
-        const res = await fetch(checkUrl, {
+        const res = await fetchWithTlsFallback(checkUrl, {
           headers: {
-            ...AMSS_HEADERS,
             "Cookie": cookies,
           }
         });
         if (res.ok) {
           const buffer = await res.arrayBuffer();
           const decoded = new TextDecoder("windows-874").decode(buffer);
-          if (decoded.includes("bookdetail_receive_sch.php") || decoded.includes("เลขทะเบียนรับ")) {
+          if (
+            decoded.includes("bookdetail") ||
+            decoded.includes("onclick=\"check") ||
+            decoded.includes("saraban_index")
+          ) {
             authHtml = decoded;
             verifiedUrl = checkUrl;
             break;
@@ -267,10 +224,6 @@ export async function POST(req: Request) {
     } catch (err: any) {
       logs.push({ step: "SESSION_VERIFICATION", status: "error", message: `Verification request failed: ${err.message}` });
       return NextResponse.json({ success: false, logs });
-    } finally {
-      if (tlsBypassUsed) {
-        delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      }
     }
 
     if (!authHtml) {

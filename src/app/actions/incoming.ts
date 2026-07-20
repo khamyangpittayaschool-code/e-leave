@@ -241,8 +241,10 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
       `${origin}/modules/document/receive_sch.php`,
       `${origin}/document/receive_sch.php`,
       `${origin}/receive_sch.php`,
+      `${origin}/index.php?option=book&task=main/receive`,
       `${credentials.url.replace(/\/+$/, "")}/modules/document/receive_sch.php`,
-      `${credentials.url.replace(/\/+$/, "")}/receive_sch.php`
+      `${credentials.url.replace(/\/+$/, "")}/receive_sch.php`,
+      `${credentials.url.replace(/\/+$/, "")}/index.php?option=book&task=main/receive`
     ];
 
     let htmlContent = "";
@@ -262,7 +264,11 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
         if (res.ok) {
           const buffer = await res.arrayBuffer();
           htmlContent = new TextDecoder("windows-874").decode(buffer);
-          if (htmlContent.includes("bookdetail_receive_sch.php")) {
+          if (
+            htmlContent.includes("bookdetail") ||
+            htmlContent.includes("onclick=\"check") ||
+            htmlContent.includes("saraban_index")
+          ) {
             successFetch = true;
             break;
           }
@@ -720,6 +726,19 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
   
   if (parsedDocs.length === 0) {
     throw new Error("ไม่พบรายการหนังสือรับที่ถูกต้องในรหัส HTML ที่ส่งมา");
+  }
+
+  // Normalize amssLink to be absolute URLs using credentials.url
+  const credentials = await prisma.aMSSCredentials.findUnique({
+    where: { userId: user.id }
+  });
+  if (credentials && credentials.url) {
+    const base = credentials.url.endsWith("/") ? credentials.url : credentials.url + "/";
+    parsedDocs.forEach(d => {
+      if (d.amssLink && !d.amssLink.startsWith("http://") && !d.amssLink.startsWith("https://")) {
+        d.amssLink = new URL(d.amssLink, base).toString();
+      }
+    });
   }
 
   // Parse represented years from parsedDocs to query baseline sequence numbers
