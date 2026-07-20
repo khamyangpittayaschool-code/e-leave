@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -103,8 +103,9 @@ type IncomingDoc = {
   memoSection?: MemoSection | null;
 };
 
-export default function DocumentPage() {
+function DocumentPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const { showToast: originalShowToast } = useToast();
   const showToast = useCallback((msg: string, type: "success" | "error" = "success") => {
@@ -112,12 +113,33 @@ export default function DocumentPage() {
   }, [originalShowToast]);
 
   const [activeTab, setActiveTab] = useState<"outbound" | "inbound">("outbound");
-  const [view, setView] = useState<"menu" | "outbound" | "inbound" | "cert" | "issue" | "history">("menu");
+  const [view, setView] = useState<"issue" | "history" | "cert">("issue");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear() + 543);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocType, setSelectedDocType] = useState("");
   const [selectedYearTable, setSelectedYearTable] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+
+  // URL searchParams sync
+  const paramView = searchParams.get("view");
+  const paramTab = searchParams.get("tab");
+  const paramDocType = searchParams.get("docType");
+  const paramStatus = searchParams.get("status");
+
+  useEffect(() => {
+    if (paramView === "history" || paramView === "issue" || paramView === "cert") {
+      setView(paramView as any);
+    }
+    if (paramTab === "inbound" || paramTab === "outbound") {
+      setActiveTab(paramTab);
+    }
+    if (paramDocType !== null) {
+      setSelectedDocType(paramDocType);
+    }
+    if (paramStatus !== null) {
+      setSelectedStatus(paramStatus);
+    }
+  }, [paramView, paramTab, paramDocType, paramStatus]);
   // Quick Request Form states
   const [quickDocType, setQuickDocType] = useState("MEMO");
   const [quickMemoSectionId, setQuickMemoSectionId] = useState("");
@@ -480,21 +502,6 @@ export default function DocumentPage() {
       <div className="flex border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/20 p-1 rounded-2xl gap-1 shadow-sm max-w-sm">
         <button
           onClick={() => {
-            setView("menu");
-            setSearchQuery("");
-            setSelectedStatus("");
-            setSelectedDocType("");
-          }}
-          className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            view === "menu"
-              ? "bg-slate-900 text-white dark:bg-slate-850 shadow-sm"
-              : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
-          }`}
-        >
-          ภาพรวม
-        </button>
-        <button
-          onClick={() => {
             setView("issue");
             setActiveTab("outbound");
           }}
@@ -521,243 +528,23 @@ export default function DocumentPage() {
         >
           ประวัติเอกสาร
         </button>
+        <button
+          onClick={() => {
+            setView("cert");
+          }}
+          className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            view === "cert"
+              ? "bg-slate-900 text-white dark:bg-slate-850 shadow-sm"
+              : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
+          }`}
+        >
+          ออกเกียรติบัตร
+        </button>
       </div>
 
       {/* ── View switcher ── */}
       {view === "cert" ? (
-        <CertGenerator onBack={() => setView("menu")} />
-      ) : view === "menu" ? (
-        /* ───────────────── DASHBOARD VIEW ───────────────── */
-        <div className="w-full space-y-6 animate-in fade-in duration-200">
-          
-          {/* Header Filters (Matching picture: Year as พ.ศ., no round-current, no purple badge) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-4">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">
-              สถิติและสถานะระบบประจำปี
-            </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <select className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-extrabold rounded-xl shadow-sm outline-none cursor-pointer">
-                <option>ภาพรวมโรงเรียน</option>
-              </select>
-              
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-extrabold rounded-xl shadow-sm outline-none cursor-pointer focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value={2569}>ปี พ.ศ. 2569</option>
-                <option value={2568}>ปี พ.ศ. 2568</option>
-                <option value={2567}>ปี พ.ศ. 2567</option>
-              </select>
-
-              <button
-                onClick={loadData}
-                className="flex items-center justify-center w-8.5 h-8.5 rounded-xl border border-slate-200 dark:border-slate-805 bg-white dark:bg-slate-900 text-slate-600 hover:bg-slate-50 transition cursor-pointer shadow-sm"
-                title="รีเฟรชข้อมูล"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Stats Summary Grid */}
-          <WidgetContainer widget={{ id: "document-stats", type: "summary", componentName: "DocumentStats" }}>
-            <DocumentStats
-              inboundTotal={filteredInboundDocs.length}
-              outboundTotal={filteredOutboundDocs.filter(d => d.docType !== "COMMAND").length}
-              inboundPending={filteredInboundDocs.filter(d => d.status === "ROUTING" || d.status === "PENDING").length}
-              commandTotal={filteredOutboundDocs.filter(d => d.docType === "COMMAND").length}
-              activeTab={activeTab}
-              onCardClick={(key) => {
-                if (key === "inbound") {
-                  setActiveTab("inbound");
-                  setView("history");
-                  setSelectedDocType("");
-                  setSelectedStatus("");
-                } else if (key === "outbound") {
-                  setActiveTab("outbound");
-                  setView("history");
-                  setSelectedDocType("OUTGOING");
-                  setSelectedStatus("");
-                } else if (key === "pending") {
-                  setActiveTab("inbound");
-                  setView("history");
-                  setSelectedDocType("");
-                  setSelectedStatus("PENDING");
-                } else if (key === "command") {
-                  setActiveTab("outbound");
-                  setView("history");
-                  setSelectedDocType("COMMAND");
-                  setSelectedStatus("");
-                }
-              }}
-            />
-          </WidgetContainer>
-
-          {/* Split layout columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* Left Column: Menu Actions & Connections */}
-            <div className="lg:col-span-4 space-y-6">
-              <WidgetContainer widget={{ id: "document-menu-grid", type: "custom", componentName: "MenuGrid" }}>
-                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-850 dark:text-white uppercase tracking-wider">
-                      เมนูงานสารบรรณ (Actions)
-                    </h3>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-550 font-medium">กดเข้าจัดการเลขทะเบียนเอกสารและหนังสือเข้า</p>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {/* Item 1: ออกเลขทะเบียนเอกสาร */}
-                    <div
-                      onClick={() => {
-                        setActiveTab("outbound");
-                        setView("issue");
-                      }}
-                      className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-50 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/50 hover:border-slate-200 cursor-pointer transition-all duration-300 group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                          <span className="text-xl">📝</span>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-800 dark:text-white">ออกเลขทะเบียนเอกสาร</h4>
-                          <p className="text-[10px] text-slate-450 dark:text-slate-550 font-medium">ขอเลขบันทึกข้อความ / ส่งนอก / คำสั่ง</p>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                    </div>
-
-                    {/* Item 2: หนังสือรับ (AMSS++) */}
-                    <div
-                      onClick={() => {
-                        setActiveTab("inbound");
-                        setView("history");
-                      }}
-                      className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-50 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/50 hover:border-slate-200 cursor-pointer transition-all duration-300 group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                          <span className="text-xl">📥</span>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-800 dark:text-white">หนังสือรับ (AMSS++)</h4>
-                          <p className="text-[10px] text-slate-450 dark:text-slate-550 font-medium">ทะเบียนหนังสือรับเข้าล่าสุดของโรงเรียน</p>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                    </div>
-
-                    {/* Item 3: รอดำเนินการ */}
-                    <div
-                      onClick={() => {
-                        setActiveTab("inbound");
-                        setView("history");
-                        setSelectedStatus("PENDING");
-                      }}
-                      className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-50 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/50 hover:border-slate-200 cursor-pointer transition-all duration-300 group relative"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform relative">
-                          <span className="text-xl">⏳</span>
-                          {filteredInboundDocs.filter(d => d.status === "ROUTING" || d.status === "PENDING").length > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[9px] font-black border-2 border-white dark:border-slate-900">
-                              {filteredInboundDocs.filter(d => d.status === "ROUTING" || d.status === "PENDING").length}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-800 dark:text-white">รอดำเนินการ</h4>
-                          <p className="text-[10px] text-slate-455 dark:text-slate-550 font-medium">เอกสารรับ AMSS++ ที่ค้างรอดำเนินการ</p>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                    </div>
-
-                    {/* Item 4: ออกเกียรติบัตร */}
-                    <div
-                      onClick={() => setView("cert")}
-                      className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-50 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/50 hover:border-slate-200 cursor-pointer transition-all duration-300 group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                          <span className="text-xl">🏅</span>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-800 dark:text-white">ออกเกียรติบัตร</h4>
-                          <p className="text-[10px] text-slate-450 dark:text-slate-550 font-medium">ระบบสร้างและพิมพ์เกียรติบัตร QR Code</p>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                    </div>
-                  </div>
-                </div>
-              </WidgetContainer>
-
-              {/* Status Connections */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-850 dark:text-white uppercase tracking-wider">
-                    สถานะการเชื่อมต่อระบบ
-                  </h3>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-550 font-medium">การยืนยันตัวตนและการดึงเอกสาร AMSS++</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500">บัญชีเชื่อมต่อ AMSS++</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${amssCredsExist ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400" : "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400"}`}>
-                      {amssCredsExist ? "เชื่อมต่อแล้ว" : "ยังไม่ตั้งค่า"}
-                    </span>
-                  </div>
-                  
-                  {lastSyncAt && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">ดึงข้อมูลล่าสุดเมื่อ</span>
-                      <span className="text-slate-700 dark:text-slate-300 font-semibold">{lastSyncAt.toLocaleTimeString("th-TH")} น.</span>
-                    </div>
-                  )}
-
-                  <div className="pt-2 border-t border-slate-50 dark:border-slate-800/80 flex items-center justify-between">
-                    <GuardedAction requiredPermission="sarabun:amss:sync">
-                      <button
-                        onClick={() => setShowAmssCredentialsModal(true)}
-                        className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                      >
-                        ⚙️ ตั้งค่าเชื่อมต่อ
-                      </button>
-                    </GuardedAction>
-                    
-                    <GuardedAction requiredPermission="sarabun:amss:sync">
-                      <button
-                        onClick={handleAmssAutoSync}
-                        disabled={amssSyncing}
-                        className="flex items-center gap-1 text-[10px] font-extrabold text-slate-700 dark:text-slate-300 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-850 px-2.5 py-1 rounded-lg cursor-pointer disabled:opacity-50"
-                      >
-                        <RefreshCw className={`w-2.5 h-2.5 ${amssSyncing ? "animate-spin" : ""}`} />
-                        ดึงข้อมูลทันที
-                      </button>
-                    </GuardedAction>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Chart & Activities */}
-            <div className="lg:col-span-8 space-y-6">
-              <WidgetContainer widget={{ id: "document-trend-chart", type: "chart", componentName: "DocumentTrendChart" }}>
-                <DocumentTrendChart data={trendData} />
-              </WidgetContainer>
-
-              <WidgetContainer widget={{ id: "document-recent-activities", type: "recent_activity", componentName: "RecentActivityTimeline" }}>
-                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                  <RecentActivityTimeline />
-                </div>
-              </WidgetContainer>
-            </div>
-          </div>
-        </div>
+        <CertGenerator onBack={() => setView("history")} />
       ) : view === "issue" ? (
         /* ───────────────── REQUEST DOCUMENT NUMBER VIEW ───────────────── */
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -1091,5 +878,19 @@ export default function DocumentPage() {
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+export default function DocumentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[400px]">
+          <RefreshCw className="w-6 h-6 text-indigo-500 animate-spin" />
+        </div>
+      }
+    >
+      <DocumentPageContent />
+    </Suspense>
   );
 }
