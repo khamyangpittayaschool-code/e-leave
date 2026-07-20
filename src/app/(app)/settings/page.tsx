@@ -29,7 +29,7 @@ import { getHolidays, createHoliday, updateHoliday, deleteHoliday, searchInterne
 
 import { useSession } from "@/lib/auth-client";
 
-import { Save, Image as ImageIcon, ShieldAlert, DownloadCloud, Lock, Code, Settings2, Archive, UploadCloud, Database, FileJson, AlertTriangle, CheckCircle2, ChevronRight, ArrowLeft, Bell, Type, Users, BookOpen, HardDrive, UserCog, FileSpreadsheet, X, CalendarDays, FileX, Plus, Clock, ClipboardList, MapPin, FolderOpen, Hash, UserCheck, Pencil, Trash2, ToggleLeft, ToggleRight, Sparkles, AlertCircle, Check, Eye, LayoutGrid, Wrench, Loader2 } from "lucide-react";
+import { Save, Image as ImageIcon, ShieldAlert, DownloadCloud, Lock, Code, Settings2, Archive, UploadCloud, Database, FileJson, AlertTriangle, CheckCircle2, ChevronRight, ArrowLeft, Bell, Type, Users, BookOpen, HardDrive, UserCog, FileSpreadsheet, X, CalendarDays, FileX, Plus, Clock, ClipboardList, MapPin, FolderOpen, Hash, UserCheck, Pencil, Trash2, ToggleLeft, ToggleRight, Sparkles, AlertCircle, Check, Eye, LayoutGrid, Wrench, Loader2, XCircle } from "lucide-react";
 
 import { useToast } from "@/components/toast-provider";
 
@@ -2368,6 +2368,8 @@ export default function SettingsPage() {
     holidays: lang === "en" ? "Public Holidays" : "วันหยุดราชการ",
 
     subsystems: lang === "en" ? "Subsystems" : "ระบบย่อย",
+
+    "repair-settings": lang === "en" ? "Repair System Settings" : "ตั้งค่าระบบแจ้งซ่อม",
 
   };
 
@@ -6615,6 +6617,179 @@ export default function SettingsPage() {
 
   };
 
+  // ─── Repair Settings Section ──────────────────────────────────────────────────
+  const renderRepairSettingsSection = () => {
+    const configCards = [
+      {
+        title: lang === "en" ? "Repair Categories" : "หมวดหมู่งานซ่อม",
+        icon: <Settings2 className="w-4 h-4" />,
+        color: "text-blue-600 dark:text-blue-400",
+        bg: "bg-blue-50 dark:bg-blue-950/30",
+        content: (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {[
+              { label: "⚡ ไฟฟ้า", key: "ELECTRICAL" },
+              { label: "🚿 ประปา", key: "PLUMBING" },
+              { label: "🏗️ อาคาร/โครงสร้าง", key: "BUILDING" },
+              { label: "💻 อุปกรณ์ IT", key: "IT" },
+              { label: "🪑 ครุภัณฑ์/เฟอร์นิเจอร์", key: "EQUIPMENT" },
+              { label: "🔧 อื่น ๆ", key: "OTHER" },
+            ].map(c => (
+              <span key={c.key} className="px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300">
+                {c.label}
+              </span>
+            ))}
+          </div>
+        ),
+        note: lang === "en"
+          ? "Categories are defined in the database schema and cannot be changed from this page."
+          : "หมวดหมู่กำหนดไว้ในระบบฐานข้อมูล ไม่สามารถเพิ่ม/ลบจากหน้านี้ได้",
+      },
+      {
+        title: lang === "en" ? "Urgency Levels" : "ระดับความเร่งด่วน",
+        icon: <AlertTriangle className="w-4 h-4" />,
+        color: "text-orange-600 dark:text-orange-400",
+        bg: "bg-orange-50 dark:bg-orange-950/30",
+        content: (
+          <div className="space-y-2 mt-3">
+            {[
+              { label: lang === "en" ? "Normal" : "ปกติ", desc: lang === "en" ? "Not urgent, can wait" : "ไม่เร่งด่วน สามารถรอได้", color: "bg-slate-200 dark:bg-slate-700" },
+              { label: lang === "en" ? "Urgent" : "เร่งด่วน", desc: lang === "en" ? "Affects teaching & learning" : "กระทบการเรียนการสอน", color: "bg-orange-400" },
+              { label: lang === "en" ? "Most Urgent" : "เร่งด่วนมาก", desc: lang === "en" ? "Dangerous, fix immediately" : "อันตราย ต้องแก้ไขทันที", color: "bg-red-500" },
+            ].map(u => (
+              <div key={u.label} className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${u.color} shrink-0`} />
+                <span className="text-sm font-medium text-slate-800 dark:text-white">{u.label}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">— {u.desc}</span>
+              </div>
+            ))}
+          </div>
+        ),
+        note: lang === "en"
+          ? "3 urgency levels are built-in."
+          : "ระดับความเร่งด่วนมี 3 ระดับ กำหนดไว้ในระบบ",
+      },
+      {
+        title: lang === "en" ? "Photo Upload Limits" : "จำนวนรูปภาพสูงสุด",
+        icon: <ImageIcon className="w-4 h-4" />,
+        color: "text-violet-600 dark:text-violet-400",
+        bg: "bg-violet-50 dark:bg-violet-950/30",
+        content: (
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-center">
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">2</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{lang === "en" ? "BEFORE photos" : "รูปก่อนซ่อม"}</p>
+            </div>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-center">
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">2</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{lang === "en" ? "AFTER photos" : "รูปหลังซ่อม"}</p>
+            </div>
+          </div>
+        ),
+        note: lang === "en"
+          ? "Max 2 photos per type (BEFORE/AFTER). Images are auto-compressed to WebP ≤ 800px."
+          : "อัปโหลดได้สูงสุด 2 รูป/ประเภท (ก่อนซ่อม/หลังซ่อม) ระบบบีบอัดเป็น WebP ≤ 800px อัตโนมัติ",
+      },
+      {
+        title: lang === "en" ? "Max File Size" : "ขนาดไฟล์สูงสุด",
+        icon: <HardDrive className="w-4 h-4" />,
+        color: "text-sky-600 dark:text-sky-400",
+        bg: "bg-sky-50 dark:bg-sky-950/30",
+        content: (
+          <div className="mt-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-sky-600 dark:text-sky-400">10</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">MB</span>
+            <span className="text-xs text-slate-400 ml-auto">{lang === "en" ? "per upload" : "ต่อไฟล์"}</span>
+          </div>
+        ),
+        note: lang === "en"
+          ? "Supports JPEG, PNG, WebP, and HEIC/HEIF formats."
+          : "รองรับไฟล์ JPEG, PNG, WebP และ HEIC/HEIF",
+      },
+      {
+        title: lang === "en" ? "SLA Warning Threshold" : "เกณฑ์แจ้งเตือน SLA",
+        icon: <Clock className="w-4 h-4" />,
+        color: "text-rose-600 dark:text-rose-400",
+        bg: "bg-rose-50 dark:bg-rose-950/30",
+        content: (
+          <div className="mt-3 space-y-2">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">{lang === "en" ? "Warning" : "ใกล้ครบกำหนด"}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{lang === "en" ? "Less than 24 hours remaining" : "เหลือเวลาน้อยกว่า 24 ชั่วโมง"}</p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-950/30 flex items-center justify-center">
+                <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">{lang === "en" ? "Overdue" : "เลยกำหนด"}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{lang === "en" ? "Past expected finish date" : "เลยวันที่กำหนดเสร็จแล้ว"}</p>
+              </div>
+            </div>
+          </div>
+        ),
+        note: lang === "en"
+          ? "SLA status is calculated from the expected finish date set during repair creation."
+          : "สถานะ SLA คำนวณจากวันที่กำหนดเสร็จที่ตั้งไว้ตอนแจ้งซ่อม",
+      },
+      {
+        title: lang === "en" ? "Workflow Statuses" : "สถานะงานซ่อม",
+        icon: <ClipboardList className="w-4 h-4" />,
+        color: "text-emerald-600 dark:text-emerald-400",
+        bg: "bg-emerald-50 dark:bg-emerald-950/30",
+        content: (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {[
+              { label: lang === "en" ? "Pending" : "รอดำเนินการ", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300" },
+              { label: lang === "en" ? "Assigned" : "มอบหมายแล้ว", cls: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300" },
+              { label: lang === "en" ? "In Progress" : "กำลังซ่อม", cls: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300" },
+              { label: lang === "en" ? "Completed" : "เสร็จสิ้น", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" },
+              { label: lang === "en" ? "Cancelled" : "ยกเลิก", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
+            ].map(s => (
+              <span key={s.label} className={`px-3 py-1.5 rounded-full text-xs font-bold ${s.cls}`}>
+                {s.label}
+              </span>
+            ))}
+          </div>
+        ),
+        note: lang === "en"
+          ? "Workflow: Pending → Assigned → In Progress → Completed/Cancelled"
+          : "ลำดับ: รอดำเนินการ → มอบหมาย → กำลังซ่อม → เสร็จสิ้น/ยกเลิก",
+      },
+    ];
+
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 dark:border-gray-800">
+        <SectionHeader title={sectionTitles["repair-settings"]} />
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          {lang === "en"
+            ? "Current configuration of the repair request system. These values are built into the system."
+            : "การตั้งค่าระบบแจ้งซ่อมปัจจุบัน ค่าเหล่านี้กำหนดไว้ในระบบ"}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {configCards.map((card) => (
+            <div key={card.title} className={`rounded-2xl border border-slate-200 dark:border-slate-700 p-4 ${card.bg}`}>
+              <div className="flex items-center gap-2">
+                <div className={card.color}>{card.icon}</div>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-white">{card.title}</h4>
+              </div>
+              {card.content}
+              <p className="mt-3 text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                {card.note}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderSubsystemsSection = () => {
     // Each subsystem: auto-save toggle + optional "ตั้งค่า" navigation
     type SubDef = {
@@ -6682,6 +6857,7 @@ export default function SettingsPage() {
         desc: lang === "en" ? "Equipment/building repair requests" : "แจ้งปัญหาวัสดุครุภัณฑ์และติดตามสถานะงานซ่อม",
         enabled: enableRepair,
         saveKey: "enableRepair",
+        settingsId: "repair-settings",
       },
     ];
 
@@ -6796,6 +6972,8 @@ export default function SettingsPage() {
       case "footer": return renderFooterSection();
 
       case "subsystems": return renderSubsystemsSection();
+
+      case "repair-settings": return renderRepairSettingsSection();
 
       default: return null;
 
