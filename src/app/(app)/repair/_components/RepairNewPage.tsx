@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Wrench, ArrowLeft, Send, Loader2, MapPin, AlertTriangle, Tag } from "lucide-react";
+import { Wrench, ArrowLeft, Send, Loader2, MapPin, AlertTriangle, Tag, Camera, ImagePlus, X } from "lucide-react";
 import { createRepairAction } from "@/app/actions/repair/create";
+import { uploadRepairPhotoAction } from "@/app/actions/repair/photo";
 import { RepairCategory, RepairUrgency } from "@prisma/client";
 import { useToast } from "@/components/toast-provider";
 
@@ -36,9 +37,22 @@ export default function RepairNewPage() {
     category: "OTHER" as RepairCategory,
     expectedFinishAt: "",
   });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
 
   const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      if (selectedFiles.length + files.length > 2) {
+        showToast("error", "สามารถอัปโหลดรูปภาพก่อนซ่อมได้สูงสุด 2 รูป");
+        return;
+      }
+      setSelectedFiles(prev => [...prev, ...files]);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +62,9 @@ export default function RepairNewPage() {
     }
     try {
       setSubmitting(true);
+      setUploadProgress("กำลังบันทึกข้อมูลคำขอ...");
+      
+      // 1. Create the repair request
       const repair = await createRepairAction({
         title: form.title.trim(),
         description: form.description.trim(),
@@ -56,12 +73,27 @@ export default function RepairNewPage() {
         category: form.category,
         expectedFinishAt: form.expectedFinishAt || null,
       });
-      showToast("success", "ส่งคำขอแจ้งซ่อมเรียบร้อยแล้ว — สามารถแนบรูปภาพก่อนซ่อมได้ในหน้านี้");
+
+      // 2. Upload any selected BEFORE photos
+      if (selectedFiles.length > 0) {
+        for (let i = 0; i < selectedFiles.length; i++) {
+          setUploadProgress(`กำลังอัปโหลดรูปภาพที่ ${i + 1}/${selectedFiles.length}...`);
+          const fd = new FormData();
+          fd.append("repairId", repair.id);
+          fd.append("photoType", "BEFORE");
+          fd.append("file", selectedFiles[i]);
+          fd.append("currentCount", String(i));
+          await uploadRepairPhotoAction(fd);
+        }
+      }
+
+      showToast("success", "ส่งคำขอแจ้งซ่อมเรียบร้อยแล้ว");
       router.push(`/repair/${repair.id}`);
     } catch (err: any) {
       showToast("error", err?.message ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
       setSubmitting(false);
+      setUploadProgress("");
     }
   };
 
@@ -188,6 +220,48 @@ export default function RepairNewPage() {
           />
         </div>
 
+        {/* Upload BEFORE Photos during creation */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <Camera className="w-4 h-4 text-orange-500" /> อัปโหลดรูปภาพก่อนซ่อม <span className="font-normal text-slate-400">(ถ้ามี, สูงสุด 2 รูป)</span>
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            {/* Selected files preview */}
+            {selectedFiles.map((file, idx) => {
+              const url = URL.createObjectURL(file);
+              return (
+                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-55 bg-slate-50 dark:bg-slate-800">
+                  <img src={url} alt="preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFiles(prev => prev.filter((_, i) => i !== idx));
+                    }}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-500/90 hover:bg-red-650 flex items-center justify-center text-white transition-colors shadow-md shadow-black/10"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+            
+            {/* Upload slot */}
+            {selectedFiles.length < 2 && (
+              <label className="relative aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-orange-500 hover:bg-orange-50/50 dark:hover:bg-orange-500/5 transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer">
+                <ImagePlus className="w-6 h-6 text-slate-400" />
+                <span className="text-[10px] text-slate-400 text-center px-1">เพิ่มรูปภาพ</span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </label>
+            )}
+          </div>
+        </div>
+
         {/* Expected finish date (optional) */}
         <div className="space-y-1.5">
           <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -219,7 +293,7 @@ export default function RepairNewPage() {
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-orange-500/25 transition-all"
           >
             {submitting ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> กำลังส่ง...</>
+              <><Loader2 className="w-4 h-4 animate-spin" /> {uploadProgress || "กำลังส่ง..."}</>
             ) : (
               <><Send className="w-4 h-4" /> ส่งคำขอแจ้งซ่อม</>
             )}
