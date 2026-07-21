@@ -112,7 +112,7 @@ function DocumentPageContent() {
   }, [originalShowToast]);
 
   const [activeTab, setActiveTab] = useState<"outbound" | "inbound">("outbound");
-  const [view, setView] = useState<"issue" | "history" | "cert">("issue");
+  const [view, setView] = useState<"issue" | "inbound" | "outbound_history" | "cert">("issue");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear() + 543);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocType, setSelectedDocType] = useState("");
@@ -126,11 +126,21 @@ function DocumentPageContent() {
   const paramStatus = searchParams.get("status");
 
   useEffect(() => {
-    if (paramView === "history" || paramView === "issue" || paramView === "cert") {
+    if (paramView === "inbound" || paramView === "outbound_history" || paramView === "issue" || paramView === "cert") {
       setView(paramView as any);
-    }
-    if (paramTab === "inbound" || paramTab === "outbound") {
-      setActiveTab(paramTab);
+      if (paramView === "inbound") setActiveTab("inbound");
+      if (paramView === "outbound_history") setActiveTab("outbound");
+    } else if (paramView === "history") {
+      if (paramTab === "inbound") {
+        setView("inbound");
+        setActiveTab("inbound");
+      } else {
+        setView("outbound_history");
+        setActiveTab("outbound");
+      }
+    } else if (paramTab === "inbound") {
+      setView("inbound");
+      setActiveTab("inbound");
     }
     if (paramDocType !== null) {
       setSelectedDocType(paramDocType);
@@ -498,52 +508,78 @@ function DocumentPageContent() {
       </div>
 
       {/* ── Sub Navigation Tabs ── */}
-      <div className="flex border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/20 p-1 rounded-2xl gap-1 shadow-sm max-w-sm">
+      <div className="flex border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/20 p-1 rounded-2xl gap-1 shadow-sm max-w-2xl overflow-x-auto">
         <button
           onClick={() => {
             setView("issue");
             setActiveTab("outbound");
           }}
-          className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`px-4 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             view === "issue"
-              ? "bg-slate-900 text-white dark:bg-slate-850 shadow-sm"
+              ? "bg-slate-900 text-white dark:bg-slate-800 shadow-sm"
               : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
           }`}
         >
-          ขอเลขเอกสาร
+          📝 ขอเลขเอกสาร
         </button>
+
         <button
           onClick={() => {
-            setView("history");
+            setView("inbound");
+            setActiveTab("inbound");
+            setSelectedStatus("");
+            setSelectedDocType("");
+          }}
+          className={`px-4 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            view === "inbound"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
+          }`}
+        >
+          <span>📥</span>
+          หนังสือรับ (AMSS++)
+          {filteredInboundDocs.length > 0 && (
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+              view === "inbound" ? "bg-white/20 text-white" : "bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400"
+            }`}>
+              {filteredInboundDocs.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => {
+            setView("outbound_history");
             setActiveTab("outbound");
             setSelectedStatus("");
             setSelectedDocType("");
           }}
-          className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            view === "history"
-              ? "bg-slate-900 text-white dark:bg-slate-850 shadow-sm"
+          className={`px-4 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            view === "outbound_history"
+              ? "bg-slate-900 text-white dark:bg-slate-800 shadow-sm"
               : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
           }`}
         >
-          ประวัติเอกสาร
+          📋 ทะเบียนหนังสือส่ง/คำสั่ง
         </button>
+
         <button
           onClick={() => {
             setView("cert");
           }}
-          className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`px-4 py-2 text-center rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             view === "cert"
-              ? "bg-slate-900 text-white dark:bg-slate-850 shadow-sm"
+              ? "bg-slate-900 text-white dark:bg-slate-800 shadow-sm"
               : "text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-800"
           }`}
         >
-          ออกเกียรติบัตร
+          🏅 ออกเกียรติบัตร
         </button>
       </div>
 
       {/* ── View switcher ── */}
       {view === "cert" ? (
-        <CertGenerator onBack={() => setView("history")} />
+        <CertGenerator onBack={() => setView("inbound")} />
       ) : view === "issue" ? (
         /* ───────────────── REQUEST DOCUMENT NUMBER VIEW ───────────────── */
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -566,39 +602,129 @@ function DocumentPageContent() {
             />
           </div>
         </div>
-      ) : view === "history" ? (
-        /* ───────────────── HISTORY VIEW ───────────────── */
+      ) : view === "inbound" ? (
+        /* ───────────────── INBOUND AMSS++ VIEW (SEPARATE PAGE) ───────────────── */
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Header Banner & AMSS Settings Bar */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="text-lg">📥</span>
+                  ระบบรับหนังสือราชการ (AMSS++)
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  รับหนังสือราชการจากเขตพื้นที่การศึกษา อัปเดตอัตโนมัติ พร้อมระบบเกษียนหนังสือ
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <GuardedAction requiredPermission="sarabun:amss:sync">
+                  <button
+                    onClick={() => setShowAmssCredentialsModal(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                  >
+                    ⚙️ ตั้งค่าเชื่อมต่อ AMSS++
+                  </button>
+                </GuardedAction>
+
+                <GuardedAction requiredPermission="sarabun:amss:sync">
+                  <button
+                    onClick={handleAmssAutoSync}
+                    disabled={amssSyncing}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${amssSyncing ? "animate-spin" : ""}`} />
+                    {amssSyncing ? "กำลังซิงค์..." : "ซิงค์หนังสือรับทันที"}
+                  </button>
+                </GuardedAction>
+              </div>
+            </div>
+
+            {/* Quick Stats Summary Strip */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-indigo-500">หนังสือรับทั้งหมด</span>
+                  <p className="text-lg font-black text-indigo-900 dark:text-indigo-200">{filteredInboundDocs.length} เล่ม</p>
+                </div>
+                <span className="text-2xl">📚</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-amber-500">รอดำเนินการ / เกษียน</span>
+                  <p className="text-lg font-black text-amber-900 dark:text-amber-200">
+                    {filteredInboundDocs.filter(d => d.status === "ROUTING" || d.status === "PENDING").length} เล่ม
+                  </p>
+                </div>
+                <span className="text-2xl">⏳</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-emerald-500">สถานะการเชื่อมต่อ AMSS++</span>
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mt-1">
+                    {amssCredsExist ? "● เชื่อมต่อระบบแล้ว" : "○ ยังไม่ตั้งค่ารหัสผ่าน"}
+                  </p>
+                </div>
+                <span className="text-2xl">🔌</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Inbound Document History Table */}
+          <DocumentTable
+            activeTab="inbound"
+            outboundDocs={filteredOutboundDocs}
+            inboundDocs={filteredInboundDocs}
+            sections={sections}
+            onRefresh={loadData}
+            onCancelDocClick={(id) => {
+              setDocToCancel(id);
+              setShowCancelModal(true);
+            }}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            selectedDocType={selectedDocType}
+            setSelectedDocType={setSelectedDocType}
+            selectedYear={selectedYearTable}
+            setSelectedYear={setSelectedYearTable}
+            selectedStatus={selectedStatus}
+            setSelectedStatus={setSelectedStatus}
+          />
+        </div>
+      ) : view === "outbound_history" ? (
+        /* ───────────────── OUTBOUND HISTORY VIEW (SEPARATE PAGE) ───────────────── */
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              ประวัติและรายงานการขอเลข
+              ทะเบียนคุมหนังสือส่งและคำสั่งโรงเรียน
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              ตรวจสอบประวัติ ค้นหา คัดกรอง และดำเนินการกับเลขทะเบียนหนังสือรับ-ส่ง
+              ตรวจสอบประวัติการขอออกเลขทะเบียนส่ง บันทึกข้อความ และคำสั่งโรงเรียน
             </p>
           </div>
 
-          <div className="w-full">
-            <DocumentTable
-              activeTab={activeTab}
-              outboundDocs={filteredOutboundDocs}
-              inboundDocs={filteredInboundDocs}
-              sections={sections}
-              onRefresh={loadData}
-              onCancelDocClick={(id) => {
-                setDocToCancel(id);
-                setShowCancelModal(true);
-              }}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              selectedDocType={selectedDocType}
-              setSelectedDocType={setSelectedDocType}
-              selectedYear={selectedYearTable}
-              setSelectedYear={setSelectedYearTable}
-              selectedStatus={selectedStatus}
-              setSelectedStatus={setSelectedStatus}
-            />
-          </div>
+          <DocumentTable
+            activeTab="outbound"
+            outboundDocs={filteredOutboundDocs}
+            inboundDocs={filteredInboundDocs}
+            sections={sections}
+            onRefresh={loadData}
+            onCancelDocClick={(id) => {
+              setDocToCancel(id);
+              setShowCancelModal(true);
+            }}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            selectedDocType={selectedDocType}
+            setSelectedDocType={setSelectedDocType}
+            selectedYear={selectedYearTable}
+            setSelectedYear={setSelectedYearTable}
+            selectedStatus={selectedStatus}
+            setSelectedStatus={setSelectedStatus}
+          />
         </div>
       ) : null}
 
