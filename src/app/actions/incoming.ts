@@ -234,17 +234,15 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
       throw new Error("เข้าสู่ระบบ AMSS++ ล้มเหลว กรุณาตรวจสอบความถูกต้องของชื่อผู้ใช้งานและรหัสผ่าน");
     }
 
-    // Fetch list of documents (document list page receive_sch.php)
+    // Fetch list of documents (document list page)
     const parsedUrl = new URL(credentials.url);
     const origin = parsedUrl.origin;
     const pathsToTry = [
-      `${origin}/modules/document/receive_sch.php`,
-      `${origin}/document/receive_sch.php`,
-      `${origin}/receive_sch.php`,
       `${origin}/index.php?option=book&task=main/receive`,
-      `${credentials.url.replace(/\/+$/, "")}/modules/document/receive_sch.php`,
-      `${credentials.url.replace(/\/+$/, "")}/receive_sch.php`,
-      `${credentials.url.replace(/\/+$/, "")}/index.php?option=book&task=main/receive`
+      `${credentials.url.replace(/\/+$/, "")}/index.php?option=book&task=main/receive`,
+      `${origin}/index.php?option=book&task=main/receive_sch`,
+      `${origin}/receive_sch.php`,
+      `${origin}/modules/document/receive_sch.php`
     ];
 
     let htmlContent = "";
@@ -253,7 +251,7 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
     for (const fetchUrl of pathsToTry) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         const res = await fetchWithTlsFallback(fetchUrl, {
           signal: controller.signal,
           headers: {
@@ -263,11 +261,19 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
         clearTimeout(timeoutId);
         if (res.ok) {
           const buffer = await res.arrayBuffer();
-          htmlContent = new TextDecoder("windows-874").decode(buffer);
+          // Try UTF-8 first as modern AMSS++ versions use UTF-8
+          let text = new TextDecoder("utf-8").decode(buffer);
+          if (text.includes("") || text.includes("เธ") || text.includes("เธช")) {
+            // Fallback to windows-874 if UTF-8 produces replacement characters or UTF-8 mojibake
+            text = new TextDecoder("windows-874").decode(buffer);
+          }
+          htmlContent = text;
+
           if (
             htmlContent.includes("bookdetail") ||
             htmlContent.includes("onclick=\"check") ||
-            htmlContent.includes("saraban_index")
+            htmlContent.includes("saraban_index") ||
+            htmlContent.includes("หนังสือรับ")
           ) {
             successFetch = true;
             break;
@@ -827,18 +833,18 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
 
       // Convert dateText to Date object
       let parsedDate = new Date();
-      const parts = d.dateText.split(" ");
+      const parts = d.dateText.trim().split(/\s+/);
       if (parts.length >= 3) {
-        const day = parseInt(parts[0]);
-        const thaiMonthsShort = [
-          "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
-          "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
-        ];
-        const monthIndex = thaiMonthsShort.indexOf(parts[1]);
-        const monthIdx = monthIndex !== -1 ? monthIndex : 5;
+        const day = parseInt(parts[0], 10);
+        const thaiShortMonthMap: Record<string, number> = {
+          "มค": 0, "กพ": 1, "มีค": 2, "เมย": 3, "พค": 4, "มิย": 5,
+          "กค": 6, "สค": 7, "กย": 8, "ตค": 9, "พย": 10, "ธค": 11
+        };
+        const mClean = parts[1].replace(/\./g, "").trim();
+        const monthIdx = thaiShortMonthMap[mClean] !== undefined ? thaiShortMonthMap[mClean] : 0;
         
-        let year = parseInt(parts[2]);
-        if (!isNaN(year)) {
+        let year = parseInt(parts[2], 10);
+        if (!isNaN(year) && !isNaN(day)) {
           if (year > 2400) {
             year = year - 543;
           } else if (year < 100) {

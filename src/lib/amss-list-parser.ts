@@ -7,7 +7,7 @@ interface AMSSParsedRow {
   dateText: string;
 }
 
-export function parseAMSSListHtml(html: string): AMSSParsedRow[] {
+export function parseAMSSListHtml(html: string, baseUrl?: string): AMSSParsedRow[] {
   const documents: AMSSParsedRow[] = [];
   
   // Find all table rows
@@ -24,8 +24,8 @@ export function parseAMSSListHtml(html: string): AMSSParsedRow[] {
       amssLink = hrefMatch[1];
     } else {
       // Look for onclick check('page.php', id)
-      const onclickMatch = rowContent.match(/onclick=["']check\(['"]([^'"]+)['"]\s*,\s*(\d+)/i) ||
-                           rowContent.match(/onclick=["']check\(['"]([^'"]+)['"]\s*,\s*['"](\d+)['"]/i);
+      const onclickMatch = rowContent.match(/check\(['"]([^'"]+)['"]\s*,\s*(\d+)/i) ||
+                           rowContent.match(/check\(['"]([^'"]+)['"]\s*,\s*['"](\d+)['"]/i);
       if (onclickMatch) {
         const page = onclickMatch[1];
         const b_id = onclickMatch[2];
@@ -35,6 +35,16 @@ export function parseAMSSListHtml(html: string): AMSSParsedRow[] {
 
     if (!amssLink) continue;
     
+    // If baseUrl is provided and link is relative, make it absolute
+    if (baseUrl && !amssLink.startsWith("http://") && !amssLink.startsWith("https://")) {
+      const base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+      try {
+        amssLink = new URL(amssLink, base).toString();
+      } catch (e) {
+        // preserve relative if invalid URL
+      }
+    }
+
     // Extract td contents
     const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
     const tds: string[] = [];
@@ -52,12 +62,13 @@ export function parseAMSSListHtml(html: string): AMSSParsedRow[] {
     
     if (tds.length >= 7) {
       // 7-column layout (with onclick link style)
-      // Index 0: Running Register / Receive No
-      // Index 1: Doc Ref No / Book No
-      // Index 2: Title / Subject
+      // Index 0: Running Register / Receive No (152590)
+      // Index 1: Doc Ref No / Book No (ที่ ศธ 04349/ว3694)
+      // Index 2: Title / Subject (เสนอรายชื่อคณะกรรมการ...)
       // Index 3: Click details
-      // Index 4: Date
-      // Index 5: Sender Org
+      // Index 4: Date (18 กย 2568)
+      // Index 5: Sender Org (กลุ่มส่งเสริมการจัดการศึกษา)
+      // Index 6: Send timestamp
       const receiveNo = tds[0] || "";
       const docRefNo = tds[1] || "";
       const title = tds[2] || "";
@@ -74,11 +85,6 @@ export function parseAMSSListHtml(html: string): AMSSParsedRow[] {
       });
     } else if (tds.length >= 5) {
       // Legacy 5-column layout
-      // Index 1 or 2 is receive no / register no
-      // Index 2 or 3 is doc ref no (เลขที่หนังสือ)
-      // Index 3 or 4 is title/subject (เรื่อง)
-      // Index 4 or 5 is sender (จาก)
-      // Index 5 is date text (ลงวันที่)
       const receiveNo = tds[1] || "";
       const docRefNo = tds[2] || "";
       const title = tds[3] || "";
