@@ -185,7 +185,10 @@ function PhotoGroup({
       fd.append("photoType", photoType);
       fd.append("file", file);
       fd.append("currentCount", String(photos.length));
-      await uploadRepairPhotoAction(fd);
+      const res = await uploadRepairPhotoAction(fd);
+      if (!res.success) {
+        throw new Error(res.error || "อัปโหลดรูปภาพไม่สำเร็จ");
+      }
       showToast("success", `อัปโหลดรูป${typeLabel}เรียบร้อย`);
       onRefresh();
     } catch (err: any) {

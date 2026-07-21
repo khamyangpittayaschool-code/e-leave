@@ -65,7 +65,7 @@ export default function RepairNewPage() {
       setUploadProgress("กำลังบันทึกข้อมูลคำขอ...");
       
       // 1. Create the repair request
-      const repair = await createRepairAction({
+      const createRes = await createRepairAction({
         title: form.title.trim(),
         description: form.description.trim(),
         location: form.location.trim(),
@@ -73,6 +73,11 @@ export default function RepairNewPage() {
         category: form.category,
         expectedFinishAt: form.expectedFinishAt || null,
       });
+
+      if (!createRes.success) {
+        throw new Error(createRes.error || "สร้างคำขอแจ้งซ่อมไม่สำเร็จ");
+      }
+      const repair = createRes.repair!;
 
       // 2. Upload any selected BEFORE photos
       if (selectedFiles.length > 0) {
@@ -83,7 +88,11 @@ export default function RepairNewPage() {
           fd.append("photoType", "BEFORE");
           fd.append("file", selectedFiles[i]);
           fd.append("currentCount", String(i));
-          await uploadRepairPhotoAction(fd);
+          
+          const uploadRes = await uploadRepairPhotoAction(fd);
+          if (!uploadRes.success) {
+            throw new Error(uploadRes.error || `อัปโหลดรูปภาพที่ ${i + 1} ไม่สำเร็จ`);
+          }
         }
       }
 

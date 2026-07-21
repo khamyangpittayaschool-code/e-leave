@@ -134,8 +134,12 @@ export default function RepairListPage() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getRepairsAction();
-      setRepairs(data as any[]);
+      const res = await getRepairsAction();
+      if (res.success) {
+        setRepairs(res.repairs || []);
+      } else {
+        console.error(res.error);
+      }
     } catch (e) {
       console.error(e);
     } finally {

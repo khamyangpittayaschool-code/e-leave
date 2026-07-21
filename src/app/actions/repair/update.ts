@@ -11,24 +11,46 @@ import {
   getRepairDetail,
 } from "@/services/repair.service";
 
+function getActor(user: any) {
+  return {
+    id: user.id,
+    role: user.role ?? "TEACHER",
+    position: user.position ?? null,
+  };
+}
+
 /** Assign a repair to a technician */
 export async function assignRepairAction(
   repairId: string,
   assigneeId: string,
   currentVersion: number
 ) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-  const actor = { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position };
-  return assignRepair(actor, repairId, assigneeId, currentVersion);
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+    const actor = getActor(session.user);
+    
+    const repair = await assignRepair(actor, repairId, assigneeId, currentVersion);
+    return { success: true, repair };
+  } catch (err: any) {
+    console.error("assignRepairAction failed:", err);
+    return { success: false, error: err.message || "มอบหมายงานซ่อมไม่สำเร็จ" };
+  }
 }
 
 /** Technician starts work */
 export async function startRepairAction(repairId: string, currentVersion: number) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-  const actor = { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position };
-  return startRepair(actor, repairId, currentVersion);
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+    const actor = getActor(session.user);
+
+    const repair = await startRepair(actor, repairId, currentVersion);
+    return { success: true, repair };
+  } catch (err: any) {
+    console.error("startRepairAction failed:", err);
+    return { success: false, error: err.message || "เริ่มดำเนินการซ่อมไม่สำเร็จ" };
+  }
 }
 
 /** Technician completes work */
@@ -37,10 +59,17 @@ export async function completeRepairAction(
   currentVersion: number,
   input: { resolutionNote: string; cost?: number | null; materialsUsed?: string | null }
 ) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-  const actor = { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position };
-  return completeRepair(actor, repairId, currentVersion, input);
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+    const actor = getActor(session.user);
+
+    const repair = await completeRepair(actor, repairId, currentVersion, input);
+    return { success: true, repair };
+  } catch (err: any) {
+    console.error("completeRepairAction failed:", err);
+    return { success: false, error: err.message || "บันทึกผลการซ่อมไม่สำเร็จ" };
+  }
 }
 
 /** Cancel a repair request */
@@ -49,24 +78,45 @@ export async function cancelRepairAction(
   currentVersion: number,
   cancelReason: string
 ) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-  const actor = { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position };
-  return cancelRepair(actor, repairId, currentVersion, cancelReason);
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+    const actor = getActor(session.user);
+
+    const repair = await cancelRepair(actor, repairId, currentVersion, cancelReason);
+    return { success: true, repair };
+  } catch (err: any) {
+    console.error("cancelRepairAction failed:", err);
+    return { success: false, error: err.message || "ยกเลิกคำขอแจ้งซ่อมไม่สำเร็จ" };
+  }
 }
 
 /** Fetch repair list (own or all depending on role) */
 export async function getRepairsAction() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-  const actor = { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position };
-  return getRepairs(actor);
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+    const actor = getActor(session.user);
+
+    const repairs = await getRepairs(actor);
+    return { success: true, repairs };
+  } catch (err: any) {
+    console.error("getRepairsAction failed:", err);
+    return { success: false, error: err.message || "ดึงข้อมูลรายการแจ้งซ่อมไม่สำเร็จ" };
+  }
 }
 
 /** Fetch single repair detail */
 export async function getRepairDetailAction(repairId: string) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-  const actor = { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position };
-  return getRepairDetail(actor, repairId);
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+    const actor = getActor(session.user);
+
+    const repair = await getRepairDetail(actor, repairId);
+    return { success: true, repair };
+  } catch (err: any) {
+    console.error("getRepairDetailAction failed:", err);
+    return { success: false, error: err.message || "ดึงข้อมูลรายละเอียดไม่สำเร็จ" };
+  }
 }

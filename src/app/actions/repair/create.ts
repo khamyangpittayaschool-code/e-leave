@@ -13,11 +13,17 @@ export async function createRepairAction(formData: {
   category: RepairCategory;
   expectedFinishAt?: string | null;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
 
-  return createRepair(
-    { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position },
-    formData
-  );
+    const repair = await createRepair(
+      { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position },
+      formData
+    );
+    return { success: true, repair };
+  } catch (err: any) {
+    console.error("createRepairAction failed:", err);
+    return { success: false, error: err.message || "เกิดข้อผิดพลาดของระบบ" };
+  }
 }

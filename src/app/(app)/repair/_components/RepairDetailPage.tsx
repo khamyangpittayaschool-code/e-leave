@@ -76,10 +76,19 @@ function WorkflowPanel({ repair, user, onRefresh }: { repair: any; user: any; on
   const isOwner     = repair.requesterId === user.id;
   const isAdmin     = user.role === "ADMIN" || user.position === "แอดมิน";
 
-  const wrap = async (fn: () => Promise<void>) => {
-    try { setBusy(true); await fn(); onRefresh(); }
-    catch (e: any) { showToast("error", e?.message ?? "เกิดข้อผิดพลาด"); }
-    finally { setBusy(false); }
+  const wrap = async (fn: () => Promise<any>) => {
+    try {
+      setBusy(true);
+      const res = await fn();
+      if (res && res.success === false) {
+        throw new Error(res.error || "เกิดข้อผิดพลาด");
+      }
+      onRefresh();
+    } catch (e: any) {
+      showToast("error", e?.message ?? "เกิดข้อผิดพลาด");
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (repair.status === "COMPLETED" || repair.status === "CANCELLED") {
@@ -224,11 +233,14 @@ export default function RepairDetailPage({ repairId }: { repairId: string }) {
     try {
       setLoading(true);
       setError("");
-      const [data, photos] = await Promise.all([
+      const [res, photos] = await Promise.all([
         getRepairDetailAction(repairId),
         getRepairPhotosAction(repairId).catch(() => ({ BEFORE: [], AFTER: [], limits: { BEFORE: 2, AFTER: 2 } })),
       ]);
-      setRepair(data);
+      if (!res.success) {
+        throw new Error(res.error || "ไม่สามารถโหลดข้อมูลได้");
+      }
+      setRepair(res.repair);
       setPhotosData(photos);
     } catch (e: any) {
       setError(e?.message ?? "ไม่สามารถโหลดข้อมูลได้");

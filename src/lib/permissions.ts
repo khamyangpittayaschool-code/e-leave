@@ -34,8 +34,8 @@ type RepairRole = "TEACHER" | "TECHNICIAN" | "HEAD" | "ADMIN" | "REPAIR_MANAGER"
 /** Static permission matrix — change role capabilities here, not in component/action code */
 const REPAIR_PERMISSION_MATRIX: Record<RepairRole, RepairPermission[]> = {
   TEACHER: ["repair:create", "repair:view.own"],
-  TECHNICIAN: ["repair:view.all", "repair:update", "repair:dashboard"],
-  HEAD: ["repair:view.all", "repair:assign", "repair:view.cost", "repair:dashboard"],
+  TECHNICIAN: ["repair:create", "repair:view.own", "repair:view.all", "repair:update", "repair:dashboard"],
+  HEAD: ["repair:create", "repair:view.own", "repair:view.all", "repair:assign", "repair:view.cost", "repair:dashboard"],
   REPAIR_MANAGER: [
     "repair:create",
     "repair:view.own",
