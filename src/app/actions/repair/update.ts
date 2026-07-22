@@ -30,7 +30,8 @@ export async function assignRepairAction(
     if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
     const actor = getActor(session.user);
     
-    const repair = await assignRepair(actor, repairId, assigneeId, currentVersion);
+    const rawRepair = await assignRepair(actor, repairId, assigneeId, currentVersion);
+    const repair = JSON.parse(JSON.stringify(rawRepair));
     return { success: true, repair };
   } catch (err: any) {
     console.error("assignRepairAction failed:", err);
@@ -45,7 +46,8 @@ export async function startRepairAction(repairId: string, currentVersion: number
     if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
     const actor = getActor(session.user);
 
-    const repair = await startRepair(actor, repairId, currentVersion);
+    const rawRepair = await startRepair(actor, repairId, currentVersion);
+    const repair = JSON.parse(JSON.stringify(rawRepair));
     return { success: true, repair };
   } catch (err: any) {
     console.error("startRepairAction failed:", err);
@@ -64,7 +66,8 @@ export async function completeRepairAction(
     if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
     const actor = getActor(session.user);
 
-    const repair = await completeRepair(actor, repairId, currentVersion, input);
+    const rawRepair = await completeRepair(actor, repairId, currentVersion, input);
+    const repair = JSON.parse(JSON.stringify(rawRepair));
     return { success: true, repair };
   } catch (err: any) {
     console.error("completeRepairAction failed:", err);
@@ -83,7 +86,8 @@ export async function cancelRepairAction(
     if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
     const actor = getActor(session.user);
 
-    const repair = await cancelRepair(actor, repairId, currentVersion, cancelReason);
+    const rawRepair = await cancelRepair(actor, repairId, currentVersion, cancelReason);
+    const repair = JSON.parse(JSON.stringify(rawRepair));
     return { success: true, repair };
   } catch (err: any) {
     console.error("cancelRepairAction failed:", err);
@@ -98,7 +102,8 @@ export async function getRepairsAction() {
     if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
     const actor = getActor(session.user);
 
-    const repairs = await getRepairs(actor);
+    const rawRepairs = await getRepairs(actor);
+    const repairs = JSON.parse(JSON.stringify(rawRepairs));
     return { success: true, repairs };
   } catch (err: any) {
     console.error("getRepairsAction failed:", err);
@@ -113,7 +118,8 @@ export async function getRepairDetailAction(repairId: string) {
     if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
     const actor = getActor(session.user);
 
-    const repair = await getRepairDetail(actor, repairId);
+    const rawRepair = await getRepairDetail(actor, repairId);
+    const repair = JSON.parse(JSON.stringify(rawRepair));
     return { success: true, repair };
   } catch (err: any) {
     console.error("getRepairDetailAction failed:", err);

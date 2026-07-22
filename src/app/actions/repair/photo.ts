@@ -55,7 +55,7 @@ export async function uploadRepairPhotoAction(formData: FormData) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const photo = await uploadRepairPhoto({
+    const rawPhoto = await uploadRepairPhoto({
       repairId,
       photoType,
       fileBuffer: buffer,
@@ -64,6 +64,7 @@ export async function uploadRepairPhotoAction(formData: FormData) {
       currentPhotoCount: parseInt(countStr ?? "0", 10),
     });
 
+    const photo = JSON.parse(JSON.stringify(rawPhoto));
     return { success: true, photo };
   } catch (err: any) {
     console.error("uploadRepairPhotoAction failed:", err);
@@ -75,7 +76,8 @@ export async function uploadRepairPhotoAction(formData: FormData) {
 export async function getRepairPhotosAction(repairId: string) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
-  return getRepairPhotosWithUrls(repairId);
+  const data = await getRepairPhotosWithUrls(repairId);
+  return JSON.parse(JSON.stringify(data));
 }
 
 /** ลบรูปภาพ */
@@ -87,5 +89,6 @@ export async function deleteRepairPhotoAction(photoId: string, repairId: string)
   const isTechnician = actor.position === "ช่าง";
   const canOverride = isAdmin || isTechnician;
 
-  return deleteRepairPhoto(photoId, actor.id, canOverride, repairId);
+  const res = await deleteRepairPhoto(photoId, actor.id, canOverride, repairId);
+  return JSON.parse(JSON.stringify(res ?? { success: true }));
 }

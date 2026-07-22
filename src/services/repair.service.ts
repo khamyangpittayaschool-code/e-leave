@@ -79,6 +79,12 @@ export async function createRepair(
 ) {
   assertRepairPermission(actor, "repair:create");
 
+  const parseDate = (d?: string | null) => {
+    if (!d) return null;
+    const parsed = new Date(d);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const repair = await createRepairRequest({
     title: input.title,
     description: input.description,
@@ -86,9 +92,7 @@ export async function createRepair(
     urgency: input.urgency,
     category: input.category,
     requesterId: actor.id,
-    expectedFinishAt: input.expectedFinishAt
-      ? new Date(input.expectedFinishAt)
-      : null,
+    expectedFinishAt: parseDate(input.expectedFinishAt),
   });
 
   await logRepairAction({

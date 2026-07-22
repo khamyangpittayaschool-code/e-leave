@@ -81,6 +81,7 @@ export default function RepairNewPage() {
 
       // 2. Upload any selected BEFORE photos
       if (selectedFiles.length > 0) {
+        let uploadError = "";
         for (let i = 0; i < selectedFiles.length; i++) {
           setUploadProgress(`กำลังอัปโหลดรูปภาพที่ ${i + 1}/${selectedFiles.length}...`);
           const fd = new FormData();
@@ -91,8 +92,15 @@ export default function RepairNewPage() {
           
           const uploadRes = await uploadRepairPhotoAction(fd);
           if (!uploadRes.success) {
-            throw new Error(uploadRes.error || `อัปโหลดรูปภาพที่ ${i + 1} ไม่สำเร็จ`);
+            uploadError = uploadRes.error || `อัปโหลดรูปภาพที่ ${i + 1} ไม่สำเร็จ`;
+            break;
           }
+        }
+
+        if (uploadError) {
+          showToast("warning", `สร้างคำขอแล้ว แต่อัปโหลดรูปภาพไม่สำเร็จ: ${uploadError}`);
+          router.push(`/repair/${repair.id}`);
+          return;
         }
       }
 

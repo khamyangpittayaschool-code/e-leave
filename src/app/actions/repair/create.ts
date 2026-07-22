@@ -17,10 +17,11 @@ export async function createRepairAction(formData: {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user) throw new Error("กรุณาเข้าสู่ระบบก่อน");
 
-    const repair = await createRepair(
+    const rawRepair = await createRepair(
       { id: session.user.id, role: (session.user as any).role ?? "TEACHER", position: (session.user as any).position },
       formData
     );
+    const repair = JSON.parse(JSON.stringify(rawRepair));
     return { success: true, repair };
   } catch (err: any) {
     console.error("createRepairAction failed:", err);
