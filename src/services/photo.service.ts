@@ -9,7 +9,6 @@
  *  - ETag / dedup สามารถ extend ได้ใน Sprint 3
  */
 
-import sharp from "sharp";
 import { RepairPhotoType } from "@prisma/client";
 import { getStorageProvider } from "@/services/storage";
 import { prisma } from "@/lib/db";
@@ -38,11 +37,25 @@ const WEBP_QUALITY = 80;
 
 // ─── Compress ─────────────────────────────────────────────────────────────────
 
-async function compressToWebp(inputBuffer: Buffer): Promise<Buffer> {
-  return sharp(inputBuffer)
-    .resize({ width: TARGET_WIDTH, withoutEnlargement: true })
-    .webp({ quality: WEBP_QUALITY })
-    .toBuffer();
+async function compressToWebp(
+  inputBuffer: Buffer,
+  originalMimeType: string
+): Promise<{ buffer: Buffer; mimeType: string }> {
+  try {
+    const sharpModule = await import("sharp");
+    const sharp = sharpModule.default || sharpModule;
+    const compressed = await sharp(inputBuffer)
+      .resize({ width: TARGET_WIDTH, withoutEnlargement: true })
+      .webp({ quality: WEBP_QUALITY })
+      .toBuffer();
+    return { buffer: compressed, mimeType: "image/webp" };
+  } catch (err) {
+    console.warn(
+      "[PhotoService] Sharp compression unavailable or native module failed, using original file buffer:",
+      err
+    );
+    return { buffer: inputBuffer, mimeType: originalMimeType || "image/jpeg" };
+  }
 }
 
 // ─── storageKey builder ────────────────────────────────────────────────────────
@@ -104,15 +117,19 @@ export async function uploadRepairPhoto({
   const repair = await findRepairById(repairId);
   if (!repair) throw new Error("ไม่พบรายการแจ้งซ่อม");
 
-  // 3. Compress → WebP
-  const compressed = await compressToWebp(fileBuffer);
+  // 3. Compress → WebP (or fallback to original buffer)
+  const processed = await compressToWebp(fileBuffer, originalMimeType);
 
   // 4. Build storageKey
   const storageKey = buildStorageKey(repair.repairNo, photoType, currentPhotoCount);
 
   // 5. Upload to storage provider
   const storage = getStorageProvider();
-  const uploadParams = { buffer: compressed, mimeType: "image/webp", storageKey };
+  const uploadParams = {
+    buffer: processed.buffer,
+    mimeType: processed.mimeType,
+    storageKey,
+  };
   await storage.upload(uploadParams);
   const finalStorageKey = uploadParams.storageKey;
 
@@ -121,8 +138,8 @@ export async function uploadRepairPhoto({
     repairId,
     photoType,
     storageKey: finalStorageKey,
-    mimeType: "image/webp",
-    fileSize: compressed.byteLength,
+    mimeType: processed.mimeType,
+    fileSize: processed.buffer.byteLength,
     uploadedById,
   });
 
