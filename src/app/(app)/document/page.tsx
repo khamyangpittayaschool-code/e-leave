@@ -630,6 +630,16 @@ function DocumentPageContent() {
 
                 <GuardedAction requiredPermission="sarabun:amss:sync">
                   <button
+                    onClick={() => setShowAmssImportModal(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200/60 dark:border-indigo-800/60 transition cursor-pointer"
+                    title="นำเข้าหนังสือรับโดยคัดลอกซอร์สโค้ด HTML จากหน้าเว็บ AMSS++ เหมาะสำหรับเมื่อระบบคลาวด์ถูกบล็อก 403"
+                  >
+                    📋 นำเข้าผ่านโค้ด HTML
+                  </button>
+                </GuardedAction>
+
+                <GuardedAction requiredPermission="sarabun:amss:sync">
+                  <button
                     onClick={handleAmssAutoSync}
                     disabled={amssSyncing}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
