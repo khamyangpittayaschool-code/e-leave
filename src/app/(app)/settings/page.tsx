@@ -2225,74 +2225,52 @@ export default function SettingsPage() {
 
   };
 
-  const systemSettingsItems: MenuItem[] = [];
-
+  // --- 1. การตั้งค่าภาพรวมทั้งระบบ (Core System-Wide Settings) ---
+  const coreSystemItems: MenuItem[] = [];
   if (isAdmin) {
-
-    systemSettingsItems.push({ id: "school", icon: <BookOpen className="w-5 h-5 text-blue-500" />, title: lang === "en" ? "School Info" : "ข้อมูลโรงเรียน", description: lang === "en" ? "School name, affiliation, logo" : "ชื่อโรงเรียน, สังกัด, โลโก้" });
-
+    coreSystemItems.push({ id: "school", icon: <BookOpen className="w-5 h-5 text-blue-500" />, title: lang === "en" ? "School Info" : "ข้อมูลโรงเรียน", description: lang === "en" ? "School name, affiliation, logo" : "ชื่อโรงเรียน, สังกัด, โลโก้" });
+    coreSystemItems.push({ id: "permissions", icon: <Lock className="w-5 h-5 text-rose-500" />, title: lang === "en" ? "Access Permissions" : "กำหนดสิทธิ์ผู้เข้าใช้งาน", description: lang === "en" ? "Access rights per role" : "กำหนดสิทธิ์เข้าใช้งานตาม Role บุคลากร" });
   }
-
-  if (isAdmin || isHRHead || isInspector) {
-
-    systemSettingsItems.push({ id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "Approval Chain" : "สายอนุมัติ", description: lang === "en" ? "Inspector, approver, acting director" : "ผู้ตรวจสอบ, ผู้อนุมัติ, ตำแหน่งรักษาการ" });
-
-    systemSettingsItems.push({ id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "ระเบียบการลา & โควตา", description: lang === "en" ? "Rules, quotas, restrictions" : "กฎระเบียบ, โควตาวันลา, ข้อจำกัด" });
-
-  }
-
-  if (isAdmin) {
-
-    systemSettingsItems.push({ id: "line", icon: <Bell className="w-5 h-5 text-green-500" />, title: lang === "en" ? "LINE Notification" : "แจ้งเตือน LINE", description: lang === "en" ? "Enable/disable, Token, Group ID" : "เปิด/ปิดการแจ้งเตือน, Token, Group ID" });
-
-    systemSettingsItems.push({ id: "font", icon: <Type className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Font & File Format" : "ฟอนต์ & รูปแบบไฟล์", description: lang === "en" ? "Leave form font, Google Drive format" : "ฟอนต์ใบลา, รูปแบบอัปโหลด Google Drive" });
-
-    systemSettingsItems.push({ id: "permissions", icon: <Lock className="w-5 h-5 text-rose-500" />, title: lang === "en" ? "Access Permissions" : "กำหนดสิทธิ์ผู้เข้าใช้งาน", description: lang === "en" ? "Access rights per role" : "กำหนดสิทธิ์เข้าใช้งานตาม Role บุคลากร" });
-
-    systemSettingsItems.push({ id: "subsystems", icon: <LayoutGrid className="w-5 h-5 text-purple-600" />, title: lang === "en" ? "Subsystems" : "ระบบย่อย", description: lang === "en" ? "Enable/disable subsystem features" : "เปิด/ปิดการใช้งานระบบย่อยต่าง ๆ" });
-
-  }
-
-  const dataManagementItems: MenuItem[] = [];
-
-  if (canManualImport) {
-
-    dataManagementItems.push({ id: "manual-import", icon: <Plus className="w-5 h-5 text-purple-500" />, title: lang === "en" ? "Manual Leave Entry" : "กรอกข้อมูลใบลาด้วยตนเอง", description: lang === "en" ? "Manually record leave history" : "บันทึกประวัติการลาของบุคลากรย้อนหลังด้วยตนเอง" });
-
-  }
-
-  if (isAdmin || isHRHead || isInspector) {
-
-    dataManagementItems.push({
-
-      id: "holidays",
-
-      icon: <CalendarDays className="w-5 h-5 text-indigo-500" />,
-
-      title: lang === "en" ? "Public Holidays" : "วันหยุดราชการ",
-
-      description: lang === "en" ? "Manage and fetch public holidays" : "จัดการและดึงวันหยุดราชการ/วันชดเชย"
-
-    });
-
-  }
-
-  if (isAdmin || isInspector) {
-
-    dataManagementItems.push({ id: "backup", icon: <HardDrive className="w-5 h-5 text-teal-500" />, title: lang === "en" ? "Backup & Data" : "สำรองข้อมูล", description: lang === "en" ? "Export/Import, clear data" : "Export/Import, ปิดรอบ, ล้างข้อมูล" });
-
-  }
-
   if ((session?.user as any)?.isActualAdmin === true) {
-
-    dataManagementItems.push({ id: "impersonate", icon: <UserCog className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Role Impersonation" : "จำลองบทบาท", description: lang === "en" ? "Simulate roles for testing" : "จำลองตำแหน่งเพื่อทดสอบระบบ" });
-
+    coreSystemItems.push({ id: "impersonate", icon: <UserCog className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Role Impersonation" : "จำลองบทบาท", description: lang === "en" ? "Simulate roles for testing" : "จำลองตำแหน่งเพื่อทดสอบระบบ" });
+  }
+  if (isAdmin) {
+    coreSystemItems.push({ id: "footer", icon: <Settings2 className="w-5 h-5 text-rose-500" />, title: lang === "en" ? "Footer Settings" : "ท้ายกระดาษ", description: lang === "en" ? "Website footer text" : "ข้อความท้ายหน้าเว็บ" });
+    coreSystemItems.push({ id: "subsystems", icon: <LayoutGrid className="w-5 h-5 text-purple-600" />, title: lang === "en" ? "Subsystems Manager" : "จัดการเปิด/ปิดระบบย่อย", description: lang === "en" ? "Enable/disable subsystem features" : "เปิด/ปิดการใช้งานโมดูลระบบย่อยต่าง ๆ" });
   }
 
+  // --- 2. การตั้งค่าระบบการลา (Leave Subsystem Settings) ---
+  const leaveSystemItems: MenuItem[] = [];
+  if (isAdmin || isHRHead || isInspector) {
+    leaveSystemItems.push({ id: "approval", icon: <Users className="w-5 h-5 text-emerald-500" />, title: lang === "en" ? "Approval Chain" : "สายอนุมัติ", description: lang === "en" ? "Inspector, approver, acting director" : "ผู้ตรวจสอบ, ผู้อนุมัติ, ตำแหน่งรักษาการ" });
+    leaveSystemItems.push({ id: "leave-rules", icon: <ShieldAlert className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Leave Rules & Quotas" : "ระเบียบการลา & โควตา", description: lang === "en" ? "Rules, quotas, restrictions" : "กฎระเบียบ, โควตาวันลา, ข้อจำกัด" });
+  }
   if (isAdmin) {
+    leaveSystemItems.push({ id: "line", icon: <Bell className="w-5 h-5 text-green-500" />, title: lang === "en" ? "Leave LINE Notification" : "แจ้งเตือน LINE (ระบบลา)", description: lang === "en" ? "Enable/disable, Token, Group ID" : "เปิด/ปิดการแจ้งเตือน, Token, Group ID ระบบลา" });
+    leaveSystemItems.push({ id: "font", icon: <Type className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Font & File Format" : "ฟอนต์ & รูปแบบไฟล์ใบลา", description: lang === "en" ? "Leave form font, Google Drive format" : "ฟอนต์ใบลา, รูปแบบอัปโหลด Google Drive" });
+  }
+  if (canManualImport) {
+    leaveSystemItems.push({ id: "manual-import", icon: <Plus className="w-5 h-5 text-purple-500" />, title: lang === "en" ? "Manual Leave Entry" : "กรอกข้อมูลใบลาด้วยตนเอง", description: lang === "en" ? "Manually record leave history" : "บันทึกประวัติการลาของบุคลากรย้อนหลังด้วยตนเอง" });
+  }
+  if (isAdmin || isHRHead || isInspector) {
+    leaveSystemItems.push({ id: "holidays", icon: <CalendarDays className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Public Holidays" : "วันหยุดราชการ", description: lang === "en" ? "Manage and fetch public holidays" : "จัดการและดึงวันหยุดราชการ/วันชดเชย" });
+  }
+  if (isAdmin || isInspector) {
+    leaveSystemItems.push({ id: "backup", icon: <HardDrive className="w-5 h-5 text-teal-500" />, title: lang === "en" ? "Leave Data & Backup" : "สำรองข้อมูลระบบการลา", description: lang === "en" ? "Export/Import, clear data" : "Export/Import, ปิดรอบปีงบประมาณ, ล้างข้อมูล" });
+  }
 
-    dataManagementItems.push({ id: "footer", icon: <Settings2 className="w-5 h-5 text-rose-500" />, title: lang === "en" ? "Footer Settings" : "ท้ายกระดาษ", description: lang === "en" ? "Website footer text" : "ข้อความท้ายหน้าเว็บ" });
-
+  // --- 3. การตั้งค่าระบบย่อยอื่น ๆ (Other Subsystems Settings) ---
+  const subsystemModuleItems: MenuItem[] = [];
+  if (isAdmin || (session?.user as any)?.role === "REPAIR_MANAGER" || (session?.user as any)?.position === "ผู้ดูแลระบบซ่อม") {
+    if (enableRepair) {
+      subsystemModuleItems.push({ id: "repair-settings", icon: <Wrench className="w-5 h-5 text-amber-500" />, title: lang === "en" ? "Repair System Settings" : "ตั้งค่าระบบแจ้งซ่อม", description: lang === "en" ? "Technicians, SLA, LINE OA, Photo limits" : "สิทธิ์ช่าง, เกณฑ์ SLA, ขีดจำกัดรูปภาพ, LINE OA ซ่อม" });
+    }
+  }
+  if (isAdmin && enableAttendance) {
+    subsystemModuleItems.push({ id: "attendance-settings", icon: <Clock className="w-5 h-5 text-indigo-500" />, title: lang === "en" ? "Attendance Settings" : "ตั้งค่าระบบลงเวลาปฏิบัติงาน", description: lang === "en" ? "Shift times, Geofence, Face Scan" : "เวลาเข้า-ออกงาน, GPS Geofence, สแกนใบหน้า" });
+  }
+  if (isAdmin && enableDocument) {
+    subsystemModuleItems.push({ id: "document-settings", icon: <ClipboardList className="w-5 h-5 text-orange-500" />, title: lang === "en" ? "Document Settings" : "ตั้งค่าระบบเอกสารรับ-ส่ง", description: lang === "en" ? "Numbering format, registers" : "เลขทะเบียนรับ-ส่ง, รูปแบบรหัสเอกสาร" });
   }
 
   // HR Head sees only approval + leave-rules + manual-import (if permitted)
@@ -4822,21 +4800,23 @@ export default function SettingsPage() {
         </button>
 
         <button
-
           type="button"
-
           onClick={() => handleImpersonate("ผู้อำนวยการ", "TEACHER")}
-
           disabled={isImpersonating}
-
           className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-semibold text-sm transition-all border border-indigo-100/55 dark:border-indigo-900/30"
-
         >
-
           <span>ผู้อำนวยการ (EXEC)</span>
-
           <span className="text-xs font-normal text-indigo-400">อนุมัติขั้นสุดท้าย</span>
+        </button>
 
+        <button
+          type="button"
+          onClick={() => handleImpersonate("ช่าง", "TECHNICIAN")}
+          disabled={isImpersonating}
+          className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold text-sm transition-all border border-amber-100/55 dark:border-amber-900/30"
+        >
+          <span>ช่างซ่อมบำรุง (TECHNICIAN)</span>
+          <span className="text-xs font-normal text-amber-500">จัดการงานซ่อม/อัปเดตสถานะการซ่อม</span>
         </button>
 
         {/* Show Cancel Impersonation button if they are currently impersonating */}
@@ -7294,57 +7274,52 @@ export default function SettingsPage() {
     }
 
     return (
-
       <div className="space-y-6">
-
-        {/* Group: System Settings */}
-
-        <div>
-
-          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 pl-2 mb-3">
-
-            {lang === "en" ? "System Settings" : "ตั้งค่าระบบ"}
-
-          </p>
-
-          <div className="space-y-2">
-
-            {systemSettingsItems.map((item) => (
-
-              <MenuItemRow key={item.id} item={item} onClick={() => setActiveSection(item.id)} />
-
-            ))}
-
+        {/* Group 1: Core System-Wide Settings */}
+        {coreSystemItems.length > 0 && (
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pl-2 mb-3">
+              {lang === "en" ? "Global System Settings" : "การตั้งค่าภาพรวมทั้งระบบ"}
+            </p>
+            <div className="space-y-2">
+              {coreSystemItems.map((item) => (
+                <MenuItemRow key={item.id} item={item} onClick={() => setActiveSection(item.id)} />
+              ))}
+            </div>
           </div>
+        )}
 
-        </div>
-
-        {/* Group: Data Management */}
-
-        <div>
-
-          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 pl-2 mb-3">
-
-            {lang === "en" ? "Data Management" : "จัดการข้อมูล"}
-
-          </p>
-
-          <div className="space-y-2">
-
-            {dataManagementItems.map((item) => (
-
-              <MenuItemRow key={item.id} item={item} onClick={() => setActiveSection(item.id)} />
-
-            ))}
-
+        {/* Group 2: Leave Management System Settings */}
+        {leaveSystemItems.length > 0 && (
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 pl-2 mb-3 flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5" />
+              {lang === "en" ? "Leave Subsystem Settings" : "ตั้งค่าระบบการลา (Leave System)"}
+            </p>
+            <div className="space-y-2">
+              {leaveSystemItems.map((item) => (
+                <MenuItemRow key={item.id} item={item} onClick={() => setActiveSection(item.id)} />
+              ))}
+            </div>
           </div>
+        )}
 
-        </div>
-
+        {/* Group 3: Other Subsystems Settings */}
+        {subsystemModuleItems.length > 0 && (
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 pl-2 mb-3 flex items-center gap-1.5">
+              <LayoutGrid className="w-3.5 h-3.5" />
+              {lang === "en" ? "Other Subsystems Settings" : "ตั้งค่าระบบย่อยอื่น ๆ"}
+            </p>
+            <div className="space-y-2">
+              {subsystemModuleItems.map((item) => (
+                <MenuItemRow key={item.id} item={item} onClick={() => setActiveSection(item.id)} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-
     );
-
   };
 
   return (

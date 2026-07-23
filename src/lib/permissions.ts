@@ -69,7 +69,7 @@ export function getRepairRole(user: {
 }): RepairRole {
   if (user.role === "ADMIN" || user.position === "แอดมิน") return "ADMIN";
   if (user.role === "REPAIR_MANAGER" || user.position === "ผู้จัดการเรื่องระบบซ่อม") return "REPAIR_MANAGER";
-  if (user.position === "ช่าง") return "TECHNICIAN";
+  if (user.role === "TECHNICIAN" || user.position === "ช่าง") return "TECHNICIAN";
   if (
     user.position === "หัวหน้างาน" ||
     user.position === "หัวหน้าหมวด" ||
