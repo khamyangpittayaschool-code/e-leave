@@ -148,7 +148,7 @@ export default function RepairNewPage() {
 
         if (uploadError) {
           showToast("warning", `สร้างคำขอแล้ว แต่อัปโหลดรูปภาพไม่สำเร็จ: ${uploadError}`);
-          router.push(`/repair/${repair.id}`);
+          router.push("/repair");
           return;
         }
       }
@@ -156,7 +156,7 @@ export default function RepairNewPage() {
       setProgressPercent(100);
       setUploadProgress("ส่งคำขอเรียบร้อย!");
       showToast("success", "ส่งคำขอแจ้งซ่อมเรียบร้อยแล้ว");
-      router.push(`/repair/${repair.id}`);
+      router.push("/repair");
     } catch (err: any) {
       showToast("error", err?.message ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {

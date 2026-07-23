@@ -96,8 +96,11 @@ export async function deletePhoto(
     where: { id: photoId },
     include: { repair: { select: { requesterId: true } } },
   });
+
   if (!photo) throw new Error("ไม่พบรูปภาพ");
-  if (!isAdmin && photo.uploadedById !== requesterId) {
+  const isRequester = photo.repair?.requesterId === requesterId;
+  const isUploader = photo.uploadedById === requesterId;
+  if (!isAdmin && !isRequester && !isUploader) {
     throw new Error("ไม่มีสิทธิ์ลบรูปภาพนี้");
   }
 

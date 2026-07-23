@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Wrench, MapPin, User, Calendar,
@@ -240,51 +240,119 @@ function WorkflowPanel({ repair, user, onRefresh }: { repair: any; user: any; on
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Status Lifecycle Stepper Component ─────────────────────────────────────
 
-export default function RepairDetailPage({ repairId }: { repairId: string }) {
-  const { data: session } = useSession();
+const WORKFLOW_STEPS = [
+  { key: "PENDING font-semibold", status: "PENDING", label: "รอดำเนินการ", icon: Clock },
+  { key: "ASSIGNED", status: "ASSIGNED", label: "มอบหมายแล้ว", icon: AlertCircle },
+  { key: "IN_PROGRESS", status: "IN_PROGRESS", label: "กำลังซ่อม", icon: Wrench },
+  { key: "COMPLETED", status: "COMPLETED", label: "เสร็จสิ้น", icon: CheckCircle2 },
+];
+
+function StatusStepper({ currentStatus }: { currentStatus: string }) {
+  if (currentStatus === "CANCELLED") {
+    return (
+      <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-center gap-2 text-slate-500 font-bold text-sm">
+        <XCircle className="w-5 h-5 text-red-500" />
+        คำขอนี้ถูกยกเลิกแล้ว
+      </div>
+    );
+  }
+
+  const order = ["PENDING", "ASSIGNED", "IN_PROGRESS", "COMPLETED"];
+  const currentIndex = order.indexOf(currentStatus);
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {WORKFLOW_STEPS.map((step, idx) => {
+          const isDone = currentIndex >= idx;
+          const isCurrent = currentIndex === idx;
+          const Icon = step.icon;
+
+          return (
+            <div
+              key={step.status}
+              className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                isCurrent
+                  ? "bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400 shadow-sm"
+                  : isDone
+                  ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                  : "bg-slate-50 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800 text-slate-400"
+              }`}
+            >
+              <div
+                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                  isCurrent
+                    ? "bg-orange-500 text-white"
+                    : isDone
+                    ? "bg-emerald-500 text-white"
+                    : "bg-slate-200 dark:bg-slate-700 text-slate-400"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </div>
+              <span className="truncate">{step.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function RepairDetailPage({ repairId }: { repairId?: string }) {
+  const params = useParams();
   const router = useRouter();
+  const id = repairId || (params?.id as string);
+
+  const { data: session } = useSession();
+  const { showToast } = useToast();
+
   const [repair, setRepair] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [photosData, setPhotosData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const user = session?.user as any;
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
-      const [res, photos] = await Promise.all([
-        getRepairDetailAction(repairId),
-        getRepairPhotosAction(repairId).catch(() => ({ BEFORE: [], AFTER: [], limits: { BEFORE: 2, AFTER: 2 } })),
+      const [detailRes, photoRes] = await Promise.all([
+        getRepairDetailAction(id),
+        getRepairPhotosAction(id).catch(() => null),
       ]);
-      if (!res.success) {
-        throw new Error(res.error || "ไม่สามารถโหลดข้อมูลได้");
+
+      if (!detailRes.success || !detailRes.repair) {
+        throw new Error(detailRes.error || "ไม่พบข้อมูลการแจ้งซ่อม");
       }
-      setRepair(res.repair);
-      setPhotosData(photos);
-    } catch (e: any) {
-      setError(e?.message ?? "ไม่สามารถโหลดข้อมูลได้");
+
+      setRepair(detailRes.repair);
+      setPhotosData(photoRes);
+    } catch (err: any) {
+      setError(err?.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
     } finally {
       setLoading(false);
     }
-  }, [repairId]);
+  }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (id) load();
+  }, [id, load]);
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[50vh]">
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3 text-slate-500">
       <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      <p className="text-sm font-medium">กำลังโหลดข้อมูลแจ้งซ่อม...</p>
     </div>
   );
 
   if (error) return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-3">
-      <XCircle className="w-10 h-10 text-red-400" />
+      <XCircle className="w-10 h-10 text-red-500" />
       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{error}</p>
-      <button onClick={() => router.back()} className="text-sm text-purple-600 hover:underline">← กลับ</button>
+      <button onClick={() => router.back()} className="text-sm font-bold text-orange-500 hover:underline">← ย้อนกลับ</button>
     </div>
   );
 
@@ -292,75 +360,178 @@ export default function RepairDetailPage({ repairId }: { repairId: string }) {
 
   const cfg = STATUS_CONFIG[repair.status] ?? STATUS_CONFIG.PENDING;
   const StatusIcon = cfg.icon;
-  const urg = URGENCY_LABELS[repair.urgency] ?? URGENCY_LABELS.LOW;
+  const urg = URGENCY_LABELS[repair.urgency] ?? URGENCY_LABELS.NORMAL;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-12">
-
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-mono font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">{repair.repairNo}</span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ${cfg.color} ${cfg.bg} ${cfg.ring}`}>
-                <StatusIcon className="w-3.5 h-3.5" /> {cfg.label}
-              </span>
-              <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${urg.cls}`}>{urg.label}</span>
-            </div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-1 line-clamp-2">{repair.title}</h1>
-          </div>
-        </div>
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      {/* Top Header Controls Bar */}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          ย้อนกลับ
+        </button>
 
         <button
           onClick={() => window.open(`/print/repair/${repair.id}`, "_blank")}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all cursor-pointer shrink-0"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-md shadow-orange-500/20 transition-all cursor-pointer"
         >
-          <Printer className="w-4 h-4 text-orange-500" />
-          พิมพ์ใบแจ้งซ่อม
+          <Printer className="w-4 h-4" />
+          พิมพ์ใบแจ้งซ่อม (A4)
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      {/* Hero Title & Status Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4 relative overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-orange-500/10 to-amber-500/0 pointer-events-none rounded-tr-2xl" />
 
-        {/* Info Panel */}
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-mono font-bold text-xs bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 px-3 py-1 rounded-full">
+              #{repair.repairNo}
+            </span>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ring-1 ${cfg.color} ${cfg.bg} ${cfg.ring}`}>
+              <StatusIcon className="w-3.5 h-3.5" />
+              {cfg.label}
+            </span>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${urg.cls}`}>
+            ความเร่งด่วน: {urg.label}
+          </span>
+        </div>
+
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white leading-snug">
+          {repair.title}
+        </h1>
+      </motion.div>
+
+      {/* Lifecycle Workflow Stepper Bar */}
+      <StatusStepper currentStatus={repair.status} />
+
+      {/* Main Grid: Details & Workflow Action Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Details */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 space-y-1"
+          transition={{ delay: 0.05 }}
+          className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6"
         >
-          <InfoRow icon={FileText}      label="รายละเอียด"  value={<p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{repair.description}</p>} />
-          <InfoRow icon={MapPin}        label="สถานที่"     value={repair.location} />
-          <InfoRow icon={ClipboardList} label="ประเภท"      value={CATEGORY_LABELS[repair.category] ?? repair.category} />
-          <InfoRow icon={User}          label="ผู้แจ้ง"     value={repair.requester?.name ?? "—"} />
-          <InfoRow icon={User}          label="ช่างที่รับ"  value={repair.assignee?.name ?? <span className="text-slate-400 italic">ยังไม่มอบหมาย</span>} />
-          <InfoRow icon={Calendar}      label="วันที่แจ้ง"  value={new Date(repair.createdAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })} />
-          {repair.expectedFinishAt && (
-            <InfoRow icon={Calendar} label="กำหนดเสร็จ" value={new Date(repair.expectedFinishAt).toLocaleDateString("th-TH", { dateStyle: "medium" })} />
-          )}
-          {repair.resolutionNote && (
-            <InfoRow icon={CheckCircle2} label="ผลการซ่อม" value={<p className="text-sm leading-relaxed text-emerald-700 dark:text-emerald-300">{repair.resolutionNote}</p>} />
-          )}
-          {repair.cost !== null && repair.cost !== undefined && (
-            <InfoRow icon={Banknote} label="ค่าใช้จ่าย" value={<span className="text-emerald-700 dark:text-emerald-300 font-semibold">{Number(repair.cost).toLocaleString("th-TH")} บาท</span>} />
-          )}
-          {repair.materialsUsed && (
-            <InfoRow icon={ClipboardList} label="วัสดุที่ใช้" value={repair.materialsUsed} />
+          {/* Key Attributes Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+              <div className="w-9 h-9 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">สถานที่ / ห้อง</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{repair.location}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+              <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                <ClipboardList className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">หมวดหมู่งานซ่อม</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{CATEGORY_LABELS[repair.category] ?? repair.category}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+              <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ผู้แจ้งซ่อม</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{repair.requester?.name ?? "-"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+              <div className="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0">
+                <Wrench className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ช่างผู้รับผิดชอบ</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                  {repair.assignee?.name ?? <span className="text-amber-500 italic font-normal">ยังไม่ได้มอบหมาย</span>}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Issue Description Block */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-orange-500" />
+              รายละเอียดปัญหา / อาการชำรุด
+            </h3>
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
+              {repair.description || "ไม่ระบุรายละเอียดเพิ่มเติม"}
+            </div>
+          </div>
+
+          {/* Timestamps */}
+          <div className="flex items-center justify-between flex-wrap gap-3 pt-2 text-xs text-slate-400 font-medium">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              วันที่แจ้ง: {new Date(repair.createdAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+            </span>
+            {repair.expectedFinishAt && (
+              <span className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400 font-semibold">
+                <Calendar className="w-3.5 h-3.5" />
+                ต้องการให้เสร็จภายใน: {new Date(repair.expectedFinishAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}
+              </span>
+            )}
+          </div>
+
+          {/* Execution Result Summary (When status is COMPLETED or resolution exists) */}
+          {(repair.resolutionNote || repair.cost !== null || repair.materialsUsed) && (
+            <div className="bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 rounded-xl p-4 space-y-3 pt-3">
+              <h3 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                สรุปผลการดำเนินงานซ่อมแซม
+              </h3>
+
+              {repair.resolutionNote && (
+                <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                  {repair.resolutionNote}
+                </p>
+              )}
+
+              <div className="flex items-center gap-4 flex-wrap text-xs pt-1 border-t border-emerald-200/60 dark:border-emerald-900/40">
+                {repair.materialsUsed && (
+                  <span className="text-slate-600 dark:text-slate-300">
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">วัสดุที่ใช้:</span> {repair.materialsUsed}
+                  </span>
+                )}
+                {repair.cost !== null && repair.cost !== undefined && (
+                  <span className="text-slate-600 dark:text-slate-300 font-bold">
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">ค่าใช้จ่ายรวม:</span> {Number(repair.cost).toLocaleString("th-TH")} บาท
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </motion.div>
 
-        {/* Workflow Panel */}
+        {/* Right Column: Workflow Action Panel */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
           className="space-y-4"
         >
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">การดำเนินการ</p>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 space-y-3">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">การดำเนินการ</h3>
             {user ? (
               <WorkflowPanel repair={repair} user={user} onRefresh={load} />
             ) : (
@@ -370,16 +541,17 @@ export default function RepairDetailPage({ repairId }: { repairId: string }) {
         </motion.div>
       </div>
 
-      {/* Photo Panel */}
+      {/* Photo Panel (BEFORE / AFTER photos) */}
       {photosData && user && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
+          transition={{ delay: 0.12 }}
         >
           <RepairPhotosPanel
             repairId={repair.id}
             repairStatus={repair.status}
+            requesterId={repair.requesterId}
             assigneeId={repair.assigneeId}
             photosData={photosData}
             userId={user.id}
