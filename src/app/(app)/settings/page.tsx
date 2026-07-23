@@ -6644,6 +6644,12 @@ export default function SettingsPage() {
     const maxFileSize = rolePermissions.repairMaxFileSizeMb !== undefined ? rolePermissions.repairMaxFileSizeMb : 10;
     const slaHours = rolePermissions.repairSlaWarningHours !== undefined ? rolePermissions.repairSlaWarningHours : 24;
 
+    const notifyOnCreate = rolePermissions.repairNotifyOnCreate !== false;
+    const notifyOnAssign = rolePermissions.repairNotifyOnAssign !== false;
+    const notifyOnStart = rolePermissions.repairNotifyOnStart !== false;
+    const notifyOnComplete = rolePermissions.repairNotifyOnComplete !== false;
+    const notifyOnCancel = rolePermissions.repairNotifyOnCancel !== false;
+
     const filteredUsers = userList.filter((u: any) =>
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.position?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -6663,6 +6669,11 @@ export default function SettingsPage() {
           repairPhotoLimitAfter: Number(limitAfter),
           repairMaxFileSizeMb: Number(maxFileSize),
           repairSlaWarningHours: Number(slaHours),
+          repairNotifyOnCreate: notifyOnCreate,
+          repairNotifyOnAssign: notifyOnAssign,
+          repairNotifyOnStart: notifyOnStart,
+          repairNotifyOnComplete: notifyOnComplete,
+          repairNotifyOnCancel: notifyOnCancel,
         };
         const res = await updateSystemSettings({
           schoolName,
@@ -6823,8 +6834,88 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Right Column: Parameters and Limits */}
+          {/* Right Column: Parameters, Limits, and Notification Toggles */}
           <div className="space-y-4">
+            {/* LINE Notification Event Toggles */}
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-3">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                <Bell className="w-4 h-4 text-orange-500" />
+                {lang === "en" ? "LINE Notification Events" : "หัวข้อการแจ้งเตือน LINE Notify (เลือกเปิด/ปิดตามต้องการ)"}
+              </h4>
+              <p className="text-[11px] text-slate-400">
+                {lang === "en"
+                  ? "Select which repair status events trigger LINE notifications."
+                  : "เลือกเปิด/ปิดการส่งการแจ้งเตือนไปยัง LINE เฉพาะหัวข้อเหตุการณ์ที่ต้องการ"}
+              </p>
+
+              <div className="space-y-2 text-xs">
+                <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800/80 transition">
+                  <input
+                    type="checkbox"
+                    checked={notifyOnCreate}
+                    onChange={e => setRolePermissions((prev: any) => ({ ...prev, repairNotifyOnCreate: e.target.checked }))}
+                    className="rounded text-orange-500 focus:ring-orange-500/20 w-4 h-4 mt-0.5"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">1. เมื่อมีผู้แจ้งซ่อมส่งคำขอใหม่</span>
+                    <p className="text-[10px] text-slate-400">แจ้งเตือนทันทีเมื่อบุคลากรส่งคำขอแจ้งซ่อมวัสดุ/ครุภัณฑ์เข้ามาในระบบ</p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800/80 transition">
+                  <input
+                    type="checkbox"
+                    checked={notifyOnAssign}
+                    onChange={e => setRolePermissions((prev: any) => ({ ...prev, repairNotifyOnAssign: e.target.checked }))}
+                    className="rounded text-orange-500 focus:ring-orange-500/20 w-4 h-4 mt-0.5"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">2. เมื่อมีการมอบหมายช่างผู้รับผิดชอบ</span>
+                    <p className="text-[10px] text-slate-400">แจ้งเตือนเมื่อแอดมินหรือหัวหน้าฝ่ายมอบหมายช่างให้รับผิดชอบคำขอ</p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800/80 transition">
+                  <input
+                    type="checkbox"
+                    checked={notifyOnStart}
+                    onChange={e => setRolePermissions((prev: any) => ({ ...prev, repairNotifyOnStart: e.target.checked }))}
+                    className="rounded text-orange-500 focus:ring-orange-500/20 w-4 h-4 mt-0.5"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">3. เมื่อช่างกดเริ่มปฏิบัติงานซ่อม</span>
+                    <p className="text-[10px] text-slate-400">แจ้งเตือนเมื่อช่างเปลี่ยนสถานะเป็นกำลังดำเนินการซ่อมแซม</p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800/80 transition">
+                  <input
+                    type="checkbox"
+                    checked={notifyOnComplete}
+                    onChange={e => setRolePermissions((prev: any) => ({ ...prev, repairNotifyOnComplete: e.target.checked }))}
+                    className="rounded text-orange-500 focus:ring-orange-500/20 w-4 h-4 mt-0.5"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">4. เมื่อดำเนินการซ่อมแซมเสร็จสิ้น</span>
+                    <p className="text-[10px] text-slate-400">แจ้งเตือนสรุปผลการซ่อมแซมและค่าใช้จ่ายเมื่อช่างปฏิบัติงานเสร็จสิ้น</p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800/80 transition">
+                  <input
+                    type="checkbox"
+                    checked={notifyOnCancel}
+                    onChange={e => setRolePermissions((prev: any) => ({ ...prev, repairNotifyOnCancel: e.target.checked }))}
+                    className="rounded text-orange-500 focus:ring-orange-500/20 w-4 h-4 mt-0.5"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">5. เมื่อมีการยกเลิกคำขอแจ้งซ่อม</span>
+                    <p className="text-[10px] text-slate-400">แจ้งเตือนเมื่อผู้แจ้งซ่อมหรือแอดมินยกเลิกคำขอ</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             {/* Photo Limits */}
             <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-4">
               <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">

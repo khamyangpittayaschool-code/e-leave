@@ -163,6 +163,24 @@ export async function sendRepairLineNotify(
     cancelReason?: string;
   }
 ) {
+  // Check dynamic settings toggle for repair notifications
+  try {
+    const settings = await prisma.systemSettings.findUnique({
+      where: { id: "default" },
+      select: { rolePermissions: true },
+    });
+    if (settings?.rolePermissions) {
+      const parsed = JSON.parse(settings.rolePermissions);
+      if (action === "CREATE" && parsed.repairNotifyOnCreate === false) return;
+      if (action === "ASSIGN" && parsed.repairNotifyOnAssign === false) return;
+      if (action === "START" && parsed.repairNotifyOnStart === false) return;
+      if (action === "COMPLETE" && parsed.repairNotifyOnComplete === false) return;
+      if (action === "CANCEL" && parsed.repairNotifyOnCancel === false) return;
+    }
+  } catch (e) {
+    console.error("Failed to check repair notification settings:", e);
+  }
+
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
