@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -191,6 +191,8 @@ function DocumentPageContent() {
   const [amssSyncing, setAmssSyncing] = useState(false);
   const [amssCredsExist, setAmssCredsExist] = useState<boolean | null>(null); // null = checking
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
+  const [autoBrowserTrigger, setAutoBrowserTrigger] = useState(false);
+  const autoSyncedRef = useRef(false);
 
   const [issuing, setIssuing] = useState(false);
   const [scraping, setScraping] = useState(false);
@@ -239,6 +241,14 @@ function DocumentPageContent() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-sync when user opens Inbound Books view
+  useEffect(() => {
+    if (view === "inbound" && !autoSyncedRef.current && amssCredsExist) {
+      autoSyncedRef.current = true;
+      handleAmssAutoSync();
+    }
+  }, [view, amssCredsExist]);
 
   // Scrape AMSS++ link
   const handleFormScrape = async (url: string) => {
@@ -340,8 +350,9 @@ function DocumentPageContent() {
       const res = await syncAMSSDocumentsAutomatically();
       if (!res.success) {
         const errMsg = res.error || "เกิดข้อผิดพลาดในการดึงข้อมูลจาก AMSS++";
-        if (errMsg.includes("CAPTCHA") || errMsg.includes("Cloudflare")) {
-          showToast(errMsg + " — กรุณาใช้วิธี 'นำเข้าแบบวางโค้ด' แทน", "error");
+        if (errMsg.includes("CAPTCHA") || errMsg.includes("Cloudflare") || errMsg.includes("403")) {
+          // Trigger browser client background sync automatically without asking user to paste HTML
+          setAutoBrowserTrigger(true);
         } else {
           showToast(errMsg, "error");
         }
@@ -359,7 +370,8 @@ function DocumentPageContent() {
         await loadData();
       }
     } catch (err: any) {
-      showToast(err.message || "การเชื่อมโยงกับระบบ AMSS++ ล้มเหลว", "error");
+      // Fallback to browser client auto sync
+      setAutoBrowserTrigger(true);
     } finally {
       setAmssSyncing(false);
     }
@@ -621,7 +633,7 @@ function DocumentPageContent() {
 
               <div className="flex flex-wrap items-center gap-2">
                 <GuardedAction requiredPermission="sarabun:amss:sync">
-                  <AmssAutoBrowserSync onSuccess={loadData} showToast={showToast} />
+                  <AmssAutoBrowserSync onSuccess={loadData} showToast={showToast} autoTrigger={autoBrowserTrigger} />
                 </GuardedAction>
 
                 <GuardedAction requiredPermission="sarabun:amss:sync">

@@ -1,18 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RefreshCw, CheckCircle2, AlertCircle, ExternalLink, Zap } from "lucide-react";
 import { syncAMSSDocumentsFromHtml, getAMSSCredentials } from "@/app/actions/incoming";
 
 type AmssAutoBrowserSyncProps = {
   onSuccess?: (count: number) => void;
   showToast?: (msg: string, type?: "success" | "error") => void;
+  autoTrigger?: boolean;
 };
 
-export default function AmssAutoBrowserSync({ onSuccess, showToast }: AmssAutoBrowserSyncProps) {
+export default function AmssAutoBrowserSync({ onSuccess, showToast, autoTrigger }: AmssAutoBrowserSyncProps) {
   const [syncing, setSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<"this_week" | "this_month" | "this_year" | "all">("this_year");
+
+  useEffect(() => {
+    if (autoTrigger) {
+      handleAutoBrowserSync();
+    }
+  }, [autoTrigger]);
 
   const handleAutoBrowserSync = async () => {
     setSyncing(true);
