@@ -320,6 +320,12 @@ export default function SettingsPage() {
 
   const [repairSearchQuery, setRepairSearchQuery] = useState("");
 
+  const [repairLineToken, setRepairLineToken] = useState("");
+
+  const [repairLineGroupId, setRepairLineGroupId] = useState("");
+
+  const [enableRepairLine, setEnableRepairLine] = useState(true);
+
   // Drill-down navigation state
 
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -345,6 +351,12 @@ export default function SettingsPage() {
       setLineTargetGroupId(data.lineTargetGroupId || "");
 
       setEnableLineNotify(data.enableLineNotify !== false);
+
+      setRepairLineToken(data.repairLineChannelAccessToken || "");
+
+      setRepairLineGroupId(data.repairLineTargetGroupId || "");
+
+      setEnableRepairLine(data.enableRepairLineNotify !== false);
 
       setLeaveRules(data.leaveRules || "");
 
@@ -6649,10 +6661,6 @@ export default function SettingsPage() {
     const notifyOnStart = rolePermissions.repairNotifyOnStart !== false;
     const notifyOnComplete = rolePermissions.repairNotifyOnComplete !== false;
     const notifyOnCancel = rolePermissions.repairNotifyOnCancel !== false;
-
-    const [repairLineToken, setRepairLineToken] = useState(settings?.repairLineChannelAccessToken || "");
-    const [repairLineGroupId, setRepairLineGroupId] = useState(settings?.repairLineTargetGroupId || "");
-    const [enableRepairLine, setEnableRepairLine] = useState(settings?.enableRepairLineNotify !== false);
 
     const filteredUsers = userList.filter((u: any) =>
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
