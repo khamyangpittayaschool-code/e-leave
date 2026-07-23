@@ -987,6 +987,9 @@ model RepairRequest {
   deletedAt      DateTime?
   deletedBy      String?
   deleteReason   String?
+  rating         Int?
+  ratingComment  String?         @db.Text
+  ratedAt        DateTime?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   photos         RepairPhoto[]

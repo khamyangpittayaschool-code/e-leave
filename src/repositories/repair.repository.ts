@@ -219,3 +219,19 @@ export async function softDeleteRepair(
     },
   });
 }
+
+/** บันทึกผลการประเมินความพึงพอใจโดยผู้แจ้งซ่อม */
+export async function updateRepairRating(
+  repairId: string,
+  rating: number,
+  ratingComment?: string | null
+) {
+  return prisma.repairRequest.update({
+    where: { id: repairId },
+    data: {
+      rating,
+      ratingComment: ratingComment ?? null,
+      ratedAt: new Date(),
+    },
+  });
+}

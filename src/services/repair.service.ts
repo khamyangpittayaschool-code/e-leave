@@ -17,6 +17,7 @@ import {
   findRepairsByRequester,
   softDeleteRepair,
   updateRepairStatus,
+  updateRepairRating,
 } from "@/repositories/repair.repository";
 import { logRepairAction, REPAIR_ACTIONS } from "@/services/audit.service";
 
@@ -362,4 +363,40 @@ export async function deleteRepair(
     action: REPAIR_ACTIONS.REPAIR_DELETED,
     detail: deleteReason,
   });
+}
+
+// ─── Rating & Satisfaction ──────────────────────────────────────────────────
+
+export async function rateRepairService(
+  actor: SessionUser,
+  repairId: string,
+  rating: number,
+  comment?: string | null
+) {
+  const repair = await findRepairById(repairId);
+  if (!repair) throw new Error("ไม่พบรายการแจ้งซ่อม");
+
+  if (repair.requesterId !== actor.id && actor.role !== "ADMIN") {
+    throw new Error("เฉพาะผู้แจ้งซ่อมจึงจะสามารถประเมินความพึงพอใจได้");
+  }
+
+  if (repair.status !== "COMPLETED") {
+    throw new Error("สามารถประเมินความพึงพอใจได้เฉพาะรายการที่ซ่อมเสร็จสิ้นแล้วเท่านั้น");
+  }
+
+  if (rating < 1 || rating > 5) {
+    throw new Error("คะแนนการประเมินต้องอยู่ระหว่าง 1 ถึง 5 ดาว");
+  }
+
+  const updated = await updateRepairRating(repairId, rating, comment);
+
+  await logRepairAction({
+    repairId: repair.id,
+    repairNo: repair.repairNo,
+    actorId: actor.id,
+    action: REPAIR_ACTIONS.REPAIR_RATED,
+    detail: `ประเมินความพึงพอใจ ${rating} ดาว`,
+  });
+
+  return updated;
 }

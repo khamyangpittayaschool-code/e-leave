@@ -121,7 +121,7 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast, autoTrigger 
   };
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex items-center gap-2 flex-wrap">
       <select
         value={dateRange}
         onChange={(e) => setDateRange(e.target.value as any)}
@@ -141,7 +141,7 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast, autoTrigger 
         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
       >
         <Zap className={`w-3.5 h-3.5 ${syncing ? "animate-spin text-amber-300" : "text-yellow-300"}`} />
-        <span>{syncing ? "กำลังซิงค์..." : "⚡ ซิงค์หนังสือรับอัตโนมัติ"}</span>
+        <span>{syncing ? "กำลังเชื่อมต่อ..." : "⚡ ดึงหนังสือรับจาก AMSS++ ทันที (1-Click)"}</span>
       </button>
 
       {statusMsg && (
