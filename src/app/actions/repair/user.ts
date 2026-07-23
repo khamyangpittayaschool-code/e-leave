@@ -14,9 +14,9 @@ export async function getAssignableTechniciansAction() {
       const settings = await prisma.systemSettings.findUnique({ where: { id: "default" } });
       if (settings?.rolePermissions) {
         const parsed = JSON.parse(settings.rolePermissions);
-        if (Array.isArray(parsed.repairCaregivers)) {
-          caregiverIds = parsed.repairCaregivers;
-        }
+        const caregivers = Array.isArray(parsed.repairCaregivers) ? parsed.repairCaregivers : [];
+        const managers = Array.isArray(parsed.repairManagers) ? parsed.repairManagers : [];
+        caregiverIds = Array.from(new Set([...caregivers, ...managers]));
       }
     } catch (e) {
       console.error("Failed to parse repairCaregivers settings:", e);
@@ -27,7 +27,8 @@ export async function getAssignableTechniciansAction() {
         OR: [
           { id: { in: caregiverIds.length > 0 ? caregiverIds : ["__dummy__"] } },
           { role: "ADMIN" },
-          { position: { in: ["ช่าง", "ผู้จัดการเรื่องระบบซ่อม", "แอดมิน"] } },
+          { position: { contains: "ช่าง" } },
+          { position: { in: ["ผู้จัดการเรื่องระบบซ่อม", "ผู้ดูแลระบบซ่อม", "งานอาคารสถานที่", "แอดมิน"] } },
         ],
       },
       select: {
@@ -35,6 +36,7 @@ export async function getAssignableTechniciansAction() {
         name: true,
         position: true,
         role: true,
+        signatureUrl: true,
       },
       orderBy: { name: "asc" },
     });

@@ -6636,8 +6636,9 @@ export default function SettingsPage() {
     const searchQuery = repairSearchQuery;
     const setSearchQuery = setRepairSearchQuery;
 
-    const managers = rolePermissions.repairManagers || [];
+     const managers = rolePermissions.repairManagers || rolePermissions.repairCaregivers || [];
     const headAdmin = rolePermissions.headGeneralAdminId || "";
+    const approvalMode = rolePermissions.repairApprovalMode || "AUTO_ON_COMPLETE";
     const limitBefore = rolePermissions.repairPhotoLimitBefore !== undefined ? rolePermissions.repairPhotoLimitBefore : 2;
     const limitAfter = rolePermissions.repairPhotoLimitAfter !== undefined ? rolePermissions.repairPhotoLimitAfter : 2;
     const maxFileSize = rolePermissions.repairMaxFileSizeMb !== undefined ? rolePermissions.repairMaxFileSizeMb : 10;
@@ -6655,7 +6656,9 @@ export default function SettingsPage() {
         const updatedPermissions = {
           ...rolePermissions,
           repairManagers: managers,
+          repairCaregivers: managers,
           headGeneralAdminId: headAdmin,
+          repairApprovalMode: approvalMode,
           repairPhotoLimitBefore: Number(limitBefore),
           repairPhotoLimitAfter: Number(limitAfter),
           repairMaxFileSizeMb: Number(maxFileSize),
@@ -6683,7 +6686,7 @@ export default function SettingsPage() {
       const newList = checked
         ? [...managers, userId]
         : managers.filter((id: string) => id !== userId);
-      setRolePermissions((prev: any) => ({ ...prev, repairManagers: newList }));
+      setRolePermissions((prev: any) => ({ ...prev, repairManagers: newList, repairCaregivers: newList }));
     };
 
     return (
@@ -6779,6 +6782,44 @@ export default function SettingsPage() {
                   </option>
                 ))}
               </select>
+
+              {/* Approval & Signature Option */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {lang === "en" ? "Approval Signature Mode for Head" : "รูปแบบการลงลายเซ็นอนุมัติของหัวหน้า"}
+                </label>
+                <div className="space-y-1.5 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60">
+                    <input
+                      type="radio"
+                      name="repairApprovalMode"
+                      value="AUTO_ON_COMPLETE"
+                      checked={approvalMode === "AUTO_ON_COMPLETE"}
+                      onChange={e => setRolePermissions((prev: any) => ({ ...prev, repairApprovalMode: e.target.value }))}
+                      className="text-orange-500 focus:ring-orange-500"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">ลงลายเซ็นอัตโนมัติเมื่อซ่อมเสร็จสิ้น (แนะนำ)</span>
+                      <p className="text-[10px] text-slate-400">แสดงลายเซ็นหัวหน้าฝ่ายบนแบบพิมพ์ใบซ่อมทันทีเมื่อช่างซ่อมเสร็จ</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60">
+                    <input
+                      type="radio"
+                      name="repairApprovalMode"
+                      value="MANUAL"
+                      checked={approvalMode === "MANUAL"}
+                      onChange={e => setRolePermissions((prev: any) => ({ ...prev, repairApprovalMode: e.target.value }))}
+                      className="text-orange-500 focus:ring-orange-500"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">ให้หัวหน้าตรวจสอบและกดอนุมัติก่อน (เหมือนแบบการลา)</span>
+                      <p className="text-[10px] text-slate-400">หัวหน้าฝ่ายต้องกดอนุมัติใบงานซ่อมในระบบ ลายเซ็นจึงจะปรากฏบนแบบพิมพ์</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 

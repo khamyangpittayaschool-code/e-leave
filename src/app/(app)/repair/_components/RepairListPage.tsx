@@ -171,8 +171,8 @@ export default function RepairListPage() {
   return (
     <div className="space-y-6 pb-8">
 
-      {/* Page Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      {/* Page Header (Hidden during print) */}
+      <div className="flex items-center justify-between flex-wrap gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
@@ -213,8 +213,8 @@ export default function RepairListPage() {
         </div>
       </div>
 
-      {/* Main Tab Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-1">
+      {/* Main Tab Navigation (Hidden during print) */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-1 print:hidden">
         <button
           onClick={() => setActiveTab("list")}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${

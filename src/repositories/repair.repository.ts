@@ -57,16 +57,17 @@ export async function generateRepairNo(
   >,
   year: number
 ): Promise<string> {
-  const key = `repair_${year}`;
+  const thaiYear = year > 2500 ? year : year + 543;
+  const key = `repair_${thaiYear}`;
 
   // Upsert: create with current=1 if first request of the year, otherwise increment
   const running = await tx.runningNumber.upsert({
     where: { key },
     update: { current: { increment: 1 } },
-    create: { key, year, current: 1 },
+    create: { key, year: thaiYear, current: 1 },
   });
 
-  return `REP-${year}-${String(running.current).padStart(6, "0")}`;
+  return `REP-${thaiYear}-${String(running.current).padStart(6, "0")}`;
 }
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
@@ -75,8 +76,8 @@ export async function findRepairById(id: string) {
   return prisma.repairRequest.findFirst({
     where: { id, deletedAt: null },
     include: {
-      requester: { select: { id: true, name: true, position: true } },
-      assignee: { select: { id: true, name: true, position: true } },
+      requester: { select: { id: true, name: true, position: true, signatureUrl: true } },
+      assignee: { select: { id: true, name: true, position: true, signatureUrl: true } },
       photos: {
         select: {
           id: true,

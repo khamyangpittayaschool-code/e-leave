@@ -71,7 +71,23 @@ export default function RepairSummaryReportView({ canViewCost = true }: { canVie
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-0">
+      {/* Global CSS for Clean Print Output */}
+      <style jsx global>{`
+        @media print {
+          /* Hide app navbar, sidebar, page title header, and tabs */
+          header, nav, .print\:hidden {
+            display: none !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+        }
+      `}</style>
+
       {/* Controls Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm space-y-4 print:hidden">
         <div className="flex items-center justify-between flex-wrap gap-3">

@@ -59,6 +59,8 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "ยกเลิกคำขอ",
 };
 
+import { getAssignableTechniciansAction } from "@/app/actions/repair/user";
+
 export default function PrintRepairPage() {
   const params = useParams();
   const router = useRouter();
@@ -69,15 +71,18 @@ export default function PrintRepairPage() {
   const [repair, setRepair] = useState<any>(null);
   const [photos, setPhotos] = useState<any>(null);
   const [settings, setSettings] = useState<any>(null);
+  const [headUser, setHeadUser] = useState<any>(null);
+  const [approvalMode, setApprovalMode] = useState<string>("AUTO_ON_COMPLETE");
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const [repairRes, photoRes, systemSettings] = await Promise.all([
+        const [repairRes, photoRes, systemSettings, techRes] = await Promise.all([
           getRepairDetailAction(id),
           getRepairPhotosAction(id).catch(() => null),
           getSystemSettings().catch(() => null),
+          getAssignableTechniciansAction().catch(() => null),
         ]);
 
         if (!repairRes.success || !repairRes.repair) {
@@ -87,6 +92,19 @@ export default function PrintRepairPage() {
         setRepair(repairRes.repair);
         setPhotos(photoRes);
         setSettings(systemSettings);
+
+        if (systemSettings?.rolePermissions) {
+          try {
+            const parsed = JSON.parse(systemSettings.rolePermissions);
+            if (parsed.repairApprovalMode) setApprovalMode(parsed.repairApprovalMode);
+            if (parsed.headGeneralAdminId && techRes?.technicians) {
+              const head = techRes.technicians.find((t: any) => t.id === parsed.headGeneralAdminId);
+              if (head) setHeadUser(head);
+            }
+          } catch (e) {
+            console.error("Failed to parse settings rolePermissions", e);
+          }
+        }
       } catch (err: any) {
         setError(err?.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {
@@ -127,6 +145,10 @@ export default function PrintRepairPage() {
   const beforePhotos = photos?.BEFORE || [];
   const afterPhotos = photos?.AFTER || [];
   const hasPhotos = beforePhotos.length > 0 || afterPhotos.length > 0;
+
+  // Determine if Head signature should be displayed
+  const isCompleted = repair.status === "COMPLETED";
+  const showHeadSignature = (approvalMode === "AUTO_ON_COMPLETE" && isCompleted) || Boolean(repair.approvedAt);
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-4 sm:p-6 font-sans print:p-0 print:bg-white text-slate-900">
@@ -275,37 +297,58 @@ export default function PrintRepairPage() {
           </div>
         )}
 
-        {/* Section 4: 3-Column Signatures */}
+        {/* Section 4: 3-Column Signatures with Scanned Signatures */}
         <div className="mt-6 pt-4 border-t-2 border-black text-[9.5pt]">
           <div className="grid grid-cols-3 gap-2 text-center">
             {/* Signature 1: Requester */}
-            <div className="space-y-4 flex flex-col justify-between">
+            <div className="space-y-2 flex flex-col justify-between items-center">
               <div>
-                <p className="font-bold mb-4">ลงชื่อ...................................................ผู้แจ้ง</p>
+                <p className="font-bold mb-1">ลงชื่อ...................................................ผู้แจ้ง</p>
+                {repair.requester?.signatureUrl ? (
+                  <div className="h-10 my-1 flex items-center justify-center">
+                    <img src={repair.requester.signatureUrl} alt="ลายเซ็นผู้แจ้ง" className="max-h-10 max-w-[140px] object-contain" />
+                  </div>
+                ) : (
+                  <div className="h-10 my-1" />
+                )}
                 <p>({repair.requester?.name || "................................................."})</p>
                 <p className="text-[8.5pt] text-slate-600 mt-0.5">ตำแหน่ง {repair.requester?.position || "บุคลากร"}</p>
               </div>
-              <p>วันที่ ......... / ......... / .........</p>
+              <p className="text-[9pt]">วันที่ {toThaiDateString(repair.createdAt)}</p>
             </div>
 
             {/* Signature 2: Repairer / Technician */}
-            <div className="space-y-4 flex flex-col justify-between">
+            <div className="space-y-2 flex flex-col justify-between items-center">
               <div>
-                <p className="font-bold mb-4">ลงชื่อ...................................................ผู้ซ่อม</p>
+                <p className="font-bold mb-1">ลงชื่อ...................................................ผู้ซ่อม</p>
+                {repair.assignee?.signatureUrl ? (
+                  <div className="h-10 my-1 flex items-center justify-center">
+                    <img src={repair.assignee.signatureUrl} alt="ลายเซ็นผู้ซ่อม" className="max-h-10 max-w-[140px] object-contain" />
+                  </div>
+                ) : (
+                  <div className="h-10 my-1" />
+                )}
                 <p>({repair.assignee?.name || "................................................."})</p>
                 <p className="text-[8.5pt] text-slate-600 mt-0.5">ตำแหน่ง {repair.assignee?.position || "เจ้าหน้าที่ช่าง/ผู้รับผิดชอบ"}</p>
               </div>
-              <p>วันที่ ......... / ......... / .........</p>
+              <p className="text-[9pt]">วันที่ {toThaiDateString(repair.finishedAt || repair.assignedAt)}</p>
             </div>
 
             {/* Signature 3: Head of Admin / Director */}
-            <div className="space-y-4 flex flex-col justify-between">
+            <div className="space-y-2 flex flex-col justify-between items-center">
               <div>
-                <p className="font-bold mb-4">ลงชื่อ...................................................ผู้อนุมัติ</p>
-                <p>(.................................................)</p>
-                <p className="text-[8.5pt] text-slate-600 mt-0.5">ตำแหน่ง หัวหน้าฝ่ายบริหารทั่วไป / ผู้อำนวยการ</p>
+                <p className="font-bold mb-1">ลงชื่อ...................................................ผู้อนุมัติ</p>
+                {showHeadSignature && headUser?.signatureUrl ? (
+                  <div className="h-10 my-1 flex items-center justify-center">
+                    <img src={headUser.signatureUrl} alt="ลายเซ็นผู้อนุมัติ" className="max-h-10 max-w-[140px] object-contain" />
+                  </div>
+                ) : (
+                  <div className="h-10 my-1" />
+                )}
+                <p>({showHeadSignature ? (headUser?.name || ".................................................") : "................................................."})</p>
+                <p className="text-[8.5pt] text-slate-600 mt-0.5">ตำแหน่ง {headUser?.position || "หัวหน้าฝ่ายบริหารทั่วไป / ผู้อำนวยการ"}</p>
               </div>
-              <p>วันที่ ......... / ......... / .........</p>
+              <p className="text-[9pt]">วันที่ {showHeadSignature ? toThaiDateString(repair.finishedAt || repair.updatedAt) : "......... / ......... / ........."}</p>
             </div>
           </div>
         </div>
