@@ -291,8 +291,8 @@ export const syncAMSSDocumentsAutomatically = safeAction(async () => {
           const buffer = await res.arrayBuffer();
           // Try UTF-8 first as modern AMSS++ versions use UTF-8
           let text = new TextDecoder("utf-8").decode(buffer);
-          if (text.includes("") || text.includes("เธ") || text.includes("เธช")) {
-            // Fallback to windows-874 if UTF-8 produces replacement characters or UTF-8 mojibake
+          if (text.includes("เธ") || text.includes("เธช")) {
+            // Fallback to windows-874 if UTF-8 produces mojibake
             text = new TextDecoder("windows-874").decode(buffer);
           }
           htmlContent = text;
