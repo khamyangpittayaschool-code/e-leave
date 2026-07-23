@@ -12,6 +12,7 @@ type AmssAutoBrowserSyncProps = {
 export default function AmssAutoBrowserSync({ onSuccess, showToast }: AmssAutoBrowserSyncProps) {
   const [syncing, setSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<"this_week" | "this_month" | "this_year" | "all">("this_year");
 
   const handleAutoBrowserSync = async () => {
     setSyncing(true);
@@ -46,16 +47,15 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast }: AmssAutoBr
       );
 
       if (!popup) {
-        if (showToast) showToast("เบราว์เซอร์บล็อก Popup กรุณะกดอนุญาต Pop-up Window สำหรับระบบนี้", "error");
+        if (showToast) showToast("เบราว์เซอร์บล็อก Popup กรุณากดอนุญาต Pop-up Window สำหรับระบบนี้", "error");
         setSyncing(false);
         return;
       }
 
       setStatusMsg("กำลังดึงข้อมูลตารางหนังสือรับอัตโนมัติ (กรุณารอ 3-5 วินาที)...");
 
-      // Listen for message or poll popup content
       let attempts = 0;
-      const maxAttempts = 15; // 15 seconds max
+      const maxAttempts = 15;
 
       const interval = setInterval(async () => {
         attempts++;
@@ -67,13 +67,11 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast }: AmssAutoBr
             return;
           }
 
-          // Try reading popup body HTML if same-origin or injected script
           let pageHtml = "";
           try {
             pageHtml = popup.document.body.innerHTML;
           } catch (e) {
-            // Cross-origin restriction might block direct reading if domain differs,
-            // fallback to prompting fast 1-click paste or auto-close
+            // cross-origin restriction
           }
 
           if (
@@ -84,16 +82,16 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast }: AmssAutoBr
               pageHtml.includes("saraban_index"))
           ) {
             clearInterval(interval);
-            setStatusMsg("พบบันทึกหนังสือรับแล้ว กำลังประมวลผลลงฐานข้อมูล...");
+            setStatusMsg("พบบันทึกหนังสือรับแล้ว กำลังซิงค์และอัปเดตลงฐานข้อมูล...");
 
-            const result = await syncAMSSDocumentsFromHtml(pageHtml);
+            const result = await syncAMSSDocumentsFromHtml(pageHtml, dateRange);
             popup.close();
 
             setSyncing(false);
             setStatusMsg(null);
             if (showToast) {
               showToast(
-                `ซิงค์หนังสือรับอัตโนมัติสำเร็จ! นำเข้าใหม่ ${result.importedCount} รายการ`,
+                `ซิงค์หนังสือรับสำเร็จ! นำเข้าใหม่ ${result.importedCount} รายการ, อัปเดต ${result.updatedCount || 0} รายการ`,
                 "success"
               );
             }
@@ -101,7 +99,7 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast }: AmssAutoBr
             return;
           }
         } catch (err) {
-          // ignore cross-origin security warnings while redirecting
+          // ignore cross-origin security warnings
         }
 
         if (attempts >= maxAttempts) {
@@ -121,20 +119,33 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast }: AmssAutoBr
   };
 
   return (
-    <div className="inline-block">
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <select
+        value={dateRange}
+        onChange={(e) => setDateRange(e.target.value as any)}
+        disabled={syncing}
+        className="h-9 px-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 text-xs font-bold cursor-pointer focus:outline-none"
+        title="เลือกช่วงเวลาของหนังสือรับที่ต้องการดึงหรืออัปเดต"
+      >
+        <option value="this_week">📅 สัปดาห์นี้</option>
+        <option value="this_month">📅 เดือนนี้</option>
+        <option value="this_year">📅 ปีนี้ (2569)</option>
+        <option value="all">🌐 ข้อมูลทั้งหมด</option>
+      </select>
+
       <button
         onClick={handleAutoBrowserSync}
         disabled={syncing}
         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
       >
         <Zap className={`w-3.5 h-3.5 ${syncing ? "animate-spin text-amber-300" : "text-yellow-300"}`} />
-        <span>{syncing ? "กำลังซิงค์อัตโนมัติ..." : "⚡ ซิงค์หนังสือรับอัตโนมัติ (Auto-Sync)"}</span>
+        <span>{syncing ? "กำลังซิงค์..." : "⚡ ซิงค์หนังสือรับอัตโนมัติ"}</span>
       </button>
 
       {statusMsg && (
-        <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-1.5 animate-pulse">
+        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold animate-pulse w-full">
           {statusMsg}
-        </p>
+        </span>
       )}
     </div>
   );

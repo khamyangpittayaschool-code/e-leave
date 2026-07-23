@@ -16,7 +16,7 @@ export default function AmssImportModal({
   const [htmlContent, setHtmlContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ imported: number; duplicates: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; updated: number; duplicates: number } | null>(null);
   const [pastedMsg, setPastedMsg] = useState(false);
 
   if (!isOpen) return null;
@@ -31,7 +31,7 @@ export default function AmssImportModal({
 
     try {
       const res = await syncAMSSDocumentsFromHtml(htmlContent.trim());
-      setResult({ imported: res.importedCount, duplicates: res.duplicatesCount });
+      setResult({ imported: res.importedCount, updated: res.updatedCount || 0, duplicates: res.duplicatesCount });
       setHtmlContent("");
       onRefresh();
     } catch (err: any) {
@@ -86,10 +86,10 @@ export default function AmssImportModal({
               <CheckCircleIcon className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 dark:text-white">ดำเนินการนำเข้าข้อมูลเสร็จสิ้น</h4>
+              <h4 className="font-bold text-slate-900 dark:text-white">ดำเนินการนำเข้าและอัปเดตข้อมูลเสร็จสิ้น</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                นำเข้าสำเร็จ <strong className="text-emerald-600 dark:text-emerald-400">{result.imported}</strong> รายการ | 
-                ข้ามเนื่องจากซ้ำแล้ว <strong className="text-amber-600 dark:text-amber-400">{result.duplicates}</strong> รายการ
+                นำเข้าใหม่ <strong className="text-emerald-600 dark:text-emerald-400">{result.imported}</strong> รายการ | 
+                อัปเดต <strong className="text-indigo-600 dark:text-indigo-400">{result.updated}</strong> รายการ
               </p>
             </div>
             <button onClick={onClose} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition cursor-pointer">

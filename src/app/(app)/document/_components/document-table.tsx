@@ -40,9 +40,13 @@ export default function DocumentTable({
   setSelectedStatus,
 }: DocumentTableProps) {
   const [showAllRows, setShowAllRows] = useState(false);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>("");
 
   // Filters logic
   const filteredData = useMemo(() => {
+    const now = new Date();
+    const oneWeekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
     if (activeTab === "outbound") {
       return outboundDocs.filter((d) => {
         const matchesSearch =
@@ -60,14 +64,24 @@ export default function DocumentTable({
           (selectedDocType === "ANNOUNCEMENT" && d.docType === "ANNOUNCEMENT") ||
           d.memoSectionId === selectedDocType;
 
-        const docYear = new Date(d.date).getFullYear() + 543;
+        const docDate = new Date(d.date);
+        const docYear = docDate.getFullYear() + 543;
         const matchesYear = !selectedYear || docYear.toString() === selectedYear;
+
+        let matchesTimeRange = true;
+        if (selectedTimeRange === "this_week") {
+          matchesTimeRange = docDate.getTime() >= oneWeekAgo;
+        } else if (selectedTimeRange === "this_month") {
+          matchesTimeRange = docDate.getFullYear() === now.getFullYear() && docDate.getMonth() === now.getMonth();
+        } else if (selectedTimeRange === "this_year") {
+          matchesTimeRange = docDate.getFullYear() === now.getFullYear();
+        }
 
         const matchesStatus =
           !selectedStatus ||
           d.status === selectedStatus;
 
-        return matchesSearch && matchesType && matchesYear && matchesStatus;
+        return matchesSearch && matchesType && matchesYear && matchesTimeRange && matchesStatus;
       });
     } else {
       return inboundDocs.filter((d) => {
@@ -83,18 +97,28 @@ export default function DocumentTable({
           (selectedDocType === "MANUAL" && !d.amssOriginId) ||
           d.memoSectionId === selectedDocType;
 
-        const docYear = new Date(d.receiveDate).getFullYear() + 543;
+        const docDate = new Date(d.receiveDate);
+        const docYear = docDate.getFullYear() + 543;
         const matchesYear = !selectedYear || docYear.toString() === selectedYear;
+
+        let matchesTimeRange = true;
+        if (selectedTimeRange === "this_week") {
+          matchesTimeRange = docDate.getTime() >= oneWeekAgo;
+        } else if (selectedTimeRange === "this_month") {
+          matchesTimeRange = docDate.getFullYear() === now.getFullYear() && docDate.getMonth() === now.getMonth();
+        } else if (selectedTimeRange === "this_year") {
+          matchesTimeRange = docDate.getFullYear() === now.getFullYear();
+        }
 
         const matchesStatus =
           !selectedStatus ||
           (selectedStatus === "PENDING" && (d.status === "PENDING" || d.status === "ROUTING")) ||
           d.status === selectedStatus;
 
-        return matchesSearch && matchesType && matchesYear && matchesStatus;
+        return matchesSearch && matchesType && matchesYear && matchesTimeRange && matchesStatus;
       });
     }
-  }, [activeTab, outboundDocs, inboundDocs, searchQuery, selectedDocType, selectedYear, selectedStatus]);
+  }, [activeTab, outboundDocs, inboundDocs, searchQuery, selectedDocType, selectedYear, selectedTimeRange, selectedStatus]);
 
   // Paginated/shown rows
   const visibleRows = useMemo(() => {
@@ -106,6 +130,7 @@ export default function DocumentTable({
     setSearchQuery("");
     setSelectedDocType("");
     setSelectedYear("");
+    setSelectedTimeRange("");
     setSelectedStatus("");
   };
 
@@ -170,6 +195,17 @@ export default function DocumentTable({
         </select>
 
         <select
+          value={selectedTimeRange}
+          onChange={(e) => setSelectedTimeRange(e.target.value)}
+          className="h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-950 text-xs cursor-pointer focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium"
+        >
+          <option value="">ทุกช่วงเวลา</option>
+          <option value="this_week">📅 สัปดาห์นี้</option>
+          <option value="this_month">📅 เดือนนี้</option>
+          <option value="this_year">📅 ปีนี้ (2569)</option>
+        </select>
+
+        <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
           className="h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-950 text-xs cursor-pointer focus:ring-2 focus:ring-indigo-500/20 outline-none"
@@ -180,7 +216,7 @@ export default function DocumentTable({
           <option value="2567">ปีการศึกษา 2567</option>
         </select>
 
-        {(searchQuery || selectedDocType || selectedYear || selectedStatus) && (
+        {(searchQuery || selectedDocType || selectedYear || selectedTimeRange || selectedStatus) && (
           <button
             onClick={clearFilters}
             className="flex items-center gap-1 px-3 h-10 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors cursor-pointer"

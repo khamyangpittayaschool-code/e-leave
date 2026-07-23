@@ -757,12 +757,15 @@ async function sendLineNotifyForRouting(docTitle: string, assigneeId: string) {
   }
 }
 
-export async function syncAMSSDocumentsFromHtml(html: string) {
+export async function syncAMSSDocumentsFromHtml(
+  html: string,
+  dateRange: "this_week" | "this_month" | "this_year" | "all" = "all"
+) {
   const user = await getSessionUser();
   const parsedDocs = parseAMSSListHtml(html);
   
   if (parsedDocs.length === 0) {
-    throw new Error("ไม่พบรายการหนังสือรับที่ถูกต้องในรหัส HTML ที่ส่งมา");
+    throw new Error("ไม่พบรายการหนังสือรับที่ถูกต้องในรหัส HTML หรือข้อความที่ส่งมา");
   }
 
   // Normalize amssLink to be absolute URLs using credentials.url
@@ -780,9 +783,9 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
 
   // Parse represented years from parsedDocs to query baseline sequence numbers
   const years = Array.from(new Set(parsedDocs.map(d => {
-    const parts = d.dateText.split(" ");
+    const parts = d.dateText.trim().split(/\s+/);
     if (parts.length >= 3) {
-      let year = parseInt(parts[2]);
+      let year = parseInt(parts[2], 10);
       if (!isNaN(year)) {
         if (year > 2400) {
           year = year - 543;
@@ -797,6 +800,7 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
 
   const result = await prisma.$transaction(async (tx) => {
     let importedCount = 0;
+    let updatedCount = 0;
     let duplicatesCount = 0;
 
     const amssLinks = parsedDocs.map(d => d.amssLink).filter(Boolean);
@@ -811,7 +815,7 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
           ...refCombos
         ]
       },
-      select: { amssLink: true, docRefNo: true, senderOrg: true }
+      select: { id: true, amssLink: true, docRefNo: true, senderOrg: true }
     });
 
     // Fetch baseline sequence numbers for each represented year
@@ -842,26 +846,9 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
       yearDocsMap.set(yr, nextSeq);
     }
 
+    const now = new Date();
+
     for (const d of parsedDocs) {
-      const isDuplicate = existingDocs.some(existing => {
-        if (existing.amssLink && d.amssLink && existing.amssLink === d.amssLink) {
-          return true;
-        }
-        if (
-          d.docRefNo && d.docRefNo.trim() !== "" &&
-          existing.docRefNo && existing.docRefNo.trim() === d.docRefNo.trim() &&
-          existing.senderOrg && existing.senderOrg.trim() === d.senderOrg.trim()
-        ) {
-          return true;
-        }
-        return false;
-      });
-
-      if (isDuplicate) {
-        duplicatesCount++;
-        continue;
-      }
-
       // Convert dateText to Date object
       let parsedDate = new Date();
       const parts = d.dateText.trim().split(/\s+/);
@@ -892,7 +879,7 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
       const generatedReceiveNo = `รับที่ ${nextSeq}/${thYear}`;
       yearDocsMap.set(yearVal, nextSeq + 1);
 
-      await tx.incomingDocument.create({
+      const createdDoc = await tx.incomingDocument.create({
         data: {
           receiveNo: generatedReceiveNo,
           receiveDate: parsedDate,
@@ -907,7 +894,8 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
       });
 
       existingDocs.push({
-        amssLink: d.amssLink,
+        id: createdDoc.id,
+        amssLink: d.amssLink || null,
         docRefNo: d.docRefNo || null,
         senderOrg: d.senderOrg
       });
@@ -919,12 +907,12 @@ export async function syncAMSSDocumentsFromHtml(html: string) {
     await tx.systemLog.create({
       data: {
         actionType: "INCOMING_SYNC_HTML",
-        description: `ซิงค์รายการหนังสือ AMSS++: นำเข้าใหม่ ${importedCount} รายการ, ซ้ำ ${duplicatesCount} รายการ`,
+        description: `ซิงค์รายการหนังสือ AMSS++ (${dateRange}): นำเข้าใหม่ ${importedCount} รายการ, อัปเดต ${updatedCount} รายการ`,
         userId: user.id
       }
     });
 
-    return { importedCount, duplicatesCount };
+    return { importedCount, updatedCount, duplicatesCount };
   });
 
   safeRevalidatePath("/document");
