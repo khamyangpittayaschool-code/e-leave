@@ -296,6 +296,11 @@ model SystemSettings {
   iappApiKey           String   @default("")
   enableRepair         Boolean  @default(false)
 
+  // Repair-specific LINE OA settings (separate from leave system)
+  repairLineChannelAccessToken String?
+  repairLineTargetGroupId      String?
+  enableRepairLineNotify       Boolean  @default(true)
+
 
 
   updatedAt              DateTime @updatedAt

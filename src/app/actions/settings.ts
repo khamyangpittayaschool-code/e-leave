@@ -381,6 +381,9 @@ export async function updateSystemSettings(data: {
   enableAttendance?: boolean;
   enableDocument?: boolean;
   enableRepair?: boolean;
+  repairLineChannelAccessToken?: string;
+  repairLineTargetGroupId?: string;
+  enableRepairLineNotify?: boolean;
 
 }) {
 
@@ -444,6 +447,9 @@ export async function updateSystemSettings(data: {
       enableAttendance: data.enableAttendance !== undefined ? data.enableAttendance : undefined,
       enableDocument: data.enableDocument !== undefined ? data.enableDocument : undefined,
       enableRepair: data.enableRepair !== undefined ? data.enableRepair : undefined,
+      repairLineChannelAccessToken: data.repairLineChannelAccessToken !== undefined ? data.repairLineChannelAccessToken : undefined,
+      repairLineTargetGroupId: data.repairLineTargetGroupId !== undefined ? data.repairLineTargetGroupId : undefined,
+      enableRepairLineNotify: data.enableRepairLineNotify !== undefined ? data.enableRepairLineNotify : undefined,
 
     },
 

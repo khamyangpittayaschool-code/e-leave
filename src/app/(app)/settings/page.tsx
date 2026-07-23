@@ -29,7 +29,7 @@ import { getHolidays, createHoliday, updateHoliday, deleteHoliday, searchInterne
 
 import { useSession } from "@/lib/auth-client";
 
-import { Save, Image as ImageIcon, ShieldAlert, DownloadCloud, Lock, Code, Settings2, Archive, UploadCloud, Database, FileJson, AlertTriangle, CheckCircle2, ChevronRight, ArrowLeft, Bell, Type, Users, BookOpen, HardDrive, UserCog, FileSpreadsheet, X, CalendarDays, FileX, Plus, Clock, ClipboardList, MapPin, FolderOpen, Hash, UserCheck, Pencil, Trash2, ToggleLeft, ToggleRight, Sparkles, AlertCircle, Check, Eye, LayoutGrid, Wrench, Loader2, XCircle } from "lucide-react";
+import { Save, Image as ImageIcon, ShieldAlert, DownloadCloud, Lock, Code, Settings2, Archive, UploadCloud, Database, FileJson, AlertTriangle, CheckCircle2, ChevronRight, ArrowLeft, Bell, Type, Users, BookOpen, HardDrive, UserCog, FileSpreadsheet, X, CalendarDays, FileX, Plus, Clock, ClipboardList, MapPin, FolderOpen, Hash, UserCheck, Pencil, Trash2, ToggleLeft, ToggleRight, Sparkles, AlertCircle, Check, Eye, LayoutGrid, Wrench, Loader2, XCircle, MessageSquare } from "lucide-react";
 
 import { useToast } from "@/components/toast-provider";
 
@@ -6650,6 +6650,10 @@ export default function SettingsPage() {
     const notifyOnComplete = rolePermissions.repairNotifyOnComplete !== false;
     const notifyOnCancel = rolePermissions.repairNotifyOnCancel !== false;
 
+    const [repairLineToken, setRepairLineToken] = useState(settings?.repairLineChannelAccessToken || "");
+    const [repairLineGroupId, setRepairLineGroupId] = useState(settings?.repairLineTargetGroupId || "");
+    const [enableRepairLine, setEnableRepairLine] = useState(settings?.enableRepairLineNotify !== false);
+
     const filteredUsers = userList.filter((u: any) =>
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.position?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -6679,6 +6683,9 @@ export default function SettingsPage() {
           schoolName,
           subheader,
           rolePermissions: JSON.stringify(updatedPermissions),
+          repairLineChannelAccessToken: repairLineToken,
+          repairLineTargetGroupId: repairLineGroupId,
+          enableRepairLineNotify: enableRepairLine,
         });
         if (res.success) {
           showToast("success", lang === "en" ? "Repair settings saved successfully" : "บันทึกการตั้งค่าระบบแจ้งซ่อมสำเร็จ");
@@ -6913,6 +6920,61 @@ export default function SettingsPage() {
                     <p className="text-[10px] text-slate-400">แจ้งเตือนเมื่อผู้แจ้งซ่อมหรือแอดมินยกเลิกคำขอ</p>
                   </div>
                 </label>
+              </div>
+            </div>
+
+            {/* Repair LINE OA Configuration */}
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-3">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                <MessageSquare className="w-4 h-4 text-orange-500" />
+                {lang === "en" ? "Repair LINE OA Configuration" : "ตั้งค่า LINE OA สำหรับระบบแจ้งซ่อม (แยกจากระบบลา)"}
+              </h4>
+              <p className="text-[11px] text-slate-400">
+                {lang === "en"
+                  ? "Configure a separate LINE OA channel for repair notifications. If left blank, the system will fall back to the shared leave LINE OA."
+                  : "ตั้งค่า LINE OA แยกตัวสำหรับแจ้งซ่อมโดยเฉพาะ หากไม่กรอก ระบบจะใช้ LINE OA ตัวเดียวกับระบบลา"}
+              </p>
+
+              <label className="flex items-center gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-white dark:hover:bg-slate-800/80 transition text-xs">
+                <input
+                  type="checkbox"
+                  checked={enableRepairLine}
+                  onChange={e => setEnableRepairLine(e.target.checked)}
+                  className="rounded text-orange-500 focus:ring-orange-500/20 w-4 h-4"
+                />
+                <span className="font-semibold text-slate-800 dark:text-slate-200">เปิดใช้งานการแจ้งเตือน LINE สำหรับระบบซ่อม</span>
+              </label>
+
+              <div className="space-y-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {lang === "en" ? "LINE Channel Access Token (Repair)" : "LINE Channel Access Token (ระบบซ่อม)"}
+                  </label>
+                  <input
+                    type="password"
+                    value={repairLineToken}
+                    onChange={e => setRepairLineToken(e.target.value)}
+                    placeholder={lang === "en" ? "Paste repair LINE OA token here..." : "วาง Token ของ LINE OA ระบบซ่อมที่นี่..."}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white dark:bg-slate-950 text-xs text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {lang === "en" ? "LINE Target Group/User ID (Repair)" : "LINE Group/User ID เป้าหมาย (ระบบซ่อม)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={repairLineGroupId}
+                    onChange={e => setRepairLineGroupId(e.target.value)}
+                    placeholder={lang === "en" ? "Paste repair LINE group/user ID here..." : "วาง Group ID หรือ User ID เป้าหมายสำหรับระบบซ่อม..."}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white dark:bg-slate-950 text-xs text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 italic">
+                  💡 {lang === "en"
+                    ? "If both fields are left blank, repair notifications will be sent through the shared Leave LINE OA."
+                    : "หากไม่กรอกทั้งสองช่อง ระบบจะส่งแจ้งเตือนการซ่อมผ่าน LINE OA ตัวเดียวกับระบบการลาแทนอัตโนมัติ"}
+                </p>
               </div>
             </div>
 

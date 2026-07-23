@@ -237,6 +237,57 @@ export async function sendRepairLineNotify(
   }
 
   if (msg) {
-    await sendLineNotify(msg);
+    await sendRepairLineMessage(msg);
+  }
+}
+
+/**
+ * Send a LINE message using repair-specific LINE OA credentials.
+ * Falls back to the shared leave LINE OA if repair-specific ones are not configured.
+ */
+async function sendRepairLineMessage(message: string) {
+  try {
+    const settings = await prisma.systemSettings.findUnique({
+      where: { id: "default" },
+      select: {
+        repairLineChannelAccessToken: true,
+        repairLineTargetGroupId: true,
+        enableRepairLineNotify: true,
+        lineChannelAccessToken: true,
+        lineTargetGroupId: true,
+      },
+    });
+
+    if (settings?.enableRepairLineNotify === false) return;
+
+    // Use repair-specific tokens; fall back to shared leave tokens
+    const token = settings?.repairLineChannelAccessToken?.trim() || settings?.lineChannelAccessToken?.trim();
+    const targetId = settings?.repairLineTargetGroupId?.trim() || settings?.lineTargetGroupId?.trim();
+
+    if (!token || !targetId) return;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        to: targetId,
+        messages: [{ type: "text", text: message }],
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.error("[LINE OA Repair] Failed:", res.status, await res.text());
+    }
+  } catch (error) {
+    console.error("[LINE OA Repair] Error:", error);
   }
 }
