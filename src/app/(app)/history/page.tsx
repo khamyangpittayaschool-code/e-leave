@@ -439,14 +439,6 @@ export default function HistoryPage() {
         gradient="from-emerald-600 to-teal-600"
       />
 
-      {/* Summary Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
-        <StatCard label="รายการทั้งหมด" value={stats.total} icon={CalendarDays} gradient="bg-emerald-600" delay={0} />
-        <StatCard label="อนุมัติแล้ว" value={stats.approved} icon={CheckCircle2} gradient="bg-emerald-500" delay={0.05} />
-        <StatCard label="รอดำเนินการ" value={stats.pending} icon={Clock} gradient="bg-amber-500" delay={0.1} />
-        <StatCard label="ปฏิเสธ/ยกเลิก" value={stats.rejected} icon={XCircle} gradient="bg-rose-500" delay={0.15} />
-      </div>
-
       {/* Filter and Actions Bar */}
       <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/60 dark:border-slate-800 p-4 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col lg:flex-row items-center justify-between gap-4 print:hidden">
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">

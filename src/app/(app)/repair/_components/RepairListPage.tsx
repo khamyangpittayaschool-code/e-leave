@@ -229,10 +229,10 @@ export default function RepairListPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="ทั้งหมด"         value={stats.total}      icon={ClipboardList} gradient="bg-slate-600"      delay={0}    />
-        <StatCard label="รอดำเนินการ"     value={stats.pending}    icon={Clock}         gradient="bg-amber-500"       delay={0.05} />
-        <StatCard label="กำลังดำเนินการ" value={stats.inProgress} icon={Wrench}        gradient="bg-purple-600"      delay={0.10} />
-        <StatCard label="เสร็จสิ้น"       value={stats.completed}  icon={CheckCircle2}  gradient="bg-emerald-600"     delay={0.15} />
+        <StatCard label="ทั้งหมด"         value={stats.total}      icon={ClipboardList} gradient="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"      delay={0}    />
+        <StatCard label="รอดำเนินการ"     value={stats.pending}    icon={Clock}         gradient="bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"       delay={0.05} />
+        <StatCard label="กำลังดำเนินการ" value={stats.inProgress} icon={Wrench}        gradient="bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400"      delay={0.10} />
+        <StatCard label="เสร็จสิ้น"       value={stats.completed}  icon={CheckCircle2}  gradient="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"     delay={0.15} />
       </div>
 
       {/* Filters + Search */}
