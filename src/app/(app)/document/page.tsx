@@ -40,6 +40,7 @@ import AmssAutoBrowserSync from "./_components/amss-auto-browser-sync";
 import CertGenerator from "./_components/cert-generator";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import DocumentSettingsModal from "./_components/document-settings-modal";
 
 // Import atomic components
@@ -477,29 +478,14 @@ function DocumentPageContent() {
 
   if (loading && outboundDocs.length === 0) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 overflow-hidden">
-        <div className="relative z-10 flex flex-col items-center max-w-sm w-full text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 p-1 shadow-sm border border-slate-100 dark:border-slate-850 flex items-center justify-center overflow-hidden animate-pulse">
-            <ClipboardList className="w-6 h-6 text-orange-500" />
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">กำลังโหลดระบบงานสารบรรณ...</p>
-          <div className="w-32 pt-2 mx-auto">
-            <div className="h-1 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
-              <motion.div 
-                className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full absolute top-0 bottom-0"
-                animate={{ 
-                  left: ["-100%", "100%"],
-                  width: ["30%", "60%", "30%"]
-                }}
-                transition={{ 
-                  duration: 1.5, 
-                  repeat: Infinity, 
-                  ease: "easeInOut" 
-                }}
-              />
-            </div>
-          </div>
-        </div>
+      <div className="space-y-6 max-w-7xl mx-auto px-1">
+        <PageHeader
+          title="ระบบงานสารบรรณ (Sarabun System)"
+          description="ขอออกเลขทะเบียนหนังสือส่ง บันทึกข้อความ คำสั่ง และตรวจสอบประวัติทะเบียนคุมหนังสือรับ-ส่ง"
+          icon={ClipboardList}
+          gradient="from-orange-600 to-amber-600"
+        />
+        <TableSkeleton rows={6} />
       </div>
     );
   }
