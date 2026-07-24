@@ -7,12 +7,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Wrench, Plus, Search, Filter, RefreshCw,
   Clock, CheckCircle2, XCircle, AlertTriangle,
-  ChevronRight, Zap, AlertCircle, Loader2, BarChart3, FileText, ListFilter
+  ChevronRight, Zap, AlertCircle, Loader2, BarChart3, FileText, ListFilter, ClipboardList
 } from "lucide-react";
 import Link from "next/link";
 import { getRepairsAction } from "@/app/actions/repair/update";
 import { hasRepairPermission } from "@/lib/permissions";
 import RepairSummaryReportView from "./RepairSummaryReportView";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { TableSkeleton } from "@/components/ui/skeletons";
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -40,26 +43,6 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const FILTER_STATUSES = ["ทั้งหมด", "PENDING", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
-function StatCard({ label, value, icon: Icon, gradient, delay }: { label: string; value: number; icon: React.ElementType; gradient: string; delay: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4, ease: "easeOut" }}
-      className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
-    >
-      <div className={`absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 ${gradient}`} />
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${gradient} bg-opacity-20`}>
-        <Icon className="w-5 h-5 text-white" />
-      </div>
-      <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{label}</p>
-    </motion.div>
-  );
-}
 
 // ─── Repair Row ───────────────────────────────────────────────────────────────
 
@@ -246,10 +229,10 @@ export default function RepairListPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="ทั้งหมด"         value={stats.total}      icon={ClipboardIcon} gradient="bg-gradient-to-br from-slate-600 to-slate-800"      delay={0}    />
-        <StatCard label="รอดำเนินการ"     value={stats.pending}    icon={Clock}         gradient="bg-gradient-to-br from-amber-500 to-orange-500"       delay={0.05} />
-        <StatCard label="กำลังดำเนินการ" value={stats.inProgress} icon={Wrench}        gradient="bg-gradient-to-br from-violet-500 to-purple-600"       delay={0.10} />
-        <StatCard label="เสร็จสิ้น"       value={stats.completed}  icon={CheckCircle2}  gradient="bg-gradient-to-br from-emerald-500 to-teal-600"        delay={0.15} />
+        <StatCard label="ทั้งหมด"         value={stats.total}      icon={ClipboardList} gradient="bg-slate-600"      delay={0}    />
+        <StatCard label="รอดำเนินการ"     value={stats.pending}    icon={Clock}         gradient="bg-amber-500"       delay={0.05} />
+        <StatCard label="กำลังดำเนินการ" value={stats.inProgress} icon={Wrench}        gradient="bg-purple-600"      delay={0.10} />
+        <StatCard label="เสร็จสิ้น"       value={stats.completed}  icon={CheckCircle2}  gradient="bg-emerald-600"     delay={0.15} />
       </div>
 
       {/* Filters + Search */}
