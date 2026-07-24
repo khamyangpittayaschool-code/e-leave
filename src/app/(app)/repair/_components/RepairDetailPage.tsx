@@ -244,7 +244,7 @@ function WorkflowPanel({ repair, user, onRefresh }: { repair: any; user: any; on
 // ─── Status Lifecycle Stepper Component ─────────────────────────────────────
 
 const WORKFLOW_STEPS = [
-  { key: "PENDING font-semibold", status: "PENDING", label: "รอดำเนินการ", icon: Clock },
+  { key: "PENDING", status: "PENDING", label: "รอดำเนินการ", icon: Clock },
   { key: "ASSIGNED", status: "ASSIGNED", label: "มอบหมายแล้ว", icon: AlertCircle },
   { key: "IN_PROGRESS", status: "IN_PROGRESS", label: "กำลังซ่อม", icon: Wrench },
   { key: "COMPLETED", status: "COMPLETED", label: "เสร็จสิ้น", icon: CheckCircle2 },
@@ -253,8 +253,8 @@ const WORKFLOW_STEPS = [
 function StatusStepper({ currentStatus }: { currentStatus: string }) {
   if (currentStatus === "CANCELLED") {
     return (
-      <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-center gap-2 text-slate-500 font-bold text-sm">
-        <XCircle className="w-5 h-5 text-red-500" />
+      <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl p-4 flex items-center justify-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+        <XCircle className="w-5 h-5 text-rose-500" />
         คำขอนี้ถูกยกเลิกแล้ว
       </div>
     );
@@ -264,36 +264,53 @@ function StatusStepper({ currentStatus }: { currentStatus: string }) {
   const currentIndex = order.indexOf(currentStatus);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+    <div className="bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 rounded-2xl p-4 md:p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-3 px-1">
+        <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          ขั้นตอนการดำเนินงาน (Workflow Progress)
+        </span>
+        <span className="text-xs font-bold text-orange-600 dark:text-orange-400 flex items-center gap-1.5 bg-orange-50 dark:bg-orange-500/10 px-2.5 py-0.5 rounded-full border border-orange-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+          สถานะปัจจุบัน: {WORKFLOW_STEPS.find(s => s.status === currentStatus)?.label || currentStatus}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         {WORKFLOW_STEPS.map((step, idx) => {
-          const isDone = currentIndex >= idx;
+          const isDone = currentIndex > idx;
           const isCurrent = currentIndex === idx;
           const Icon = step.icon;
 
           return (
             <div
               key={step.status}
-              className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-bold transition-all ${
+              className={`relative flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
                 isCurrent
-                  ? "bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400 shadow-sm"
+                  ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25 ring-4 ring-orange-500/20 font-extrabold scale-[1.02] z-10"
                   : isDone
-                  ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                  : "bg-slate-50 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800 text-slate-400"
+                  ? "bg-white dark:bg-slate-900/80 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs"
+                  : "bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/40 dark:border-slate-800/60 text-slate-400 dark:text-slate-600 font-medium opacity-60"
               }`}
             >
               <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                   isCurrent
-                    ? "bg-orange-500 text-white"
+                    ? "bg-white/20 text-white"
                     : isDone
-                    ? "bg-emerald-500 text-white"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-400"
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : "bg-slate-200/60 dark:bg-slate-700/50 text-slate-400"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                {isDone ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <Icon className="w-4 h-4" />}
               </div>
-              <span className="truncate">{step.label}</span>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs truncate">{step.label}</span>
+                {isCurrent && (
+                  <span className="text-[10px] text-white/80 font-normal leading-tight">
+                    กำลังอยู่ในขั้นตอนนี้
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
