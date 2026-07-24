@@ -68,6 +68,7 @@ function computeSlaStatus(
 // ─── Create ───────────────────────────────────────────────────────────────────
 
 import { sendRepairLineNotify } from "@/lib/line-notify";
+import { dispatchNotification } from "@/lib/notifications";
 
 export async function createRepair(
   actor: SessionUser,
@@ -123,6 +124,14 @@ export async function createRepair(
     requesterName,
     urgency: repair.urgency === "URGENT_MOST" ? "เร่งด่วนมาก" : repair.urgency === "URGENT" ? "เร่งด่วน" : "ปกติ",
   }).catch((e) => console.error("Failed to send LINE repair create notify:", e));
+
+  // Non-blocking UI Notification Bell dispatch
+  dispatchNotification({
+    recipientIds: [actor.id],
+    title: "บันทึกคำขอแจ้งซ่อมสำเร็จ",
+    message: `คำขอแจ้งซ่อม ${repair.repairNo} (${repair.title}) บันทึกเข้าสู่ระบบเรียบร้อยแล้ว`,
+    link: `/repair/${repair.id}`,
+  });
 
   return repair;
 }
@@ -208,6 +217,13 @@ export async function assignRepair(
     requesterName: repair.requester?.name || undefined,
     assigneeName: assigneeUser?.name || assigneeId,
   }).catch((e) => console.error("Failed to send LINE repair assign notify:", e));
+
+  dispatchNotification({
+    recipientIds: [assigneeId, repair.requesterId],
+    title: "มอบหมายช่างผู้รับผิดชอบงานซ่อม",
+    message: `คำขอ ${repair.repairNo} ถูกมอบหมายให้ ${assigneeUser?.name || "ช่างซ่อมบำรุง"}`,
+    link: `/repair/${repair.id}`,
+  });
 
   return updated;
 }
@@ -306,6 +322,13 @@ export async function completeRepair(
     assigneeName: (repair as any).assignee?.name || actor.id,
     resolutionNote: input.resolutionNote,
   }).catch((e) => console.error("Failed to send LINE repair complete notify:", e));
+
+  dispatchNotification({
+    recipientIds: [repair.requesterId],
+    title: "งานซ่อมแซมเสร็จสิ้น",
+    message: `คำขอแจ้งซ่อม ${repair.repairNo} (${repair.title}) ดำเนินการซ่อมแซมเสร็จสิ้นแล้ว`,
+    link: `/repair/${repair.id}`,
+  });
 
   return updated;
 }
