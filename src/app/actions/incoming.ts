@@ -1041,21 +1041,29 @@ export async function fetchAmssPreviewDocs(options: {
     }
   }
 
-  // Query DB to mark existing documents
+  // Query DB to mark existing documents safely
+  let existingDocs: { amssLink: string | null; docRefNo: string | null; senderOrg: string }[] = [];
   const amssLinks = allParsedDocs.map(d => d.amssLink).filter(Boolean);
   const refCombos = allParsedDocs
     .filter(d => d.docRefNo && d.docRefNo.trim() !== "")
     .map(d => ({ docRefNo: d.docRefNo, senderOrg: d.senderOrg }));
 
-  const existingDocs = await prisma.incomingDocument.findMany({
-    where: {
-      OR: [
-        { amssLink: { in: amssLinks } },
-        ...refCombos
-      ]
-    },
-    select: { amssLink: true, docRefNo: true, senderOrg: true }
-  });
+  const orConditions: any[] = [];
+  if (amssLinks.length > 0) {
+    orConditions.push({ amssLink: { in: amssLinks } });
+  }
+  if (refCombos.length > 0) {
+    orConditions.push(...refCombos);
+  }
+
+  if (orConditions.length > 0) {
+    existingDocs = await prisma.incomingDocument.findMany({
+      where: {
+        OR: orConditions
+      },
+      select: { amssLink: true, docRefNo: true, senderOrg: true }
+    });
+  }
 
   const previewItems: AMSSPreviewItem[] = allParsedDocs.map(d => {
     const isExisting = existingDocs.some(ex => 

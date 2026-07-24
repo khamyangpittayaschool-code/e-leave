@@ -222,53 +222,7 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast, autoTrigger 
   };
 
   const handleDirectOneClickSync = async () => {
-    setSyncing(true);
-    setStatusMsg("กำลังเชื่อมต่อเซิร์ฟเวอร์ AMSS++ และดึงหนังสือรับ...");
-
-    try {
-      const res = await syncAMSSDocumentsAutomatically("all");
-      if (!res.success) {
-        const errorMsg = res.error || "เกิดข้อผิดพลาดในการดึงข้อมูลจาก AMSS++";
-        if (
-          errorMsg.includes("Cloudflare") ||
-          errorMsg.includes("CAPTCHA") ||
-          errorMsg.includes("403") ||
-          errorMsg.includes("Firewall") ||
-          errorMsg.includes("ล้มเหลว") ||
-          errorMsg.includes("ไม่สามารถเชื่อมต่อ")
-        ) {
-          setStatusMsg("ระบบ AMSS++ ฝั่งสพท. บล็อกการยิงตรง กำลังเปิด Popup ช่วยดึงข้อมูล...");
-          await handleAutoBrowserSync();
-        } else {
-          if (showToast) showToast(errorMsg, "error");
-          setSyncing(false);
-          setStatusMsg(null);
-        }
-        return;
-      }
-
-      const { importedCount, duplicatesCount } = res.data;
-      if (importedCount === 0 && duplicatesCount > 0) {
-        if (showToast) {
-          showToast(`ข้อมูลเป็นปัจจุบันแล้ว (ไม่มีหนังสือใหม่ ข้ามข้อมูลซ้ำ ${duplicatesCount} เรื่อง)`, "success");
-        }
-      } else {
-        if (showToast) {
-          showToast(
-            `⚡ ดึงข้อมูลจาก AMSS++ สำเร็จ! นำเข้าหนังสือใหม่ ${importedCount} เรื่อง` +
-              (duplicatesCount > 0 ? ` (ข้ามข้อมูลซ้ำ ${duplicatesCount} เรื่อง)` : ""),
-            "success"
-          );
-        }
-      }
-      if (onSuccess) onSuccess(importedCount);
-      setSyncing(false);
-      setStatusMsg(null);
-    } catch (err: any) {
-      if (showToast) showToast(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล", "error");
-      setSyncing(false);
-      setStatusMsg(null);
-    }
+    await handleFetchPreview();
   };
 
   const filteredPreviewItems = previewItems.filter(item => {
