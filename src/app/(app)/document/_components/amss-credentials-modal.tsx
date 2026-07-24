@@ -124,7 +124,7 @@ export default function AmssCredentialsModal({
         if (clientOk) {
           setTestResult({
             success: true,
-            msg: "เบราว์เซอร์ของคุณครูสามารถเข้าถึง AMSS++ ได้ตามปกติ! (Cloudflare บล็อกเฉพาะ IP คลาวด์ Vercel) ท่านสามารถบันทึกเพื่อซิงค์หนังสือรับผ่านเบราว์เซอร์ได้ 100%"
+            msg: "เครื่องของคุณครูเชื่อมต่อ AMSS++ ได้ปกติ! กดบันทึกเพื่อใช้ระบบซิงค์หนังสือรับได้ทันที"
           });
           setHasTested(true);
         } else {
@@ -139,7 +139,7 @@ export default function AmssCredentialsModal({
       if (clientOk) {
         setTestResult({
           success: true,
-          msg: "เบราว์เซอร์ของคุณครูสามารถเข้าถึง AMSS++ ได้ตามปกติ! ท่านสามารถบันทึกและซิงค์หนังสือรับผ่านเบราว์เซอร์ได้ 100%"
+          msg: "เครื่องของคุณครูเชื่อมต่อ AMSS++ ได้ปกติ! กดบันทึกเพื่อใช้ระบบซิงค์หนังสือรับได้ทันที"
         });
         setHasTested(true);
       } else {
@@ -180,26 +180,26 @@ export default function AmssCredentialsModal({
         logs.push({
           step: "CLIENT_BROWSER_CHECK",
           status: "success",
-          message: "เครื่องของคุณครูสามารถเข้าถึง https://amss.sesaud.go.th ได้ตามปกติ! (Cloudflare บล็อกเฉพาะ IP ต่างประเทศของ Vercel คลาวด์) ท่านสามารถกดบันทึกเพื่อใช้ระบบ 'ซิงค์หนังสือรับผ่านเบราว์เซอร์' หรือ 'วางโค้ด HTML' ได้ 100%"
+          message: "เครื่องของคุณครูเชื่อมต่อ AMSS++ ได้ปกติ! กดบันทึกเพื่อใช้ระบบซิงค์หนังสือรับได้ทันที"
         });
         setHasTested(true);
-        notify("เครื่องของคุณครูเชื่อมต่อกับ AMSS++ ได้ปกติ สามารถกดบันทึกเพื่อใช้งานได้ครับ!", "success");
+        notify("เครื่องของคุณครูเชื่อมต่อ AMSS++ ได้ปกติ กดบันทึกเพื่อใช้งานได้ทันทีครับ", "success");
       } else if (data.success) {
         notify("วินิจฉัยการเชื่อมต่อสำเร็จ!", "success");
         setHasTested(true);
       } else {
-        notify("พบปัญหาการยิงตรงจากคลาวด์ แนะนำให้ใช้งานผ่านระบบ Client Sync", "error");
+        notify("พบปัญหาการเชื่อมต่อตรง ให้ใช้วิธีซิงค์ผ่านเบราว์เซอร์แทน", "error");
       }
 
       setDiagnosticLogs(logs);
     } catch (err: any) {
       const clientOk = await checkClientReachability(url.trim());
-      const logs = [{ step: "CLIENT", status: "error", message: err.message || "การเชื่อมต่อกับเซิร์ฟเวอร์ล้มเหลว" }];
+      const logs = [{ step: "CLIENT", status: "error", message: err.message || "การเชื่อมต่อล้มเหลว" }];
       if (clientOk) {
         logs.push({
           step: "CLIENT_BROWSER_CHECK",
           status: "success",
-          message: "เครื่องของคุณครูสามารถเข้าถึง AMSS++ ได้ตามปกติ สามารถบันทึกเพื่อซิงค์ผ่านเบราว์เซอร์ได้ 100%"
+          message: "เครื่องของคุณครูเชื่อมต่อ AMSS++ ได้ปกติ! กดบันทึกเพื่อซิงค์หนังสือรับได้ทันที"
         });
         setHasTested(true);
       }
@@ -411,15 +411,15 @@ export default function AmssCredentialsModal({
               </button>
 
               {showDiagnostics && (
-                <div className="max-h-60 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3 space-y-2 text-[10px] font-mono leading-normal text-slate-700 dark:text-slate-355 font-sans">
+                <div className="max-h-40 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-2.5 space-y-1.5 text-[10px] font-sans">
                   {diagnosing && (
                     <div className="flex items-center gap-2 text-slate-500 py-1 font-bold">
                       <RefreshCw className="w-3 h-3 animate-spin" />
-                      <span>กำลังตรวจวิเคราะห์ระบบเชื่อมต่อ...</span>
+                      <span>กำลังวิเคราะห์การเชื่อมต่อ...</span>
                     </div>
                   )}
                   {diagnosticLogs && diagnosticLogs.length === 0 && (
-                    <div className="text-slate-500 italic py-1">ไม่มีข้อมูลบันทึกการวินิจฉัย</div>
+                    <div className="text-slate-500 italic py-1">ไม่มีข้อมูลบันทึก</div>
                   )}
                   {diagnosticLogs && diagnosticLogs.map((log, idx) => {
                     let colorClass = "text-slate-500 dark:text-slate-400";
@@ -428,12 +428,12 @@ export default function AmssCredentialsModal({
                     if (log.status === "warning") colorClass = "text-amber-500 dark:text-amber-400";
                     
                     return (
-                      <div key={idx} className="border-b border-slate-100 dark:border-slate-800 pb-1.5 last:border-0 last:pb-0">
-                        <div className="flex justify-between font-bold mb-0.5">
+                      <div key={idx} className="border-b border-slate-100 dark:border-slate-800/80 pb-1 last:border-0 last:pb-0">
+                        <div className="flex justify-between font-bold text-[10px]">
                           <span>[{log.step}]</span>
                           <span className={colorClass}>{log.status.toUpperCase()}</span>
                         </div>
-                        <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 whitespace-pre-wrap">{log.message}</div>
+                        <div className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 whitespace-pre-wrap leading-tight">{log.message}</div>
                       </div>
                     );
                   })}

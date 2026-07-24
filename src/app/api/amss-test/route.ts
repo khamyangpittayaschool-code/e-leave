@@ -117,7 +117,7 @@ export async function POST(req: Request) {
         logs.push({ 
           step: "HTTP_HANDSHAKE", 
           status: "error", 
-          message: `Server returned 403 Forbidden: เซิร์ฟเวอร์ AMSS++ ฝั่งเขตฯ มีระบบ Cloudflare/Firewall ป้องกันบอทภายนอก กรุณาใช้วิธีนำเข้าผ่านโค้ด HTML หรือ Client Sync` 
+          message: `403 Forbidden: AMSS++ มีระบบป้องกันบอทภายนอก ให้ใช้วิธีซิงค์หนังสือรับผ่านเบราว์เซอร์แทน` 
         });
       } else {
         logs.push({ step: "HTTP_HANDSHAKE", status: "error", message: `Server returned non-2xx code: ${initRes.status} ${initRes.statusText}` });

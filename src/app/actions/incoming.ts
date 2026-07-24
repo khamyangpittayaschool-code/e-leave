@@ -316,9 +316,9 @@ export const syncAMSSDocumentsAutomatically = safeAction(async (
 
     if (!successFetch || !htmlContent) {
       if (lastHttpStatus === 403) {
-        throw new Error("ระบบ AMSS++ ฝั่งสพท. มีมาตรการความปลอดภัย Cloudflare/Firewall บล็อกการเชื่อมต่อของเซิร์ฟเวอร์ (403 Forbidden) กรุณากดปุ่ม 'นำเข้าผ่านโค้ด HTML' บนระบบเพื่อนำเข้าได้ 100%");
+        throw new Error("AMSS++ มีระบบป้องกันบอทภายนอก (403 Forbidden) ระบบจะสลับไปใช้วิธีซิงค์ผ่านเบราว์เซอร์แทน");
       }
-      throw new Error("ไม่สามารถดึงรายการเอกสารรับจากระบบ AMSS++ ได้ (ตรวจสอบความถูกต้องของลิงก์หน้าแรกระบบของท่าน)");
+      throw new Error("ไม่สามารถดึงรายการเอกสารรับจากระบบ AMSS++ ได้ (ตรวจสอบความถูกต้องของลิงก์)");
     }
 
     // CAPTCHA and Cloudflare Detection
