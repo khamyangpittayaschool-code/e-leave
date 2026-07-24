@@ -936,3 +936,256 @@ export async function syncAMSSDocumentsFromHtml(
   safeRevalidatePath("/document");
   return result;
 }
+
+export type AMSSPreviewItem = {
+  amssLink: string;
+  receiveNo: string;
+  docRefNo: string;
+  title: string;
+  senderOrg: string;
+  dateText: string;
+  isExisting: boolean;
+};
+
+export async function fetchAmssPreviewDocs(options: {
+  yearFilter?: number; // e.g. 2569 or 2568 (Buddhist year)
+  monthFilter?: number; // 1 to 12 (0 = all months)
+  maxPages?: number; // default 5
+}) {
+  const user = await getSessionUser();
+  const credentials = await prisma.aMSSCredentials.findUnique({
+    where: { userId: user.id }
+  });
+
+  if (!credentials || !credentials.url || !credentials.username || !credentials.password) {
+    throw new Error("ยังไม่ได้ตั้งค่าข้อมูลบัญชี AMSS++");
+  }
+
+  const decryptedPassword = decrypt(credentials.password);
+  const parsedUrl = new URL(credentials.url);
+  const origin = parsedUrl.origin;
+
+  const cookies = await loginToAMSS(origin, credentials.username, decryptedPassword);
+  if (!cookies) {
+    throw new Error("เข้าสู่ระบบ AMSS++ ไม่สำเร็จ (อาจถูก Cloudflare/Firewall บล็อก หรือรหัสผ่านไม่ถูกต้อง)");
+  }
+
+  const maxPages = options.maxPages || 5;
+  const allParsedDocs: any[] = [];
+  const seenAmssLinks = new Set<string>();
+
+  for (let page = 1; page <= maxPages; page++) {
+    const pageUrl = `${origin}/index.php?option=book&task=main/receive&page=${page}`;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const res = await fetchWithTlsFallback(pageUrl, {
+        signal: controller.signal,
+        headers: { "Cookie": cookies }
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const buffer = await res.arrayBuffer();
+        let text = new TextDecoder("utf-8").decode(buffer);
+        if (text.includes("เธ") || text.includes("เธช")) {
+          text = new TextDecoder("windows-874").decode(buffer);
+        }
+
+        const docs = parseAMSSListHtml(text, origin);
+        if (docs.length === 0) break;
+
+        for (const doc of docs) {
+          if (!seenAmssLinks.has(doc.amssLink)) {
+            seenAmssLinks.add(doc.amssLink);
+
+            let include = true;
+            let docYearBE: number | null = null;
+            let docMonth: number | null = null;
+
+            const parts = doc.dateText.trim().split(/\s+/);
+            if (parts.length >= 3) {
+              const thaiShortMonthMap: Record<string, number> = {
+                "มค": 1, "กพ": 2, "มีค": 3, "เมย": 4, "พค": 5, "มิย": 6,
+                "กค": 7, "สค": 8, "กย": 9, "ตค": 10, "พย": 11, "ธค": 12,
+                "มกราคม": 1, "กุมภาพันธ์": 2, "มีนาคม": 3, "เมษายน": 4,
+                "พฤษภาคม": 5, "มิถุนายน": 6, "กรกฎาคม": 7, "สิงหาคม": 8,
+                "กันยายน": 9, "ตุลาคม": 10, "พฤศจิกายน": 11, "ธันวาคม": 12
+              };
+              const mClean = parts[1].replace(/\./g, "").trim();
+              docMonth = thaiShortMonthMap[mClean] || null;
+
+              let year = parseInt(parts[2], 10);
+              if (!isNaN(year)) {
+                if (year < 100) year = year + 2500;
+                else if (year < 2400) year = year + 543;
+                docYearBE = year;
+              }
+            }
+
+            if (options.yearFilter && docYearBE && docYearBE !== options.yearFilter) {
+              include = false;
+            }
+            if (options.monthFilter && options.monthFilter > 0 && docMonth && docMonth !== options.monthFilter) {
+              include = false;
+            }
+
+            if (include) {
+              allParsedDocs.push(doc);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Continue next page
+    }
+  }
+
+  // Query DB to mark existing documents
+  const amssLinks = allParsedDocs.map(d => d.amssLink).filter(Boolean);
+  const refCombos = allParsedDocs
+    .filter(d => d.docRefNo && d.docRefNo.trim() !== "")
+    .map(d => ({ docRefNo: d.docRefNo, senderOrg: d.senderOrg }));
+
+  const existingDocs = await prisma.incomingDocument.findMany({
+    where: {
+      OR: [
+        { amssLink: { in: amssLinks } },
+        ...refCombos
+      ]
+    },
+    select: { amssLink: true, docRefNo: true, senderOrg: true }
+  });
+
+  const previewItems: AMSSPreviewItem[] = allParsedDocs.map(d => {
+    const isExisting = existingDocs.some(ex => 
+      (d.amssLink && ex.amssLink === d.amssLink) ||
+      (d.docRefNo && ex.docRefNo === d.docRefNo && ex.senderOrg === d.senderOrg)
+    );
+    return {
+      amssLink: d.amssLink,
+      receiveNo: d.receiveNo,
+      docRefNo: d.docRefNo,
+      title: d.title,
+      senderOrg: d.senderOrg,
+      dateText: d.dateText,
+      isExisting
+    };
+  });
+
+  return {
+    success: true,
+    totalFound: previewItems.length,
+    newCount: previewItems.filter(i => !i.isExisting).length,
+    existingCount: previewItems.filter(i => i.isExisting).length,
+    items: previewItems
+  };
+}
+
+export async function importSelectedAMSSDocuments(selectedItems: AMSSPreviewItem[]) {
+  const user = await getSessionUser();
+  if (!selectedItems || selectedItems.length === 0) {
+    return { importedCount: 0, duplicatesCount: 0 };
+  }
+
+  // Filter out existing ones
+  const itemsToImport = selectedItems.filter(i => !i.isExisting);
+  if (itemsToImport.length === 0) {
+    return { importedCount: 0, duplicatesCount: selectedItems.length };
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    let importedCount = 0;
+
+    // Fetch baseline sequence numbers for each represented year
+    const yearDocsMap = new Map<number, number>();
+
+    for (const d of itemsToImport) {
+      let parsedDate = new Date();
+      const parts = d.dateText.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        const day = parseInt(parts[0], 10);
+        const thaiShortMonthMap: Record<string, number> = {
+          "มค": 0, "กพ": 1, "มีค": 2, "เมย": 3, "พค": 4, "มิย": 5,
+          "กค": 6, "สค": 7, "กย": 8, "ตค": 9, "พย": 10, "ธค": 11,
+          "มกราคม": 0, "กุมภาพันธ์": 1, "มีนาคม": 2, "เมษายน": 3,
+          "พฤษภาคม": 4, "มิถุนายน": 5, "กรกฎาคม": 6, "สิงหาคม": 7,
+          "กันยายน": 8, "ตุลาคม": 9, "พฤศจิกายน": 10, "ธันวาคม": 11
+        };
+        const mClean = parts[1].replace(/\./g, "").trim();
+        const monthIdx = thaiShortMonthMap[mClean] !== undefined ? thaiShortMonthMap[mClean] : 0;
+        
+        let year = parseInt(parts[2], 10);
+        if (!isNaN(year) && !isNaN(day)) {
+          if (year > 2400) {
+            year = year - 543;
+          } else if (year < 100) {
+            year = year + 2500 - 543;
+          }
+          parsedDate = new Date(Date.UTC(year, monthIdx, day, 0, 0, 0, 0));
+        }
+      }
+
+      const yearVal = parsedDate.getUTCFullYear();
+      const thYear = yearVal + 543;
+
+      if (!yearDocsMap.has(yearVal)) {
+        const startDate = new Date(Date.UTC(yearVal, 0, 1));
+        const endDate = new Date(Date.UTC(yearVal + 1, 0, 1));
+        const highestDoc = await tx.incomingDocument.findFirst({
+          where: {
+            receiveDate: {
+              gte: startDate,
+              lt: endDate,
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { receiveNo: true }
+        });
+
+        let lastSeq = 0;
+        if (highestDoc && highestDoc.receiveNo) {
+          const matchSeq = highestDoc.receiveNo.match(/รับที่\s*(\d+)/);
+          if (matchSeq) {
+            lastSeq = parseInt(matchSeq[1], 10);
+          }
+        }
+        yearDocsMap.set(yearVal, lastSeq + 1);
+      }
+
+      let nextSeq = yearDocsMap.get(yearVal) || 1;
+      const generatedReceiveNo = `รับที่ ${nextSeq}/${thYear}`;
+      yearDocsMap.set(yearVal, nextSeq + 1);
+
+      await tx.incomingDocument.create({
+        data: {
+          receiveNo: generatedReceiveNo,
+          receiveDate: parsedDate,
+          senderOrg: d.senderOrg,
+          docRefNo: d.docRefNo || null,
+          title: d.title,
+          urgencyLevel: "NORMAL",
+          amssLink: d.amssLink,
+          status: "PENDING",
+          createdById: user.id
+        }
+      });
+
+      importedCount++;
+    }
+
+    // System Log
+    await tx.systemLog.create({
+      data: {
+        actionType: "INCOMING_IMPORT_SELECTED",
+        description: `นำเข้าหนังสือ AMSS++ จากรายการเลือก: ${importedCount} รายการ`,
+        userId: user.id
+      }
+    });
+
+    return { importedCount, duplicatesCount: selectedItems.length - importedCount };
+  });
+
+  safeRevalidatePath("/document");
+  return result;
+}
