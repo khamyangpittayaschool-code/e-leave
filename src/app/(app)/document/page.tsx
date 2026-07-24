@@ -38,6 +38,8 @@ import AmssImportModal from "@/components/AmssImportModal";
 import AmssCredentialsModal from "./_components/amss-credentials-modal";
 import AmssAutoBrowserSync from "./_components/amss-auto-browser-sync";
 import CertGenerator from "./_components/cert-generator";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
 import DocumentSettingsModal from "./_components/document-settings-modal";
 
 // Import atomic components
@@ -509,36 +511,32 @@ function DocumentPageContent() {
       animate="show"
       className="space-y-6 max-w-7xl mx-auto px-1"
     >
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            ระบบงานสารบรรณ (Sarabun System)
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            ขอออกเลขทะเบียนหนังสือส่ง บันทึกข้อความ คำสั่ง และตรวจสอบประวัติทะเบียนคุมหนังสือรับ-ส่ง
-          </p>
-        </div>
-        
-        {/* Page-level actions */}
-        <div className="flex items-center gap-2">
-          <GuardedAction requiredPermission="sarabun:settings:edit">
-            <button
-              onClick={() => setShowDocSettingsModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200/60 dark:border-indigo-800/60 transition cursor-pointer shadow-sm"
-            >
-              ⚙️ ตั้งค่าขอเลข & บันทึกข้อความ
-            </button>
-          </GuardedAction>
+      <PageHeader
+        title="ระบบงานสารบรรณ (Sarabun System)"
+        description="ขอออกเลขทะเบียนหนังสือส่ง บันทึกข้อความ คำสั่ง และตรวจสอบประวัติทะเบียนคุมหนังสือรับ-ส่ง"
+        icon={ClipboardList}
+        gradient="from-orange-600 to-amber-600"
+        action={
+          <div className="flex items-center gap-2">
+            <GuardedAction requiredPermission="sarabun:settings:edit">
+              <button
+                onClick={() => setShowDocSettingsModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200/60 dark:border-indigo-800/60 transition cursor-pointer shadow-sm"
+              >
+                ⚙️ ตั้งค่าขอเลข & บันทึกข้อความ
+              </button>
+            </GuardedAction>
 
-          <Link
-            href="/dashboard"
-            className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm"
-            title="กลับหน้าหลัก"
-          >
-            <ArrowLeft className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-          </Link>
-        </div>
-      </div>
+            <Link
+              href="/dashboard"
+              className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm"
+              title="กลับหน้าหลัก"
+            >
+              <ArrowLeft className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+            </Link>
+          </div>
+        }
+      />
 
       {/* ── Sub Navigation Tabs ── */}
       <div className="flex border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/20 p-1 rounded-2xl gap-1 shadow-sm max-w-2xl overflow-x-auto">

@@ -12,6 +12,10 @@ import { CycleSelect } from "@/components/cycle-select";
 import { useSearchParams } from "next/navigation";
 import { getLeaveCycleFilter } from "@/lib/cycle";
 import { useI18n } from "@/lib/i18n";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { TableSkeleton } from "@/components/ui/skeletons";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const handleViewAttachment = (preview: string, fileName?: string) => {
   if (preview.startsWith("data:")) {
@@ -422,15 +426,25 @@ export default function HistoryPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6" ref={printRef}>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{t("leaveHistory")}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {selectedUserId === "me" 
+      <PageHeader
+        title={t("leaveHistory")}
+        description={
+          selectedUserId === "me" 
             ? t("leaveHistorySubtitle") 
             : selectedUserId === "all"
               ? t("allStaffHistory")
-              : `${t("leaveHistory")}: ${staffList.find(s => s.id === selectedUserId)?.name || ""}`}
-        </p>
+              : `${t("leaveHistory")}: ${staffList.find(s => s.id === selectedUserId)?.name || ""}`
+        }
+        icon={CalendarDays}
+        gradient="from-emerald-600 to-teal-600"
+      />
+
+      {/* Summary Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
+        <StatCard label="รายการทั้งหมด" value={stats.total} icon={CalendarDays} gradient="bg-emerald-600" delay={0} />
+        <StatCard label="อนุมัติแล้ว" value={stats.approved} icon={CheckCircle2} gradient="bg-emerald-500" delay={0.05} />
+        <StatCard label="รอดำเนินการ" value={stats.pending} icon={Clock} gradient="bg-amber-500" delay={0.1} />
+        <StatCard label="ปฏิเสธ/ยกเลิก" value={stats.rejected} icon={XCircle} gradient="bg-rose-500" delay={0.15} />
       </div>
 
       {/* Filter and Actions Bar */}

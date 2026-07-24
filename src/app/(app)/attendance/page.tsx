@@ -25,6 +25,7 @@ import {
   getBrowserFingerprint,
   compressPhoto,
 } from "@/lib/attendance-utils";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ──────────────────────────────────────────────
 // Animation Variants
