@@ -247,7 +247,7 @@ export const syncAMSSDocumentsAutomatically = safeAction(async (
       const decryptedPassword = decrypt(credentials.password);
       const freshCookies = await loginToAMSS(credentials.url, credentials.username, decryptedPassword);
       if (!freshCookies) {
-        throw new Error("เข้าสู่ระบบ AMSS++ ล้มเหลว กรุณาตรวจสอบความถูกต้องของชื่อผู้ใช้งานและรหัสผ่าน");
+        throw new Error("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ AMSS++ ฝั่งสพท. ได้ (403 Forbidden/Firewall บล็อกคลาวด์ หรือ รหัสผ่านไม่ถูกต้อง) แนะนำใช้ระบบซิงค์ผ่านเบราว์เซอร์");
       }
       loginCookies = freshCookies;
 

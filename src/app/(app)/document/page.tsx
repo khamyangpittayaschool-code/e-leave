@@ -352,8 +352,15 @@ function DocumentPageContent() {
       const res = await syncAMSSDocumentsAutomatically();
       if (!res.success) {
         const errMsg = res.error || "เกิดข้อผิดพลาดในการดึงข้อมูลจาก AMSS++";
-        if (errMsg.includes("CAPTCHA") || errMsg.includes("Cloudflare") || errMsg.includes("403")) {
-          // Trigger browser client background sync automatically without asking user to paste HTML
+        if (
+          errMsg.includes("CAPTCHA") ||
+          errMsg.includes("Cloudflare") ||
+          errMsg.includes("403") ||
+          errMsg.includes("Firewall") ||
+          errMsg.includes("ล้มเหลว") ||
+          errMsg.includes("ไม่สามารถเชื่อมต่อ")
+        ) {
+          // Trigger browser client background sync automatically without popup error toast
           setAutoBrowserTrigger(true);
         } else {
           showToast(errMsg, "error");

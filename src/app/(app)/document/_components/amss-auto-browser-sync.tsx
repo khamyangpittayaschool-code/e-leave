@@ -128,8 +128,15 @@ export default function AmssAutoBrowserSync({ onSuccess, showToast, autoTrigger 
       const res = await syncAMSSDocumentsAutomatically(dateRange);
       if (!res.success) {
         const errorMsg = res.error || "เกิดข้อผิดพลาดในการดึงข้อมูลจาก AMSS++";
-        if (errorMsg.includes("Cloudflare") || errorMsg.includes("CAPTCHA") || errorMsg.includes("403")) {
-          setStatusMsg("ระบบ AMSS++ ฝั่งสพท. บล็อกการเชื่อมต่ออัตโนมัติ กำลังเปิด Popup ช่วยดึงข้อมูล...");
+        if (
+          errorMsg.includes("Cloudflare") ||
+          errorMsg.includes("CAPTCHA") ||
+          errorMsg.includes("403") ||
+          errorMsg.includes("Firewall") ||
+          errorMsg.includes("ล้มเหลว") ||
+          errorMsg.includes("ไม่สามารถเชื่อมต่อ")
+        ) {
+          setStatusMsg("ระบบ AMSS++ ฝั่งสพท. บล็อกการยิงตรง กำลังเปิด Popup ช่วยดึงข้อมูล...");
           await handleAutoBrowserSync();
         } else {
           if (showToast) showToast(errorMsg, "error");
