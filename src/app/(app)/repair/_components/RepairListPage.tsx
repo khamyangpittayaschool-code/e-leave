@@ -155,45 +155,38 @@ export default function RepairListPage() {
     <div className="space-y-6 pb-8">
 
       {/* Page Header (Hidden during print) */}
-      <div className="flex items-center justify-between flex-wrap gap-4 print:hidden">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
-              <Wrench className="w-5 h-5 text-white" />
-            </div>
-            ระบบแจ้งซ่อม
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">จัดการคำขอแจ้งซ่อมทั้งหมดในโรงเรียน</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {user && hasRepairPermission(user, "repair:dashboard") && (
-            <Link href="/dashboard?system=repair">
-              <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
-                <BarChart3 className="w-4 h-4 text-orange-500" />
-                แดชบอร์ดวิเคราะห์
-              </button>
-            </Link>
-          )}
-          <button
-            onClick={load}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            รีเฟรช
-          </button>
-          {canCreate && (
-            <Link href="/repair/new">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-lg shadow-orange-500/25 transition-all"
+      <div className="print:hidden">
+        <PageHeader
+          title="ระบบแจ้งซ่อม"
+          description="จัดการคำขอแจ้งซ่อมทั้งหมดในโรงเรียน"
+          action={
+            <div className="flex items-center gap-2">
+              {user && hasRepairPermission(user, "repair:dashboard") && (
+                <Link href="/dashboard?system=repair">
+                  <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer">
+                    <BarChart3 className="w-4 h-4 text-orange-500" />
+                    แดชบอร์ดวิเคราะห์
+                  </button>
+                </Link>
+              )}
+              <button
+                onClick={load}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
-                แจ้งซ่อมใหม่
-              </motion.button>
-            </Link>
-          )}
-        </div>
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                รีเฟรช
+              </button>
+              {canCreate && (
+                <Link href="/repair/new">
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 shadow-md shadow-orange-500/20 transition-all cursor-pointer">
+                    <Plus className="w-4 h-4" />
+                    แจ้งซ่อมใหม่
+                  </button>
+                </Link>
+              )}
+            </div>
+          }
+        />
       </div>
 
       {/* Main Tab Navigation (Hidden during print) */}

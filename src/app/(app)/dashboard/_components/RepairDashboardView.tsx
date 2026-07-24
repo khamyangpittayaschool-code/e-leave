@@ -87,7 +87,7 @@ export default function RepairDashboardView({
       {/* Charts / Tables Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Trend Chart */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/50 dark:border-slate-800 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col">
           <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-4">
             อัตราความสำเร็จรายเดือน (%)
           </h3>
@@ -104,7 +104,7 @@ export default function RepairDashboardView({
         </div>
 
         {/* Categories Breakdown Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/50 dark:border-slate-800 shadow-sm overflow-x-auto">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)] overflow-x-auto">
           <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-4">
             สถิติตามประเภทงานซ่อม
           </h3>
@@ -146,7 +146,7 @@ export default function RepairDashboardView({
 
       {/* Technician Leaderboard */}
       {stats.technicians.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/50 dark:border-slate-800 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
           <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-4">
             ประสิทธิภาพของช่าง / ผู้รับผิดชอบงาน
           </h3>
@@ -182,22 +182,25 @@ function KPICard({
   icon: React.ReactNode;
   color: "indigo" | "amber" | "red" | "emerald";
 }) {
-  const styles: Record<string, string> = {
-    indigo: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/50",
-    amber: "text-amber-600 bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/50",
-    red: "text-red-600 bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900/50",
-    emerald: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/50",
+  const iconStyles: Record<string, string> = {
+    indigo: "bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400",
+    amber: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
+    red: "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400",
+    emerald: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
   };
 
   return (
-    <div className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col`}>
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center border mb-3 ${styles[color]}`}>
+    <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 md:p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex items-center justify-between">
+      <div>
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">{label}</p>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{value}</span>
+        </div>
+      </div>
+
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${iconStyles[color]}`}>
         {icon}
       </div>
-      <p className="text-2xl font-black text-slate-800 dark:text-white font-mono">{value}</p>
-      <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-wider">
-        {label}
-      </p>
     </div>
   );
 }

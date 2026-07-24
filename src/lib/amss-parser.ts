@@ -392,7 +392,7 @@ export async function loginToAMSS(baseUrl: string, username: string, passwordSec
     
     const initUrl = baseUrl;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
     
     const initRes = await fetchWithTlsFallback(initUrl, {
       signal: controller.signal,
@@ -429,7 +429,7 @@ export async function loginToAMSS(baseUrl: string, username: string, passwordSec
     });
     
     const postController = new AbortController();
-    const postTimeoutId = setTimeout(() => postController.abort(), 5000);
+    const postTimeoutId = setTimeout(() => postController.abort(), 12000);
     
     const loginRes = await fetchWithTlsFallback(postUrl, {
       method: "POST",

@@ -279,8 +279,10 @@ export const syncAMSSDocumentsAutomatically = safeAction(async (
     let successFetch = false;
     let lastHttpStatus = 0;
 
+    const currentBEYear = new Date().getFullYear() + 543;
+
     for (let page = 1; page <= maxPages; page++) {
-      const pageUrl = `${origin}/index.php?option=book&task=main/receive&page=${page}`;
+      const pageUrl = `${origin}/index.php?option=book&task=main/receive&select_year=${currentBEYear}&page=${page}`;
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -308,15 +310,12 @@ export const syncAMSSDocumentsAutomatically = safeAction(async (
           ) {
             successFetch = true;
 
-            // CAPTCHA and Cloudflare Detection
+            // CAPTCHA and Cloudflare Blocking Detection (only trigger on actual block pages, not analytics scripts)
             const lowerHtml = text.toLowerCase();
             if (
-              lowerHtml.includes("captcha") ||
-              lowerHtml.includes("g-recaptcha") ||
-              lowerHtml.includes("recaptcha") ||
-              lowerHtml.includes("cf-challenge") ||
-              lowerHtml.includes("cloudflare") ||
-              lowerHtml.includes("challenge-platform")
+              lowerHtml.includes("g-recaptcha-response") ||
+              lowerHtml.includes("cf-browser-verification") ||
+              lowerHtml.includes("<title>just a moment...</title>")
             ) {
               throw new Error("ระบบ AMSS++ มีมาตรการความปลอดภัยขั้นสูง (CAPTCHA หรือ Cloudflare) บล็อกการดึงข้อมูลอัตโนมัติ กรุณาใช้วิธีนำเข้าแบบวางโค้ดแทน");
             }
@@ -971,11 +970,12 @@ export async function fetchAmssPreviewDocs(options: {
   }
 
   const maxPages = options.maxPages || 5;
+  const targetYear = options.yearFilter || (new Date().getFullYear() + 543);
   const allParsedDocs: any[] = [];
   const seenAmssLinks = new Set<string>();
 
   for (let page = 1; page <= maxPages; page++) {
-    const pageUrl = `${origin}/index.php?option=book&task=main/receive&page=${page}`;
+    const pageUrl = `${origin}/index.php?option=book&task=main/receive&select_year=${targetYear}&page=${page}`;
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
