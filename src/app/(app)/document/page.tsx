@@ -247,13 +247,7 @@ function DocumentPageContent() {
     loadData();
   }, [loadData]);
 
-  // Auto-sync when user opens Inbound Books view
-  useEffect(() => {
-    if (view === "inbound" && !autoSyncedRef.current && amssCredsExist) {
-      autoSyncedRef.current = true;
-      handleAmssAutoSync();
-    }
-  }, [view, amssCredsExist]);
+
 
   // Scrape AMSS++ link
   const handleFormScrape = async (url: string) => {
