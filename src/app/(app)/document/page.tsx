@@ -594,13 +594,24 @@ function DocumentPageContent() {
       ) : view === "issue" ? (
         /* ───────────────── REQUEST DOCUMENT NUMBER VIEW ───────────────── */
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              ขอเลขทะเบียนเอกสารใหม่
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              กรอกข้อมูลเพื่อขอออกเลขทะเบียนหนังสือส่ง บันทึกข้อความ หรือคำสั่งโรงเรียน
-            </p>
+          <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                ขอเลขทะเบียนเอกสารใหม่
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                กรอกข้อมูลเพื่อขอออกเลขทะเบียนหนังสือส่ง บันทึกข้อความ หรือคำสั่งโรงเรียน
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setView("outbound_history");
+                setActiveTab("outbound");
+              }}
+              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap self-start sm:self-auto"
+            >
+              <span>📋</span> ดูทะเบียนเอกสารทั้งหมด ({outboundDocs.length})
+            </button>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
@@ -610,6 +621,49 @@ function DocumentPageContent() {
               onSubmit={handleFormIssue}
               username={session?.user?.name || ""}
               department={(session?.user as any)?.subjectGroup || ""}
+              outboundDocs={outboundDocs}
+            />
+          </div>
+
+          {/* Embedded History & Register Table */}
+          <div className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>📋</span>
+                  ประวัติและทะเบียนออกเลขหนังสือส่ง/คำสั่ง
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  รายการทะเบียนหนังสือส่งและคำสั่งโรงเรียนทั้งหมด
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setView("outbound_history");
+                  setActiveTab("outbound");
+                }}
+                className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap self-start sm:self-auto"
+              >
+                <span>🔍</span> ดูเอกสารทั้งหมด ({outboundDocs.length} รายการ)
+              </button>
+            </div>
+
+            <DocumentTable
+              activeTab="outbound"
+              outboundDocs={outboundDocs}
+              inboundDocs={inboundDocs}
+              sections={sections}
+              onRefresh={loadData}
+              onCancelDocClick={handleCancelDoc}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              selectedDocType={selectedDocType}
+              setSelectedDocType={setSelectedDocType}
+              selectedYear={selectedYearTable}
+              setSelectedYear={setSelectedYearTable}
+              selectedStatus={selectedStatus}
+              setSelectedStatus={setSelectedStatus}
             />
           </div>
         </div>

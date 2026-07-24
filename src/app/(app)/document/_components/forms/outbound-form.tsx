@@ -20,6 +20,15 @@ type OutboundFormProps = {
   }) => Promise<void>;
   username?: string;
   department?: string;
+  outboundDocs?: any[];
+};
+
+const DOC_TYPE_NAMES: Record<string, string> = {
+  MEMO: "บันทึกข้อความ",
+  COMMAND: "คำสั่งโรงเรียน",
+  OUTGOING_NORMAL: "หนังสือส่ง (ปกติ)",
+  OUTGOING_CIRCULAR: "หนังสือส่ง (จดหมายเวียน)",
+  ANNOUNCEMENT: "ประกาศ",
 };
 
 const COMMON_TITLES = [
@@ -51,7 +60,8 @@ export default function OutboundForm({
   issuing,
   onSubmit,
   username = "",
-  department = ""
+  department = "",
+  outboundDocs = [],
 }: OutboundFormProps) {
   // Default "จากหน่วยงาน" to requester's name
   const [formData, setFormData] = useState({
@@ -92,6 +102,15 @@ export default function OutboundForm({
   // Get the selected memo section for color display
   const selectedSection = sections.find(s => s.id === formData.memoSectionId);
 
+  const selectedCategoryDocs = (outboundDocs || []).filter(d => {
+    if (formData.docType === "MEMO") {
+      return d.docType === "MEMO" && (!formData.memoSectionId || d.memoSectionId === formData.memoSectionId || d.memoSection?.id === formData.memoSectionId);
+    }
+    return d.docType === formData.docType;
+  });
+
+  const latestCategoryDoc = selectedCategoryDocs[0];
+
   return (
     <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/60 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-6 relative overflow-hidden">
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-orange-400/10 rounded-full blur-3xl pointer-events-none" />
@@ -113,7 +132,7 @@ export default function OutboundForm({
 
           <div>
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              ประเภทเอกสาร
+              ประเภทเอกสาร *
             </label>
             <div className="relative">
               <select
@@ -163,12 +182,85 @@ export default function OutboundForm({
                   style={{ backgroundColor: selectedSection.color || '#6366f1' }}
                 />
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  สี: {selectedSection.name}
+                  สีหมวดหมู่: {selectedSection.name}
                 </span>
               </div>
             )}
           </div>
         )}
+
+        {/* ── Status Card & 10 Recent Documents for Selected Category ── */}
+        <div className="bg-slate-50/80 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4.5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-base">
+                📌
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  สถานะเลขหมวดหมู่นี้: <span className="font-bold text-slate-700 dark:text-slate-200">{formData.docType === "MEMO" ? (selectedSection ? `${selectedSection.name} (${selectedSection.code})` : "บันทึกข้อความ") : (DOC_TYPE_NAMES[formData.docType] || formData.docType)}</span>
+                </div>
+                <div className="text-xs font-black text-slate-900 dark:text-white mt-0.5 flex items-center gap-2">
+                  <span>เลขล่าสุดในระบบ: <span className="text-orange-600 dark:text-orange-400 font-extrabold">{latestCategoryDoc ? latestCategoryDoc.docNo : "ยังไม่มีการออกเลข"}</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700">
+              <span>ออกเลขในปีนี้แล้ว:</span>
+              <span className="px-2 py-0.5 bg-orange-500 text-white rounded-lg font-black">{selectedCategoryDocs.length} ฉบับ</span>
+            </div>
+          </div>
+
+          {/* 10 Recent Items Table */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span>📋</span> รายการออกเลข 10 รายการล่าสุดในหมวดหมู่นี้
+              </h4>
+              <span className="text-[11px] text-slate-400 font-medium">
+                {selectedCategoryDocs.length > 0 ? `แสดง ${Math.min(selectedCategoryDocs.length, 10)} จาก ${selectedCategoryDocs.length} รายการ` : "ไม่มีข้อมูล"}
+              </span>
+            </div>
+
+            {selectedCategoryDocs.length === 0 ? (
+              <div className="text-center py-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
+                ยังไม่มีประวัติการออกเลขในหมวดหมู่นี้
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-[11px] text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                    <tr>
+                      <th className="py-2 px-3 font-semibold whitespace-nowrap">เลขที่ออก</th>
+                      <th className="py-2 px-3 font-semibold">เรื่อง</th>
+                      <th className="py-2 px-3 font-semibold whitespace-nowrap">ผู้ขอออกเลข</th>
+                      <th className="py-2 px-3 font-semibold text-right whitespace-nowrap">วันที่</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {selectedCategoryDocs.slice(0, 10).map((doc, idx) => (
+                      <tr key={doc.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-2 px-3 font-bold text-orange-600 dark:text-orange-400 whitespace-nowrap">
+                          {doc.docNo}
+                        </td>
+                        <td className="py-2 px-3 text-slate-800 dark:text-slate-200 max-w-[240px] truncate" title={doc.title}>
+                          {doc.title}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                          {doc.requester}
+                        </td>
+                        <td className="py-2 px-3 text-slate-400 whitespace-nowrap text-right text-[11px]">
+                          {doc.date ? new Date(doc.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
