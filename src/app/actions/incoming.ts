@@ -265,23 +265,26 @@ export const syncAMSSDocumentsAutomatically = safeAction(async (
     // Fetch list of documents (document list page)
     const parsedUrl = new URL(credentials.url);
     const origin = parsedUrl.origin;
-    const pathsToTry = [
-      `${origin}/index.php?option=book&task=main/receive`,
-      `${credentials.url.replace(/\/+$/, "")}/index.php?option=book&task=main/receive`,
-      `${origin}/index.php?option=book&task=main/receive_sch`,
-      `${origin}/receive_sch.php`,
-      `${origin}/modules/document/receive_sch.php`
-    ];
 
-    let htmlContent = "";
+    // Determine how many pages to fetch based on dateRange
+    let maxPages = 5;
+    if (dateRange === "this_week") maxPages = 2;
+    else if (dateRange === "this_month") maxPages = 3;
+    else if (dateRange === "this_year") maxPages = 5;
+    else if (dateRange === "all") maxPages = 10;
+
+    let totalImported = 0;
+    let totalUpdated = 0;
+    let totalDuplicates = 0;
     let successFetch = false;
     let lastHttpStatus = 0;
 
-    for (const fetchUrl of pathsToTry) {
+    for (let page = 1; page <= maxPages; page++) {
+      const pageUrl = `${origin}/index.php?option=book&task=main/receive&page=${page}`;
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const res = await fetchWithTlsFallback(fetchUrl, {
+        const res = await fetchWithTlsFallback(pageUrl, {
           signal: controller.signal,
           headers: {
             "Cookie": loginCookies,
@@ -289,53 +292,66 @@ export const syncAMSSDocumentsAutomatically = safeAction(async (
         });
         clearTimeout(timeoutId);
         lastHttpStatus = res.status;
+
         if (res.ok) {
           const buffer = await res.arrayBuffer();
-          // Try UTF-8 first as modern AMSS++ versions use UTF-8
           let text = new TextDecoder("utf-8").decode(buffer);
           if (text.includes("เธ") || text.includes("เธช")) {
-            // Fallback to windows-874 if UTF-8 produces mojibake
             text = new TextDecoder("windows-874").decode(buffer);
           }
-          htmlContent = text;
 
           if (
-            htmlContent.includes("bookdetail") ||
-            htmlContent.includes("onclick=\"check") ||
-            htmlContent.includes("saraban_index") ||
-            htmlContent.includes("หนังสือรับ")
+            text.includes("bookdetail") ||
+            text.includes("onclick=\"check") ||
+            text.includes("saraban_index") ||
+            text.includes("หนังสือรับ")
           ) {
             successFetch = true;
-            break;
+
+            // CAPTCHA and Cloudflare Detection
+            const lowerHtml = text.toLowerCase();
+            if (
+              lowerHtml.includes("captcha") ||
+              lowerHtml.includes("g-recaptcha") ||
+              lowerHtml.includes("recaptcha") ||
+              lowerHtml.includes("cf-challenge") ||
+              lowerHtml.includes("cloudflare") ||
+              lowerHtml.includes("challenge-platform")
+            ) {
+              throw new Error("ระบบ AMSS++ มีมาตรการความปลอดภัยขั้นสูง (CAPTCHA หรือ Cloudflare) บล็อกการดึงข้อมูลอัตโนมัติ กรุณาใช้วิธีนำเข้าแบบวางโค้ดแทน");
+            }
+
+            const syncRes = await syncAMSSDocumentsFromHtml(text, dateRange);
+            totalImported += syncRes.importedCount;
+            totalUpdated += syncRes.updatedCount || 0;
+            totalDuplicates += syncRes.duplicatesCount;
+
+            // If page returns no new items and no duplicates, we reached the end of list
+            if (syncRes.importedCount === 0 && syncRes.duplicatesCount === 0) {
+              break;
+            }
           }
         }
-      } catch (e) {
-        // silent retry
+      } catch (e: any) {
+        if (e.message && e.message.includes("CAPTCHA")) {
+          throw e;
+        }
+        // silent retry for network timeout on individual page
       }
     }
 
-    if (!successFetch || !htmlContent) {
+    if (!successFetch) {
       if (lastHttpStatus === 403) {
         throw new Error("AMSS++ มีระบบป้องกันบอทภายนอก (403 Forbidden) ระบบจะสลับไปใช้วิธีซิงค์ผ่านเบราว์เซอร์แทน");
       }
       throw new Error("ไม่สามารถดึงรายการเอกสารรับจากระบบ AMSS++ ได้ (ตรวจสอบความถูกต้องของลิงก์)");
     }
 
-    // CAPTCHA and Cloudflare Detection
-    const lowerHtml = htmlContent.toLowerCase();
-    if (
-      lowerHtml.includes("captcha") ||
-      lowerHtml.includes("g-recaptcha") ||
-      lowerHtml.includes("recaptcha") ||
-      lowerHtml.includes("cf-challenge") ||
-      lowerHtml.includes("cloudflare") ||
-      lowerHtml.includes("challenge-platform")
-    ) {
-      throw new Error("ระบบ AMSS++ มีมาตรการความปลอดภัยขั้นสูง (CAPTCHA หรือ Cloudflare) บล็อกการดึงข้อมูลอัตโนมัติ กรุณาใช้วิธีนำเข้าแบบวางโค้ดแทน");
-    }
-
-    // Run the list sync
-    const syncResult = await syncAMSSDocumentsFromHtml(htmlContent, dateRange);
+    const syncResult = {
+      importedCount: totalImported,
+      updatedCount: totalUpdated,
+      duplicatesCount: totalDuplicates
+    };
 
     // Save successful sync timestamp
     const durationMs = Date.now() - startTime;
